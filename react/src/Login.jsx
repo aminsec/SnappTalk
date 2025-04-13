@@ -7,7 +7,7 @@ import sliderImage from './assets/images/Slider.png'
 function Login() {
   useEffect(() => {
     document.title = "Login - SnappTalk";
-  }, [])
+  }, []);
 
   return (
     <div className="loginPage">
@@ -27,6 +27,14 @@ function Login() {
                 <path fillRule="evenodd" clipRule="evenodd" d="M15.9089 19C18.9502 19.0084 21 16.5095 21 13.4384V6.57001C21 3.49883 18.9502 1 15.9089 1H6.09114C3.04979 1 1 3.49883 1 6.57001V13.4384C1 16.5095 3.04979 19.0084 6.09114 19H15.9089Z" stroke="#828282" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
               </svg>
               <input type="email" name="email" id="email" className="input" placeholder="Email" />
+            </div>
+
+            <div className="textbox">
+            <svg className="icon" width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <path d="M12 12C14.7614 12 17 9.76142 17 7C17 4.23858 14.7614 2 12 2C9.23858 2 7 4.23858 7 7C7 9.76142 9.23858 12 12 12Z" stroke="#828282" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+              <path d="M20.24 21.9999C20.24 17.7099 16.29 14.1999 12 14.1999C7.71 14.1999 3.76 17.7099 3.76 21.9999" stroke="#828282" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+            </svg>
+              <input type="text" name="username" id="password" className="input" placeholder="Username" />
             </div>
             
             <div className="textbox">
