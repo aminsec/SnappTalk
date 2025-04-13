@@ -4,7 +4,7 @@ import logo from './assets/images/logo.png'
 import sliderImage from './assets/images/Slider.png'
 
 
-function App() {
+function Login() {
   useEffect(() => {
     document.title = "Login - SnappTalk";
   }, [])
@@ -47,4 +47,4 @@ function App() {
   )
 }
 
-export default App
+export default Login
