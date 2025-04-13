@@ -1,9 +1,14 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import './assets/css/style.css'
 import logo from './assets/images/logo.png'
 import sliderImage from './assets/images/Slider.png'
 
+
 function App() {
+  useEffect(() => {
+    document.title = "Login - SnappTalk";
+  }, [])
+
   return (
     <div className="loginPage">
       <div className="popUp">
