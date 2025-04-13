@@ -159,6 +159,14 @@ body {
     background-color: #2478c5;
 }
 
+.Error-message {
+    color: red;
+    position: absolute;
+    margin-top: 4px;
+    top: 76%;
+    margin-bottom: 4px;
+}
+
 /* Responsive Design */
 @media (max-width: 1100px) {
     .popUp {
