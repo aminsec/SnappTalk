@@ -29,7 +29,7 @@ function Login() {
       password: passwordState
     };
 
-    const request = await fetch("/api/v1/auth", {
+    const request = await fetch("/api/v1/auth/", {
       method: "POST",
       body: JSON.stringify(body),
       headers: {
