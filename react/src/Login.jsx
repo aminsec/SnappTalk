@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import './assets/css/style.css'
+import './assets/css/login.css'
 import logo from './assets/images/logo.png'
 import sliderImage from './assets/images/Slider.png'
 
@@ -10,7 +11,7 @@ function Login() {
   const [passwordState, setPasswordState] = useState();
 
   useEffect(() => {
-    document.title = "Login - SnappTalk";
+    document.title = "Login - SnappTalk!";
   }, []);
 
   async function loginRequest(e) {
