@@ -4,8 +4,8 @@ let usersCollection;
 
 async function getUsersCollection() {
     try {
-        const db = await connectToSnappTalkDB();
         if (!usersCollection) {
+            const db = await connectToSnappTalkDB();
             const connection = await db.collection('users');
             usersCollection = connection;
         }

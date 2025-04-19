@@ -9,7 +9,7 @@ async function connectToSnappTalkDB() {
         const client = new MongoClient(uri);
         await client.connect();
         SnappTalkDB = client.db("SnappTalk");
-        console.log("connected to dbs")
+        console.log("connected to dbs");
         return SnappTalkDB;
     }else{
         return SnappTalkDB;
