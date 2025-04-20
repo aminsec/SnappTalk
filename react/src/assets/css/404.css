@@ -1,0 +1,128 @@
+body {
+  margin: 0;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-width: 320px;
+  background-color: #eaecef;
+  padding: 15px;
+}
+
+.notfound-container {
+  width: 1000px;
+  margin: 0 auto;
+  background: #fdfdfd;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 2rem 1.5rem;
+  border-radius: 25px;
+}
+
+/* 404 main block */
+.notfound-main {
+  text-align: center;
+  margin-bottom: 3rem;
+}
+
+.notfound-main h1 {
+  font-size: 6rem;
+  color: #1e60f8;
+  margin-bottom: 0.5rem;
+}
+
+.headline {
+  font-size: 1.6rem;
+  font-weight: bold;
+  margin-bottom: 0.5rem;
+}
+
+.subtext {
+  font-size: 1rem;
+  color: #666;
+  max-width: 600px;
+  margin: 0 auto 1.5rem auto;
+}
+
+/* Home button */
+.go-home-btn {
+  background-color: #1e60f8;
+  color: white;
+  padding: 0.7rem 1.4rem;
+  border-radius: 10px;
+  font-weight: 500;
+  text-decoration: none;
+  transition: background 0.2s ease;
+}
+
+.go-home-btn:hover {
+  background-color: #1047c4;
+}
+
+/* Section of popular channels */
+.popular-channels {
+  width: 100%;
+  max-width: 1200px;
+  text-align: center;
+  margin: 0 auto;
+}
+
+.popular-channels h2 {
+  font-size: 1.8rem;
+  margin-bottom: 1.5rem;
+  color: #222;
+}
+
+/* Grid of cards */
+.channel-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(212px, 1fr));
+  gap: 1.5rem;
+  padding: 0 1rem;
+}
+
+/* Each card */
+.channel-card {
+  background: white;
+  padding: 1.5rem;
+  border-radius: 16px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.06);
+  transition: transform 0.2s;
+}
+
+.channel-card:hover {
+  transform: translateY(-5px);
+}
+
+.channel-icon {
+  font-size: 2.2rem;
+  margin-bottom: 1rem;
+}
+
+.channel-card h3 {
+  font-size: 1.1rem;
+  margin-bottom: 0.3rem;
+  color: #333;
+}
+
+.channel-card p {
+  font-size: 0.95rem;
+  color: #555;
+  margin-bottom: 1rem;
+}
+
+/* Subscribe button */
+.channel-card button {
+  background-color: #1e60f8;
+  color: white;
+  padding: 0.5rem 1.1rem;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  font-weight: 500;
+  transition: background 0.2s;
+}
+
+.channel-card button:hover {
+  background-color: #1047c4;
+}
