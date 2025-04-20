@@ -9,12 +9,13 @@ async function checkUserExistsByEmail(email) {
         }else{
             return [false, null];
         }
+        
     } catch (error) {
         console.log(error);
         const err = {message: "A system error occurred", state: "failed", type: "system_error"};
         return [null, err];
     }
-}
+};
 
 async function checkCredentials(email, password) {
     try {
@@ -31,7 +32,7 @@ async function checkCredentials(email, password) {
         const err = {message: "A system error occurred", state: "failed", type: "system_error"};
         return [null, err];
     }
-}
+};
 
 module.exports = {
     checkUserExistsByEmail,

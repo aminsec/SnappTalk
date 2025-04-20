@@ -1,8 +1,7 @@
 const { checkUserExistsByEmail, checkCredentials } = require("../../services/checks");
-const { getUserInfoByEmail } = require("../../services/operations");
+const { getUserInfoByEmail, createUser } = require("../../services/operations");
 const { showError, sendResponse } = require("../../utils/operations");
 const jwt = require('jsonwebtoken');
-
 
 async function handleAuth(req, resp) {
     const { email, password } = req.body;
@@ -30,14 +29,19 @@ async function handleAuth(req, resp) {
                 return;
             }
 
-            //Removing unnessecry field 
-            delete userInfo.password;
-            delete userInfo._id;
+            //Extracting user info to include in token
+            const tokenData = {
+                id: userInfo.id,
+                email: userInfo.email,
+                username: userInfo.username,
+                profilePic: userInfo.profilePic,
+                role: userInfo.role,
+            }
             
             //Signing token
-            const token = jwt.sign(userInfo, process.env.JWT_SECRET_KEY, {expiresIn: "1h"});
+            const token = jwt.sign(tokenData, process.env.JWT_SECRET_KEY, {expiresIn: "1h"});
             const responseData = {status: "success", message: "Login was successful"};
-            const responseHeaders = {"Set-Cookie": `token=${token}; path=/; httpOnly`};
+            const responseHeaders = {"Set-Cookie": `token=${token}; path=/;`};
             sendResponse(responseData, responseHeaders, 200,resp);
 
         }else{
@@ -47,7 +51,28 @@ async function handleAuth(req, resp) {
         }
         
     }else{
-        //TODO: Signin user 
+        const [createUserResult, error] = await createUser(email, password);
+        if(error){
+            showError(error, resp);
+            return;
+        }
+
+        //If user was created successfully, then assign token
+        if(createUserResult){
+            //Extracting user info to include in token
+            const userInfoToSign = {
+                id: createUserResult._id,
+                email: createUserResult.email,
+                username: createUserResult.username,
+                profilePic: createUserResult.profilePic,
+                role: createUserResult.role
+            }
+
+            const token = jwt.sign(userInfoToSign, process.env.JWT_SECRET_KEY, {expiresIn: "1h"});
+            const responseData = {status: "success", message: "Registration was successful", step_2: true};
+            const responseHeaders = {"Set-Cookie": `token=${token}; path=/;`};
+            sendResponse(responseData, responseHeaders, 200, resp);
+        }
     }
 };
 
