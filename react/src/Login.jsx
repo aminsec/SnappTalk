@@ -29,7 +29,8 @@ function Login() {
     });
 
     if(!request.ok){
-      const resp = request.json();
+      const resp = await request.json();
+      console.log(resp.message)
       setErrorMessage(resp.message)
     }else{
       window.location.href = "/chats"
