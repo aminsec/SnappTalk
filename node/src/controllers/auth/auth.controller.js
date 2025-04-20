@@ -41,7 +41,9 @@ async function handleAuth(req, resp) {
             sendResponse(responseData, responseHeaders, 200,resp);
 
         }else{
-            console.log("User can not loggin");
+            const error = {state: "failed", message: "Invalid username or password", type: "creds_error"};
+            showError(error, resp);
+            return;
         }
         
     }else{
