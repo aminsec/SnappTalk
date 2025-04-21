@@ -44,21 +44,6 @@ body {
   margin: 0 auto 1.5rem auto;
 }
 
-/* Home button */
-.go-home-btn {
-  background-color: #1e60f8;
-  color: white;
-  padding: 0.7rem 1.4rem;
-  border-radius: 10px;
-  font-weight: 500;
-  text-decoration: none;
-  transition: background 0.2s ease;
-}
-
-.go-home-btn:hover {
-  background-color: #1047c4;
-}
-
 /* Section of popular channels */
 .popular-channels {
   width: 100%;
@@ -109,20 +94,4 @@ body {
   font-size: 0.95rem;
   color: #555;
   margin-bottom: 1rem;
-}
-
-/* Subscribe button */
-.channel-card button {
-  background-color: #1e60f8;
-  color: white;
-  padding: 0.5rem 1.1rem;
-  border: none;
-  border-radius: 8px;
-  cursor: pointer;
-  font-weight: 500;
-  transition: background 0.2s;
-}
-
-.channel-card button:hover {
-  background-color: #1047c4;
 }

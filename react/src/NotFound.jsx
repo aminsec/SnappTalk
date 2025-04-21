@@ -20,7 +20,7 @@ export default function NotFound() {
           The page you’re looking for might have been removed or moved.
           Meanwhile, check out these popular channels!
         </p>
-        <Link to="/" className="go-home-btn">Back to Home</Link>
+        <Link to="/" className="btn btn-md">Back to Home</Link>
       </div>
 
       <section className="popular-channels">
@@ -31,7 +31,7 @@ export default function NotFound() {
               <div className="channel-icon">{ch.icon}</div>
               <h3>{ch.title}</h3>
               <p>{ch.desc}</p>
-              <button>Subscribe</button>
+              <button className='btn btn-sm'>Subscribe</button>
             </div>
           ))}
         </div>

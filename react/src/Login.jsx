@@ -1,5 +1,4 @@
 import { useState, useEffect } from 'react'
-import './assets/css/style.css'
 import './assets/css/login.css'
 import logo from './assets/images/logo.png'
 import sliderImage from './assets/images/Slider.png'
@@ -94,14 +93,7 @@ function Login() {
                     <path d="M16.9026 6.85114L12.4593 10.4642C11.6198 11.1302 10.4387 11.1302 9.59921 10.4642L5.11842 6.85114" stroke="#828282" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
                     <path fillRule="evenodd" clipRule="evenodd" d="M15.9089 19C18.9502 19.0084 21 16.5095 21 13.4384V6.57001C21 3.49883 18.9502 1 15.9089 1H6.09114C3.04979 1 1 3.49883 1 6.57001V13.4384C1 16.5095 3.04979 19.0084 6.09114 19H15.9089Z" stroke="#828282" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
                   </svg>
-                  <input
-                    onChange={e => setEmailState(e.target.value)}
-                    type="email"
-                    name="email"
-                    id="email"
-                    className="input"
-                    placeholder="Email"
-                  />
+                  <input onChange={e => setEmailState(e.target.value)} type="email" name="email" id="email" className="input" placeholder="Email"/>
                 </div>
 
                 <div className="textbox">
@@ -110,20 +102,13 @@ function Login() {
                     <path fillRule="evenodd" clipRule="evenodd" d="M12.6832 19.2496H5.0422C2.9482 19.2496 1.2502 17.5526 1.2502 15.4576V11.1686C1.2502 9.07359 2.9482 7.37659 5.0422 7.37659H12.6832C14.7772 7.37659 16.4752 9.07359 16.4752 11.1686V15.4576C16.4752 17.5526 14.7772 19.2496 12.6832 19.2496Z" stroke="#828282" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
                     <path d="M8.8629 12.2027V14.4237" stroke="#828282" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
                   </svg>
-                  <input
-                    onChange={e => setPasswordState(e.target.value)}
-                    type="password"
-                    name="password"
-                    id="password"
-                    className="input"
-                    placeholder="Password"
-                  />
+                  <input onChange={e => setPasswordState(e.target.value)} type="password" name="password" id="password" className="input" placeholder="Password"/>
                 </div>
 
-                <p className='Error-message'>{errorMessage}</p>
-                <a href="/forgetpassword">Forgot Password!</a>
+                <a className ='form-link' href="/forgetpassword">Forgot Password!</a>
+                <p className='Error-message' >{errorMessage}</p>
 
-                <button type="submit" className="LoginBtn">Login</button>
+                <button type="submit" className="LoginBtn btn btn-lg">Login</button>
               </form>
             </>
           ) : (
@@ -137,15 +122,7 @@ function Login() {
                     <path d="M12 12C14.7614 12 17 9.76142 17 7C17 4.23858 14.7614 2 12 2C9.23858 2 7 4.23858 7 7C7 9.76142 9.23858 12 12 12Z" stroke="#828282" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
                     <path d="M20.24 21.9999C20.24 17.7099 16.29 14.1999 12 14.1999C7.71 14.1999 3.76 17.7099 3.76 21.9999" stroke="#828282" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
                   </svg>
-                  <input
-                    onChange={e => setUsernameState(e.target.value)}
-                    type="text"
-                    name="username"
-                    id="username"
-                    className="input"
-                    placeholder="Username"
-                    autoFocus
-                  />
+                  <input onChange={e => setUsernameState(e.target.value)} type="text" name="username" id="username" className="input" placeholder="Username" autoFocus/>
                 </div>
 
                 <p className='Error-message'>{errorMessage}</p>
