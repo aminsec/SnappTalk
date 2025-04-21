@@ -105,8 +105,8 @@ function Login() {
                   <input onChange={e => setPasswordState(e.target.value)} type="password" name="password" id="password" className="input" placeholder="Password"/>
                 </div>
 
-                <a className ='form-link' href="/forgetpassword">Forgot Password!</a>
                 <p className='Error-message' >{errorMessage}</p>
+                <a className ='form-link' href="/forgetpassword">Forgot Password!</a>
 
                 <button type="submit" className="LoginBtn btn btn-lg">Login</button>
               </form>
