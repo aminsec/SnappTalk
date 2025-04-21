@@ -127,7 +127,7 @@ function Login() {
 
                 <p className='Error-message'>{errorMessage}</p>
 
-                <button type="submit" className="LoginBtn slide-in">Continue</button>
+                <button type="submit" className="LoginBtn slide-in btn btn-lg ">Continue</button>
               </form>
             </>
           )}
