@@ -28,15 +28,6 @@ function Login() {
     }, 300);
   };
 
-  const handleUsernameSubmit = (e) => {
-    e.preventDefault();
-
-    if (!usernameState.trim()) {
-      setErrorMessage('Please enter your username');
-      return;
-    }
-  };
-
   async function loginRequest(e) {
     e.preventDefault();
 
