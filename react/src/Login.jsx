@@ -48,8 +48,17 @@ function Login() {
     if(!request.ok){
       const resp = await request.json();
       toast.error(resp.message)
-    } else {
-      window.location.href = "/chats"
+    }
+
+    if(request.ok){
+      const resp = await request.json();
+      if(resp.state === "success"){
+        if(resp.step_2 === true){
+          setLoginStep(2);
+        }else{
+          window.location.href = "/chats"
+        }
+      }
     }
   };
 
