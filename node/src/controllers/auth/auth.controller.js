@@ -39,7 +39,7 @@ async function handleAuth(req, resp) {
             
             //Signing token
             const token = jwt.sign(tokenData, process.env.JWT_SECRET_KEY, {expiresIn: "1h"});
-            const responseData = {status: "success", message: "Login was successful"};
+            const responseData = {state: "success", message: "Login was successful"};
             const responseHeaders = {"Set-Cookie": `token=${token}; path=/;`};
             sendResponse(responseData, responseHeaders, 200,resp);
 
@@ -68,7 +68,7 @@ async function handleAuth(req, resp) {
             }
 
             const token = jwt.sign(userInfoToSign, process.env.JWT_SECRET_KEY, {expiresIn: "1h"});
-            const responseData = {status: "success", message: "Registration was successful", step_2: true};
+            const responseData = {state: "success", message: "Registration was successful", step_2: true};
             const responseHeaders = {"Set-Cookie": `token=${token}; path=/;`};
             sendResponse(responseData, responseHeaders, 200, resp);
         }
