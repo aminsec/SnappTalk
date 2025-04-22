@@ -71,8 +71,13 @@ function Login() {
       },
     });
 
+    if(!request.ok){
+      const resp = await request.json();
+      console.log(resp.message)
+
     if (!request.ok) {
       const resp = request.json();
+
       setErrorMessage(resp.message)
     } else {
       window.location.href = "/chats"
