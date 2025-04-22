@@ -49,7 +49,6 @@ function Login() {
 
     const body = {
       email: emailState,
-      username: usernameState,
       password: passwordState
     };
 
