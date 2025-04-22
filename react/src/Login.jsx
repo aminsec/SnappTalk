@@ -84,8 +84,8 @@ function Login() {
 
           {loginStep === 1 ? (
             <>
-              <h2 className="Titr">Log in to your account.</h2>
-              <h4 className="Discription">Enter your email address and password to log in.</h4>
+              <h2 className="Titr">Login to your account.</h2>
+              <h4 className="Discription">Enter your email address and password to login.</h4>
 
               <form className="form-inputs" onSubmit={handleFirstStep}>
                 <div className="textbox">
