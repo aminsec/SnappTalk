@@ -1,12 +1,11 @@
 body {
-    margin: 0;
-    display: flex;
-    justify-content: center;
-    align-items: center;
     min-width: 320px;
     min-height: 100vh;
     background-color: #eaecef;
     padding: 15px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
 }
 
 .loginPage {
@@ -24,7 +23,6 @@ body {
     display: flex;
     flex-direction: row-reverse;
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
-    overflow: hidden;
     max-height: 570px;
 }
 
@@ -34,7 +32,6 @@ body {
     display: flex;
     justify-content: flex-start;
     align-items: center;
-    overflow: hidden;
 }
 
 .sliderImage {
@@ -56,7 +53,7 @@ body {
 }
 
 .logo {
-    width: 176px;
+    width: 190px;
     height: auto;
     margin-bottom: 16px;
 }
@@ -75,109 +72,18 @@ body {
     color: #666;
 }
 
+/* اختصاصی login */
 .form-inputs {
-    display: flex;
-    flex-direction: column;
     width: 100%;
     max-width: 376px;
 }
 
-/* Text Box */
-.textbox {
-    display: flex;
-    align-items: center;
-    position: relative;
-    width: 100%;
-    margin-bottom: 14px;
-}
-
-.input {
-    width: 100%;
-    height: 46px;
-    padding: 0 1rem 0 2.5rem;
-    border: 2px solid transparent;
-    border-radius: 6px;
-    outline: none;
-    background-color: #F9FDFF;
-    color: #0d0c22;
-    transition: 0.3s ease;
-    font-size: 15px;
-}
-
-.input:focus {
-    border-color: #2D90E4;
-}
-
-.input::placeholder {
-    color: #9e9ea7;
-}
-
-.icon {
-    position: absolute;
-    left: 1rem;
-    width: 1rem;
-    height: 1rem;
-}
-
-.form-inputs a {
-    text-align: right;
-    display: block;
-    margin-bottom: 18px;
-    color: #2D90E4;
-    text-decoration: none;
-    font-weight: 500;
-    font-size: 14px;
-}
-
-
-/* Login Button */
-.LoginBtn {
-    height: 46px;
-    background: #2D90E4;
-    border-radius: 6px;
-    color: #fff;
-    border: none;
-    font-weight: 600;
-    font-size: 15px;
-    cursor: pointer;
-    transition: background-color 0.3s;
-    width: 100%;
-}
-
-.LoginBtn:hover {
-    background-color: #2478c5;
-}
-
-.Error-message {
-    color: red;
-    position: absolute;
-    margin-top: 4px;
-    top: 76%;
-    margin-bottom: 4px;
-    font-size: 12px;
-}
-
-.form-fade {
-    transition: opacity 0.3s ease-in-out;
-    opacity: 0.5;
-}
 
 .slide-in {
     animation: slideIn 0.4s ease-out forwards;
 }
 
-@keyframes slideIn {
-    from {
-        opacity: 0;
-        transform: translateY(20px);
-    }
-
-    to {
-        opacity: 1;
-        transform: translateY(0);
-    }
-}
-
+/* دکمه برگشت ساده */
 .back-btn {
     margin-top: 10px;
     background: transparent;
@@ -215,6 +121,7 @@ body {
         flex: 1;
         max-height: 276px;
         width: 100%;
+        display: none;
     }
 
     .form {
@@ -229,7 +136,6 @@ body {
     }
 }
 
-/* Responsive Slider */
 @media (max-width: 768px) {
     .slider {
         display: none;
@@ -246,10 +152,7 @@ body {
         align-items: center;
     }
 
-    .Titr {
-        text-align: center;
-    }
-
+    .Titr,
     .Discription {
         text-align: center;
     }
@@ -273,7 +176,7 @@ body {
     }
 
     .logo {
-        width: 106px;
+        width: 170px;
     }
 
     .input {
@@ -281,13 +184,12 @@ body {
         height: 44px;
     }
 
-    .LoginBtn {
+    .btn {
         height: 44px;
         font-size: 14px;
     }
 }
 
-/* Mobile device responsive */
 @media (max-width: 380px) {
     .form {
         padding: 18px 11px;
@@ -306,7 +208,7 @@ body {
         height: 41px;
     }
 
-    .LoginBtn {
+    .btn {
         height: 41px;
         font-size: 13px;
     }
