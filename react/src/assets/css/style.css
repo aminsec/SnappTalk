@@ -7,279 +7,38 @@
 
 @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@100..900&display=swap');
 
-body {
-    margin: 0;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    min-width: 320px;
-    min-height: 100vh;
-    background-color: silver;
-    padding: 20px;
-}
-
-.loginPage {
-    width: 100%;
-    max-width: 1200px;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-}
-
-.popUp {
-    background-color: #f3f3f3;
-    width: 100%;
-    border-radius: 25px;
-    display: flex;
-    flex-direction: row-reverse;
-    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
-    overflow: hidden;
-    max-height: 700px;
-}
-
-/* Slider section */
-.slider {
-    flex: 0.8;
-    display: flex;
-    justify-content: flex-start;
-    align-items: center;
-    overflow: hidden;
-}
-
-.sliderImage {
-    width: 100%;
-    height: 100%;
-    object-fit: cover;
-}
-
-/* Form section */
-.form {
-    flex: 0.6;
-    padding: 50px;
-    display: flex;
-    flex-direction: column;
-    justify-content: center;
-    min-height: 500px;
-    width: 100%;
-    align-items: center;
-}
-
-.logo {
-    width: 200px;
-    height: auto;
-    margin-bottom: 20px;
-}
-
-.Titr {
-    font-size: 32px;
-    font-weight: 600;
-    margin-top: 25px;
-}
-
-.Discription {
-    font-size: 14px;
-    font-weight: 500;
-    margin-top: 5px;
-    margin-bottom: 40px;
-    color: #666;
-}
-
-.form-inputs {
-    display: flex;
-    flex-direction: column;
-    width: 100%;
-    max-width: 400px;
-}
-
-/* Text Box */
-.textbox {
-    display: flex;
-    align-items: center;
-    position: relative;
-    width: 100%;
-    margin-bottom: 20px;
-}
-
-.input {
-    width: 100%;
-    height: 55px;
-    padding: 0 1rem 0 2.5rem;
-    border: 2px solid transparent;
-    border-radius: 8px;
-    outline: none;
-    background-color: #F9FDFF;
-    color: #0d0c22;
-    transition: 0.3s ease;
-    font-size: 16px;
-}
-
-.input:focus {
-    border-color: #2D90E4;
-}
-
-.input::placeholder {
-    color: #9e9ea7;
-}
-
-.icon {
-    position: absolute;
-    left: 1rem;
-    width: 1rem;
-    height: 1rem;
-}
-
-.form-inputs a {
-    text-align: right;
-    display: block;
-    margin-bottom: 25px;
-    color: #2D90E4;
-    text-decoration: none;
-    font-weight: 500;
-}
-
-.form-inputs a:hover {
-    text-decoration: underline;
-}
-
-/* Login Button */
-.LoginBtn {
-    height: 55px;
-    background: #2D90E4;
-    border-radius: 12px;
-    color: #fff;
-    border: none;
-    font-weight: 600;
-    font-size: 16px;
+.form-fade {
+    transition: opacity 0.3s ease-in-out;
+    opacity: 0.5;
+  }
+  
+  .element-fade {
+    transition: all 0.3s ease-in-out;
+    opacity: 0.7;
+    transform: translateY(10px);
+  }
+  
+  .toggle-mode-btn {
+    margin-top: 10px;
+    background: transparent;
+    border: 1px solid #ccc;
+    padding: 8px 15px;
+    border-radius: 4px;
+    color: #828282;
     cursor: pointer;
-    transition: background-color 0.3s;
-    width: 100%;
-}
-
-.LoginBtn:hover {
-    background-color: #2478c5;
-}
-
-.Error-message {
-    color: red;
-    position: absolute;
-    margin-top: 4px;
-    top: 76%;
-    margin-bottom: 4px;
-}
-
-/* Responsive Design */
-@media (max-width: 1100px) {
-    .popUp {
-        max-height: none;
-    }
-    
-    .form {
-        padding: 40px;
-    }
-}
-
-@media (max-width: 992px) {
-    .popUp {
-        flex-direction: column-reverse;
-        max-height: none;
-    }
-    
-    .slider {
-        flex: 1;
-        max-height: 300px;
-        width: 100%;
-    }
-    
-    .form {
-        flex: 1;
-        padding: 40px;
-        align-items: center;
-    }
-    
-    .form-inputs {
-        width: 100%;
-        max-width: 450px;
-    }
-}
-
-/* Responsive Slider */
-@media (max-width: 768px) {
-    .slider {
-        display: none; /* Hide slider completely */
-    }
-    
-    .popUp {
-        width: 100%;
-        max-width: 500px;
-    }
-    
-    .form {
-        flex: 1;
-        padding: 40px 30px;
-        align-items: center;
-    }
-    
-    .Titr {
-        text-align: center;
-    }
-    
-    .Discription {
-        text-align: center;
-    }
-}
-
-@media (max-width: 576px) {
-    body {
-        padding: 15px;
-    }
-    
-    .popUp {
-        border-radius: 15px;
-    }
-    
-    .form {
-        padding: 30px 20px;
-    }
-    
-    .Titr {
-        font-size: 24px;
-    }
-    
-    .logo {
-        width: 120px;
-    }
-    
-    .input {
-        font-size: 14px;
-        height: 50px;
-    }
-    
-    .LoginBtn {
-        height: 50px;
-        font-size: 14px;
-    }
-}
-
-/* Mobile device responsive */
-@media (max-width: 380px) {
-    .form {
-        padding: 25px 15px;
-    }
-    
-    .Titr {
-        font-size: 22px;
-    }
-    
-    .Discription {
-        font-size: 13px;
-        margin-bottom: 30px;
-    }
-    
-    .input {
-        height: 45px;
-    }
-    
-    .LoginBtn {
-        height: 45px;
-    }
-}
+    transition: all 0.2s ease;
+  }
+  
+  .toggle-mode-btn:hover {
+    background: #f5f5f5;
+    color: #333;
+  }
+  
+  .form-inputs {
+    display: flex;
+    flex-direction: column;
+  }
+  
+  .form-element {
+    transition: all 0.3s ease-in-out;
+  }
