@@ -1,11 +1,11 @@
 body {
-    display: flex;
-    justify-content: center;
-    align-items: center;
     min-width: 320px;
     min-height: 100vh;
     background-color: #eaecef;
     padding: 15px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
 }
 
 .loginPage {
@@ -23,7 +23,6 @@ body {
     display: flex;
     flex-direction: row-reverse;
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
-    overflow: hidden;
     max-height: 570px;
 }
 
@@ -33,7 +32,6 @@ body {
     display: flex;
     justify-content: flex-start;
     align-items: center;
-    overflow: hidden;
 }
 
 .sliderImage {

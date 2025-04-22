@@ -4,9 +4,9 @@ import './assets/css/style.css'
 import './assets/css/404.css';
 
 const channels = [
-  { icon: '🎮', title: 'Gamers Hub', desc: 'Live streams & reviews' },
+  { icon: '🎮', title: 'Gamers Hub', desc: 'Gameplay & reviews' },
   { icon: '🎧', title: 'Music Vibes', desc: 'Chill playlists daily' },
-  { icon: '🌐', title: 'World News', desc: 'Stay updated globally' },
+  { icon: '🌐', title: 'World News', desc: 'Breaking news' },
   { icon: '🎨', title: 'Creative Minds', desc: 'Designs, art & more' },
 ];
 
@@ -14,12 +14,9 @@ export default function NotFound() {
   return (
     <div className="notfound-container">
       <div className="notfound-main">
-        <h1>404</h1>
-        <p className="headline">Page not found</p>
-        <p className="subtext">
-          The page you’re looking for might have been removed or moved.
-          Meanwhile, check out these popular channels!
-        </p>
+      <h1>404</h1>
+  <p className="headline">Page not found</p>
+  <p className="subtext">The page you’re looking for might have been removed or moved.</p>
         <Link to="/" className="btn btn-md">Back to Home</Link>
       </div>
 
