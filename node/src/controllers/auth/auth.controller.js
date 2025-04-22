@@ -1,5 +1,4 @@
-const { checkUserExistsByEmail, checkCredentials } = require("../../services/checks");
-const { getUserInfoByEmail, createUser } = require("../../services/operations");
+const { checkUserExistsByEmail, checkCredentials, getUserInfoByEmail, createUser } = require("../../services/auth.services");
 const { showError, sendResponse } = require("../../utils/operations");
 const jwt = require('jsonwebtoken');
 
