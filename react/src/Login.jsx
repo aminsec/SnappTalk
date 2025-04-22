@@ -9,15 +9,12 @@ function Login() {
   const [usernameState, setUsernameState] = useState('');
   const [passwordState, setPasswordState] = useState('');
   const [errorMessage, setErrorMessage] = useState('');
-
   const [loginStep, setLoginStep] = useState(1);
-
   const [isAnimating, setIsAnimating] = useState(false);
 
   const handleFirstStep = (e) => {
     e.preventDefault();
-
-
+    
     if (!emailState.trim() || !passwordState.trim()) {
       setErrorMessage('Please fill in all fields');
       return;
@@ -38,9 +35,7 @@ function Login() {
       setErrorMessage('Please enter your username');
       return;
     }
-
   };
-
 
   async function loginRequest(e) {
     e.preventDefault();
@@ -84,8 +79,7 @@ function Login() {
       
       toast.success('Logged in successfully!');
     };
-
-  }
+  };
 
   return (
     <div className="loginPage">
