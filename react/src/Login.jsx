@@ -32,7 +32,6 @@ function Login() {
   async function loginRequest(e) {
     e.preventDefault();
 
-
     const usernameCheckRegex = new RegExp("^[a-zA-Z0-9_]+$");
 
     if (usernameCheckRegex.test(usernameState) === false) {
