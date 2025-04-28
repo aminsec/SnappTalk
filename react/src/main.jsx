@@ -3,12 +3,14 @@ import ReactDOM from 'react-dom/client';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import './assets/css/style.css'
 import Login from "./Login";
+import Home from './Home';
 import NotFound from './NotFound';
 
 export default function App() {
   return (
     <BrowserRouter>
       <Routes>
+        <Route path="/home" element={<Home />} /> 
         <Route path="/login" element={<Login />} />
         <Route path="/" element={<Navigate to="/login" replace />} />
         <Route path="*" element={<NotFound />} />

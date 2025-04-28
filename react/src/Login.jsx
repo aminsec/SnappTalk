@@ -5,7 +5,6 @@ import logo from './assets/images/logo.png'
 import sliderImage from './assets/images/Slider.png'
 
 function Login() {
-
   const [emailState, setEmailState] = useState('');
   const [usernameState, setUsernameState] = useState('');
   const [passwordState, setPasswordState] = useState('');
@@ -13,24 +12,18 @@ function Login() {
   const [loginStep, setLoginStep] = useState(1);
   const [isAnimating, setIsAnimating] = useState(false);
 
-  const handleFirstStep = (e) => {
+  const handleFirstStep = async (e) => {
     e.preventDefault();
-    
-    if (!emailState.trim() || !passwordState.trim()) {
-      toast.error("Please fill all fields")
+
+    if(emailState === "" || passwordState === ""){
+      toast.error("Please fill in all fields");
       return;
     }
 
-    setIsAnimating(true);
-    setTimeout(() => {
-      setLoginStep(2);
-      setIsAnimating(false);
-      setErrorMessage('');
-    }, 300);
-  };
-
-  async function loginRequest(e) {
-    e.preventDefault();
+    if(passwordState.length < 6){
+      toast.error("Password must be at least 6 character");
+      return;
+    }
 
     const body = {
       email: emailState,
@@ -47,14 +40,20 @@ function Login() {
 
     if(!request.ok){
       const resp = await request.json();
-      toast.error(resp.message)
+      toast.error(resp.message);
+      return;
     }
 
     if(request.ok){
       const resp = await request.json();
       if(resp.state === "success"){
         if(resp.step_2 === true){
-          setLoginStep(2);
+          setIsAnimating(true);
+          setTimeout(() => {
+            setLoginStep(2);
+            setIsAnimating(false);
+            setErrorMessage('');
+          }, 300);
         }else{
           window.location.href = "/chats"
         }
@@ -62,15 +61,60 @@ function Login() {
     }
   };
 
-  const handleUsernameSubmit = (e) => {
+  const handleUsernameSubmit = async (e) => {
     e.preventDefault();
 
-    if (!usernameState.trim()) {
-      toast.error('Please enter your username');
+    if(usernameState === ""){
+      toast.error("Please enter a username");
       return;
     }
-    
-    toast.success('Logged in successfully!');
+
+    if(usernameState.length > 24){
+      toast.error("Maximum lenght for username is 24 character");
+      return;
+    }
+
+    const usernameRegex = new RegExp("^[a-zA-Z0-9_\.]+$");
+    if(usernameRegex.test(usernameState) === false){
+      toast.error(`Username can only include a-z, 0-9, "." and "_" `);
+      return;
+    }
+
+    //Fetching user info to request an update to update username
+    const userDataRequest = await fetch("/api/v1/user/info", {
+      credentials: "include",
+      method: "GET"
+    });
+
+    if(!userDataRequest.ok){
+      const resp = await userDataRequest.json();
+      toast.error(resp.message);
+      return;
+    }
+
+    if(userDataRequest.ok){
+      const resp = await userDataRequest.json();
+      const userInfo = resp.userInfo;
+      
+      //Updating username
+      userInfo.username = usernameState;
+      const usernameUpdateRequest = await fetch("/api/v1/user/info", {
+        method: "PUT",
+        credentials: "include",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(userInfo)
+      });
+
+      if(!usernameUpdateRequest.ok){
+        const resp = await usernameUpdateRequest.json();
+        toast.error(resp.message);
+
+      }else{
+        window.location.href = "/home"
+      }
+    }
   };
 
   return (
@@ -109,7 +153,7 @@ function Login() {
                 <p className='Error-message' >{errorMessage}</p>
                 <a className='form-link' href="/forgetpassword">Forgot Password!</a>
 
-                <button type="submit" onClick={loginRequest} className="LoginBtn btn btn-lg">Login</button>
+                <button type="submit" className="LoginBtn btn btn-lg">Login</button>
               </form>
             </>
           ) : (
@@ -123,7 +167,7 @@ function Login() {
                     <path d="M12 12C14.7614 12 17 9.76142 17 7C17 4.23858 14.7614 2 12 2C9.23858 2 7 4.23858 7 7C7 9.76142 9.23858 12 12 12Z" stroke="#828282" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
                     <path d="M20.24 21.9999C20.24 17.7099 16.29 14.1999 12 14.1999C7.71 14.1999 3.76 17.7099 3.76 21.9999" stroke="#828282" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
                   </svg>
-                  <input onChange={e => setUsernameState(e.target.value)} type="text" name="username" id="username" className="input" placeholder="Username" autoFocus />
+                  <input value={usernameState} onChange={e => setUsernameState(e.target.value)} type="text" name="username" id="username" className="input" placeholder="Username" autoFocus />
                 </div>
                 <p className='Error-message'>{errorMessage}</p>
                 <button type="submit" className="LoginBtn slide-in btn btn-lg ">Continue</button>
@@ -133,7 +177,7 @@ function Login() {
         </div>
       </div>
     </div>
-  )
-}
+  );
+};
 
 export default Login;
