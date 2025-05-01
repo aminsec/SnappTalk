@@ -21,7 +21,7 @@ export default function NotFound() {
       </div>
 
       <section className="popular-channels">
-        <h2>🔥 Popular Channels</h2>
+        <h2>Popular Channels</h2>
         <div className="channel-grid">
           {channels.map((ch, i) => (
             <div className="channel-card" key={i}>
