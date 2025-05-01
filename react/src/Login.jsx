@@ -157,7 +157,7 @@ function Login() {
 
               <form className="form-inputs" onSubmit={handleUsernameSubmit}>
                 <div className="textbox slide-in">
-                  <img src={ICONS.username} alt="Username Icon" className="icon" />
+                  <img src={ICONS.userName} alt="Username Icon" className="icon" />
                   <input value={usernameState} onChange={e => setUsernameState(e.target.value)} type="text" name="username" id="username" className="input" placeholder="Username" autoFocus />
                 </div>
                 <p className='Error-message'>{errorMessage}</p>
