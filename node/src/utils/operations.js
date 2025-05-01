@@ -1,3 +1,6 @@
+const bcrypt = require('bcrypt');
+const saltRounds = 10;
+
 //Function to send normall messages
 function sendResponse(data, headers = {}, code = 200, resp){
     headers["Content-Type"] = "application/json"; //Setting content-type to json
@@ -20,9 +23,20 @@ function showError(error, resp){
         console.log(error.message);
     }
     return;
-}
+};
+
+//Generates salt automatically
+async function makeBcryptHash(value) {
+    return await bcrypt.hash(value, saltRounds);
+};
+
+async function checkBcrypt(plainText, hash) {
+    return await bcrypt.compare(plainText, hash);
+};
 
 module.exports = {
+    makeBcryptHash,
+    checkBcrypt,
     sendResponse,
     showError
 };
