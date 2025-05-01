@@ -9,6 +9,7 @@
   "license": "ISC",
   "description": "",
   "dependencies": {
+    "bcrypt": "^5.1.1",
     "cookie-parser": "^1.4.7",
     "express": "^4.21.2",
     "express-validator": "^7.2.1",
@@ -17,5 +18,8 @@
     "sequelize": "^6.37.6",
     "validate.js": "^0.13.1",
     "ws": "^8.18.1"
+  },
+  "devDependencies": {
+    "typescript": "^5.8.3"
   }
 }
