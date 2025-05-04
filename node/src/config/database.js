@@ -1,5 +1,6 @@
 const { MongoClient } = require('mongodb');
-const uri = "mongodb://172.17.0.3:27017";
+const { DB_PASS } = process.env;
+const uri = `mongodb://topAdmin:${DB_PASS}@172.17.0.3:27017`;
 
 //Returning db connection once connected
 let SnappTalkDB; 
