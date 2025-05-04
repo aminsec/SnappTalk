@@ -68,7 +68,8 @@ async function createUser(email, password) {
                 password: hashedPassword,
                 username: Date.now().toString(),
                 profilePic: '/statics/images/default.png',
-                role: "user"
+                role: "user",
+                joinedAt: Date.now().toString()
             };
 
             const createdUserInfo = await usersCollection.insertOne(userInfo);
