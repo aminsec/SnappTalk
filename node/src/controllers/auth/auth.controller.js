@@ -30,7 +30,7 @@ async function handleAuth(req, resp) {
 
             //Extracting user info to include in token
             const tokenData = {
-                id: userInfo.id,
+                id: userInfo._id,
                 email: userInfo.email,
                 username: userInfo.username,
                 profilePic: userInfo.profilePic,
