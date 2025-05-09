@@ -44,7 +44,18 @@ async function getUserInfoByEmail(email) {
     try {
         const usersCollection = await getUsersCollection();
         const user = await usersCollection.findOne({email: email});
-        return [user, null]; 
+        
+        //White listing user data
+        const userData = {
+            id: user._id.toString(),
+            username: user.username,
+            email: user.email,
+            role: user.role,
+            profilePic: user.profilePic,
+            joinedAt: user.joinedAt
+        };
+
+        return [userData, null]; 
         
     } catch (error) {
         console.log(error);
