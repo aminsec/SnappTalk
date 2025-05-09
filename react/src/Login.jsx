@@ -1,9 +1,12 @@
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import toast, { Toaster } from 'react-hot-toast';
+import { useContext } from 'react';
+import { userStateContext } from './contexts/userState';
 import './assets/css/login.css'
 import logo from './assets/images/logo.png'
 import sliderImage from './assets/images/Slider.png'
 import {ICONS} from './icons.jsx'
+import { useNavigate } from 'react-router-dom';
 
 function Login() {
   const [emailState, setEmailState] = useState('');
@@ -12,6 +15,8 @@ function Login() {
   const [errorMessage, setErrorMessage] = useState('');
   const [loginStep, setLoginStep] = useState(1);
   const [isAnimating, setIsAnimating] = useState(false);
+  const { setUserState } = useContext(userStateContext);
+  const navigate = useNavigate();
 
   const handleFirstStep = async (e) => {
     e.preventDefault();
@@ -56,7 +61,8 @@ function Login() {
             setErrorMessage('');
           }, 300);
         }else{
-          window.location.href = "/chats"
+          setUserState(1); //Marking user as login
+          navigate("/home");
         }
       }
     }
@@ -113,7 +119,8 @@ function Login() {
         toast.error(resp.message);
 
       }else{
-        window.location.href = "/home"
+        setUserState(1); //Marking user as login
+        navigate("/home");
       }
     }
   };
