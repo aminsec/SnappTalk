@@ -6,7 +6,7 @@ const { checkThereIsAnyError } = require("../middlewares/errors");
 
 router.post("/", [
     check("email", {state: "failed", message: "Invalid email address", type: "input_error"}).isEmail(),
-    check("password", {state: "failed", messaeg: "password field is required", type: "input_error"}).notEmpty(),
+    check("password", {state: "failed", messaeg: "Invalid password value", type: "input_error"}).isString().notEmpty(),
     checkThereIsAnyError
 ], authController.handleAuth);
 

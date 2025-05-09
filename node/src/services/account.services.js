@@ -12,8 +12,9 @@ async function getUserInfoById(id) {
                 username: user.username,
                 email: user.email,
                 role: user.role,
-                profilePic: user.profilePic
-            }
+                profilePic: user.profilePic,
+                joinedAt: user.joinedAt
+            };
 
             return [userData, null];
 
