@@ -1,10 +1,13 @@
-const { checkUserExistsByEmail, checkCredentials, getUserInfoByEmail, createUser } = require("../../services/auth.services");
-const { showError, sendResponse } = require("../../utils/operations");
-const jwt = require('jsonwebtoken');
+import { Request, Response } from "express";
+import { checkUserExistsByEmail, checkCredentials, getUserInfoByEmail, createUser } from "../../services/auth.services";
+import { showError, sendResponse } from "../../utils/operations";
+import { Token, ProtectedUserInfo } from "../../types/user.types";
+import { Error } from "../../types/response.types";
+import * as jwt from 'jsonwebtoken';
 
-async function handleAuth(req, resp) {
+export async function handleAuth(req: Request, resp: Response): Promise<void> {
     const { email, password } = req.body;
-    
+
     //Checking user if exist by email
     const [result, error] =  await checkUserExistsByEmail(email);
     if(error){
@@ -29,22 +32,24 @@ async function handleAuth(req, resp) {
             }
 
             //Extracting user info to include in token
-            const tokenData = {
-                id: userInfo._id,
-                email: userInfo.email,
-                username: userInfo.username,
-                profilePic: userInfo.profilePic,
-                role: userInfo.role,
+            if(userInfo !== null){
+                const tokenData: Token = {
+                    id: userInfo.id,
+                    email: userInfo.email,
+                    username: userInfo.username,
+                    profilePic: userInfo.profilePic,
+                    role: userInfo.role,
+                }
+
+                //Signing token
+                const token = jwt.sign(tokenData, String(process.env.JWT_SECRET_KEY), {expiresIn: "1h"});
+                const responseData = {state: "success", message: "Login was successful"};
+                const responseHeaders = {"Set-Cookie": `token=${token}; path=/;`};
+                sendResponse(responseData, responseHeaders, 200,resp);
             }
-            
-            //Signing token
-            const token = jwt.sign(tokenData, process.env.JWT_SECRET_KEY, {expiresIn: "1h"});
-            const responseData = {state: "success", message: "Login was successful"};
-            const responseHeaders = {"Set-Cookie": `token=${token}; path=/;`};
-            sendResponse(responseData, responseHeaders, 200,resp);
 
         }else{
-            const error = {state: "failed", message: "Invalid username or password", type: "creds_error"};
+            const error: Error = {state: "failed", message: "Invalid username or password", type: "creds_error"};
             showError(error, resp);
             return;
         }
@@ -59,22 +64,18 @@ async function handleAuth(req, resp) {
         //If user was created successfully, then assign token
         if(createUserResult){
             //Extracting user info to include in token
-            const userInfoToSign = {
-                id: createUserResult._id,
+            const userInfoToSign: Token = {
+                id: createUserResult.id,
                 email: createUserResult.email,
                 username: createUserResult.username,
                 profilePic: createUserResult.profilePic,
                 role: createUserResult.role
             }
 
-            const token = jwt.sign(userInfoToSign, process.env.JWT_SECRET_KEY, {expiresIn: "1h"});
+            const token = jwt.sign(userInfoToSign, String(process.env.JWT_SECRET_KEY), {expiresIn: "1h"});
             const responseData = {state: "success", message: "Registration was successful", step_2: true};
             const responseHeaders = {"Set-Cookie": `token=${token}; path=/;`};
             sendResponse(responseData, responseHeaders, 200, resp);
         }
     }
-};
-
-module.exports = {
-    handleAuth,
 };

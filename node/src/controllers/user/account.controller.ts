@@ -1,7 +1,8 @@
-const { getUserInfoById } = require("../../services/account.services");
-const { showError, sendResponse } = require("../../utils/operations");
+import { getUserInfoById } from "../../services/account.services";
+import { showError, sendResponse } from "../../utils/operations";
+import { Request, Response } from "express";
 
-async function showUserInfo(req, resp) {
+export async function showUserInfo(req: Request, resp: Response) {
     const userid = req.userInfo.id;
     const [userInfo, error] = await getUserInfoById(userid);
     if(error){
@@ -13,12 +14,7 @@ async function showUserInfo(req, resp) {
     sendResponse(responseData, {}, 200, resp);
 };
 
-async function updateUserInfo(req, resp) {
+export async function updateUserInfo(req: Request, resp: Response) {
     const data = {state: "success", message: "Info updated"};
     sendResponse(data, {}, 200, resp);
-};
-
-module.exports = {
-    showUserInfo,
-    updateUserInfo,
 };

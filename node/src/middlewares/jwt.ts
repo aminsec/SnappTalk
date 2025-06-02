@@ -1,7 +1,9 @@
-const jwt = require('jsonwebtoken');
+import * as jwt from "jsonwebtoken";
+import { Request, Response, NextFunction } from "express";
+import { Token } from "../types/user.types";
 
 //A middleware to validate JWT token
-async function validateJWT(req, resp, next){
+export default async function validateJWT(req: Request, resp: Response, next: NextFunction){
   //Redirecting to /login if token is not found
   if(!req.cookies.token){
     resp.redirect("/login");
@@ -13,12 +15,14 @@ async function validateJWT(req, resp, next){
 
   //Verifing token in try-catch. If token was not valid, it will go through an error and we handle it with catch
   try {
-    const userInfo = jwt.verify(token, process.env.JWT_SECRET_KEY);
-    req.userInfo = userInfo; // Assigning user's info to req as an object
+    const userInfo = jwt.verify(token, String(process.env.JWT_SECRET_KEY)) as Token;
+    req.userInfo = userInfo;
     next();
+
   } catch (error) {
     resp.redirect("/login");
   }
 };
 
-module.exports = validateJWT;
+
+
