@@ -1,11 +1,13 @@
-const { MongoClient } = require('mongodb');
+import { MongoClient } from 'mongodb';
+import { Db } from 'mongodb';
+
 const { DB_PASS } = process.env;
 const uri = `mongodb://topAdmin:${DB_PASS}@172.17.0.3:27017`;
 
 //Returning db connection once connected
-let SnappTalkDB; 
+let SnappTalkDB: Db; 
 
-async function connectToSnappTalkDB() {
+export async function connectToSnappTalkDB() {
     if(!SnappTalkDB){
         const client = new MongoClient(uri);
         await client.connect();
@@ -15,8 +17,4 @@ async function connectToSnappTalkDB() {
     }else{
         return SnappTalkDB;
     }
-}
-
-module.exports = {
-    connectToSnappTalkDB
-}
+};

@@ -1,7 +1,8 @@
-const { showError } = require("../utils/operations");
-const { validationResult } = require('express-validator');
+import { showError } from "../utils/operations";
+import { validationResult } from 'express-validator';
+import { Request, Response, NextFunction } from "express";
 
-async function checkThereIsAnyError(req, resp, next) {
+export async function checkThereIsAnyError(req: Request, resp: Response, next: NextFunction) {
     //Checking if there is any error from middlewares
     const  errors  = validationResult(req); // This takes this -> req["express-validator#contexts"][1]["message"]
 
@@ -13,8 +14,4 @@ async function checkThereIsAnyError(req, resp, next) {
     }else{
         next();
     }
-};
-
-module.exports = {
-    checkThereIsAnyError,
 };

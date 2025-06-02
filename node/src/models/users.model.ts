@@ -1,12 +1,12 @@
-const { connectToSnappTalkDB } = require('../config/database');
+import { connectToSnappTalkDB } from '../config/database';
 
-let usersCollection;
+let usersCollection: any;
 
-async function getUsersCollection() {
+export async function getUsersCollection() {
     try {
         if (!usersCollection) {
             const db = await connectToSnappTalkDB();
-            const connection = await db.collection('users');
+            const connection = db.collection('users');
             usersCollection = connection;
         }
 
@@ -14,8 +14,4 @@ async function getUsersCollection() {
     } catch (error) {
         console.error("Error connecting to users collection:", error);
     }
-}
-
-module.exports = {
-    getUsersCollection,
 };

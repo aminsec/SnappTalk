@@ -1,11 +1,13 @@
-const { getUsersCollection } = require("../models/users.model");
-const { makeBcryptHash, checkBcrypt } = require("../utils/operations");
-const { checkEmailIsValid } = require("../utils/validate");
+import { getUsersCollection } from "../models/users.model";
+import { makeBcryptHash, checkBcrypt } from "../utils/operations";
+import { checkEmailIsValid } from "../utils/validate";
+import { ProtectedUserInfo, RawUserInfo, InsertUserInfo } from "../types/user.types";
+import { Error } from "../types/response.types";
 
-async function checkUserExistsByEmail(email) {
+export async function checkUserExistsByEmail(email: string): Promise<[true | false | null, null | Error]>  {
     try {
         const usersCollection  = await getUsersCollection();
-        const user = await usersCollection.findOne({email: email});
+        const user: RawUserInfo = await usersCollection.findOne({email: email});
         if(user){
             return [true, null];
         }else{
@@ -14,15 +16,15 @@ async function checkUserExistsByEmail(email) {
         
     } catch (error) {
         console.log(error);
-        const err = {message: "A system error occurred", state: "failed", type: "system_error"};
+        const err: Error = {message: "A system error occurred", state: "failed", type: "system_error"};
         return [null, err];
     }
 };
 
-async function checkCredentials(email, password) {
+export async function checkCredentials(email: string, password: string): Promise<[true | false | null, null | Error]> {
     try {
         const usersCollection  = await getUsersCollection();
-        const user = await usersCollection.findOne({email: email});
+        const user: RawUserInfo = await usersCollection.findOne({email: email});
         if(user){
             const isPasswordCorrect = await checkBcrypt(password, user.password)
             if(isPasswordCorrect === true){
@@ -35,18 +37,18 @@ async function checkCredentials(email, password) {
         }
     } catch (error) {
         console.log(error);
-        const err = {message: "A system error occurred", state: "failed", type: "system_error"};
+        const err: Error = {message: "A system error occurred", state: "failed", type: "system_error"};
         return [null, err];
     }
 };
 
-async function getUserInfoByEmail(email) {
+export async function getUserInfoByEmail(email: string): Promise<[ProtectedUserInfo | null, Error | null]>{
     try {
         const usersCollection = await getUsersCollection();
-        const user = await usersCollection.findOne({email: email});
+        const user: RawUserInfo = await usersCollection.findOne({email: email});
         
         //White listing user data
-        const userData = {
+        const userData: ProtectedUserInfo = {
             id: user._id.toString(),
             username: user.username,
             email: user.email,
@@ -59,12 +61,12 @@ async function getUserInfoByEmail(email) {
         
     } catch (error) {
         console.log(error);
-        const err = {message: "A system error occurred", state: "failed", type: "system_error"};
+        const err: Error = {message: "A system error occurred", state: "failed", type: "system_error"};
         return [null, err];
     }
 };
 
-async function createUser(email, password) {
+export async function createUser(email: string, password: string): Promise<[ProtectedUserInfo | null, Error | null]> {
     try {
         const [isEmaillCorrect, error] = await checkEmailIsValid(email);
         if(error){
@@ -74,7 +76,7 @@ async function createUser(email, password) {
         if(isEmaillCorrect === true){
             const hashedPassword = await makeBcryptHash(password);
             const usersCollection = await getUsersCollection();
-            const userInfo = {
+            const userInfoToInsert: InsertUserInfo = {
                 email: email,
                 password: hashedPassword,
                 username: Date.now().toString(),
@@ -83,32 +85,25 @@ async function createUser(email, password) {
                 joinedAt: Date.now().toString()
             };
 
-            const createdUserInfo = await usersCollection.insertOne(userInfo);
+            const createdUserInfoResult = await usersCollection.insertOne(userInfoToInsert);
 
-            if(createdUserInfo){
-                userInfo._id = createdUserInfo.insertedId.toString();
+            if(createdUserInfoResult.acknowledged === true){
+                const userInfo: ProtectedUserInfo = {...userInfoToInsert, id: createdUserInfoResult.insertedId.toString()};
                 return [userInfo, null];
 
             }else{
-                const error = {state: "failed", message: "Couldn't create user", type: "system_error"};
+                const error: Error = {state: "failed", message: "Couldn't create user", type: "system_error"};
                 return [null, error];
             }
 
         }else{
-            const error = {state: "failed", message: "Invalid email format", type: "input_error"};
+            const error: Error = {state: "failed", message: "Invalid email format", type: "input_error"};
             return [null, error];
         }
 
     } catch (error) {
         console.log(error);
-        const err = {message: "A system error occurred", state: "failed", type: "system_error"};
+        const err: Error = {message: "A system error occurred", state: "failed", type: "system_error"};
         return [null, err];
     }
-};
-
-module.exports = {
-    checkUserExistsByEmail,
-    checkCredentials,
-    getUserInfoByEmail,
-    createUser
 };
