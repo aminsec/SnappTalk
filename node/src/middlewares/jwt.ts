@@ -1,6 +1,7 @@
 import * as jwt from "jsonwebtoken";
 import { Request, Response, NextFunction } from "express";
-import { Token } from "../types/user.types";
+import { ProtectedUserInfo } from "../types/user.types";
+// import { Token } from "../types/user.types";
 
 //A middleware to validate JWT token
 export default async function validateJWT(req: Request, resp: Response, next: NextFunction){
@@ -15,7 +16,7 @@ export default async function validateJWT(req: Request, resp: Response, next: Ne
 
   //Verifing token in try-catch. If token was not valid, it will go through an error and we handle it with catch
   try {
-    const userInfo = jwt.verify(token, String(process.env.JWT_SECRET_KEY)) as Token;
+    const userInfo = jwt.verify(token, String(process.env.JWT_SECRET_KEY)) as ProtectedUserInfo;
     req.userInfo = userInfo;
     next();
 

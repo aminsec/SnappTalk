@@ -1,7 +1,7 @@
 import { Request, Response } from "express";
 import { checkUserExistsByEmail, checkCredentials, getUserInfoByEmail, createUser } from "../../services/auth.services";
 import { showError, sendResponse } from "../../utils/operations";
-import { Token, ProtectedUserInfo } from "../../types/user.types";
+import { ProtectedUserInfo } from "../../types/user.types";
 import { Error } from "../../types/response.types";
 import * as jwt from 'jsonwebtoken';
 
@@ -33,12 +33,13 @@ export async function handleAuth(req: Request, resp: Response): Promise<void> {
 
             //Extracting user info to include in token
             if(userInfo !== null){
-                const tokenData: Token = {
+                const tokenData: ProtectedUserInfo = {
                     id: userInfo.id,
                     email: userInfo.email,
                     username: userInfo.username,
                     profilePic: userInfo.profilePic,
                     role: userInfo.role,
+                    joinedAt: userInfo.joinedAt
                 }
 
                 //Signing token
@@ -64,12 +65,13 @@ export async function handleAuth(req: Request, resp: Response): Promise<void> {
         //If user was created successfully, then assign token
         if(createUserResult){
             //Extracting user info to include in token
-            const userInfoToSign: Token = {
+            const userInfoToSign: ProtectedUserInfo = {
                 id: createUserResult.id,
                 email: createUserResult.email,
                 username: createUserResult.username,
                 profilePic: createUserResult.profilePic,
-                role: createUserResult.role
+                role: createUserResult.role,
+                joinedAt: createUserResult.joinedAt
             }
 
             const token = jwt.sign(userInfoToSign, String(process.env.JWT_SECRET_KEY), {expiresIn: "1h"});

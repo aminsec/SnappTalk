@@ -3,7 +3,7 @@ import http from "http";
 import WebSocket, { Server as WebSocketServer } from "ws";
 import app from "./app";
 
-const PORT: number = Number(process.env.APP_PORT) || 2020;
+const PORT = Number(process.env.APP_PORT) || 2020;
 const server = http.createServer(app);
 
 try {
