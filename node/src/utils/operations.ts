@@ -28,15 +28,6 @@ export function showError(error: Error, resp: Response){
     return;
 };
 
-//Generates salt automatically
-export async function makeBcryptHash(value: string) {
-    return await bcrypt.hash(value, saltRounds);
-};
-
-export async function checkBcrypt(plainText: string, hash: string) {
-    return await bcrypt.compare(plainText, hash);
-};
-
 export function whiteListUserInfo(userData: RawUserInfo): ProtectedUserInfo{
     const validatedUserData = {
         id: userData._id.toString(),
@@ -48,4 +39,13 @@ export function whiteListUserInfo(userData: RawUserInfo): ProtectedUserInfo{
     };
 
     return validatedUserData;
+};
+
+//Generates salt automatically
+export async function makeBcryptHash(value: string) {
+    return await bcrypt.hash(value, saltRounds);
+};
+
+export async function checkBcrypt(plainText: string, hash: string) {
+    return await bcrypt.compare(plainText, hash);
 };

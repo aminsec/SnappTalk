@@ -31,19 +31,9 @@ export async function handleAuth(req: Request, resp: Response): Promise<void> {
                 return;
             }
 
-            //Extracting user info to include in token
             if(userInfo !== null){
-                const tokenData: ProtectedUserInfo = {
-                    id: userInfo.id,
-                    email: userInfo.email,
-                    username: userInfo.username,
-                    profilePic: userInfo.profilePic,
-                    role: userInfo.role,
-                    joinedAt: userInfo.joinedAt
-                }
-
                 //Signing token
-                const token = jwt.sign(tokenData, String(process.env.JWT_SECRET_KEY), {expiresIn: "1h"});
+                const token = jwt.sign(userInfo, String(process.env.JWT_SECRET_KEY), {expiresIn: "1h"});
                 const responseData = {state: "success", message: "Login was successful"};
                 const responseHeaders = {"Set-Cookie": `token=${token}; path=/;`};
                 sendResponse(responseData, responseHeaders, 200,resp);
@@ -56,7 +46,7 @@ export async function handleAuth(req: Request, resp: Response): Promise<void> {
         }
         
     }else{
-        const [createUserResult, error] = await createUser(email, password);
+        const [createUserResult, error]:[ProtectedUserInfo | null, Error | null] = await createUser(email, password);
         if(error){
             showError(error, resp);
             return;
@@ -64,17 +54,8 @@ export async function handleAuth(req: Request, resp: Response): Promise<void> {
 
         //If user was created successfully, then assign token
         if(createUserResult){
-            //Extracting user info to include in token
-            const userInfoToSign: ProtectedUserInfo = {
-                id: createUserResult.id,
-                email: createUserResult.email,
-                username: createUserResult.username,
-                profilePic: createUserResult.profilePic,
-                role: createUserResult.role,
-                joinedAt: createUserResult.joinedAt
-            }
-
-            const token = jwt.sign(userInfoToSign, String(process.env.JWT_SECRET_KEY), {expiresIn: "1h"});
+            //There is no need to whitelist created userinfo. It's safe
+            const token = jwt.sign(createUserResult, String(process.env.JWT_SECRET_KEY), {expiresIn: "1h"});
             const responseData = {state: "success", message: "Registration was successful", step_2: true};
             const responseHeaders = {"Set-Cookie": `token=${token}; path=/;`};
             sendResponse(responseData, responseHeaders, 200, resp);
