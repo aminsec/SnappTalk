@@ -1,12 +1,11 @@
-import { useState } from 'react'
+import { useState, useContext } from 'react';
 import toast, { Toaster } from 'react-hot-toast';
-import { useContext } from 'react';
-import { userStateContext } from './contexts/userState';
-import './assets/css/login.css'
-import logo from './assets/images/logo.png'
-import sliderImage from './assets/images/Slider.png'
-import {ICONS} from './icons.jsx'
+import { userStateContext } from '../../contexts/userState';
+import logo from '../../assets/images/logo.png';
+import sliderImage from '../../assets/images/Slider.png';
+import { ICONS } from '../../icons';
 import { useNavigate } from 'react-router-dom';
+import './Login.module.css';
 
 function Login() {
   const [emailState, setEmailState] = useState('');

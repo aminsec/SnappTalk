@@ -1,7 +1,5 @@
 import { Link } from 'react-router-dom';
-
-import './assets/css/style.css'
-import './assets/css/404.css';
+import './NotFound.module.css';  // CSS should be in same directory
 
 const channels = [
   { icon: '🎮', title: 'Gamers Hub', desc: 'Gameplay & reviews' },
