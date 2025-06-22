@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom';
-import './NotFound.module.css';  // CSS should be in same directory
+import styles from './NotFound.module.css';  // استفاده از CSS Module
 
 const channels = [
   { icon: '🎮', title: 'Gamers Hub', desc: 'Gameplay & reviews' },
@@ -10,20 +10,20 @@ const channels = [
 
 export default function NotFound() {
   return (
-    <div className="notfound-container">
-      <div className="notfound-main">
-      <h1>404</h1>
-  <p className="headline">Page not found</p>
-  <p className="subtext">The page you’re looking for might have been removed or moved.</p>
+    <div className={styles['notfound-container']}>
+      <div className={styles['notfound-main']}>
+        <h1>404</h1>
+        <p className={styles.headline}>Page not found</p>
+        <p className={styles.subtext}>The page you’re looking for might have been removed or moved.</p>
         <Link to="/" className="btn btn-md">Back to Home</Link>
       </div>
 
-      <section className="popular-channels">
+      <section className={styles['popular-channels']}>
         <h2>Popular Channels</h2>
-        <div className="channel-grid">
+        <div className={styles['channel-grid']}>
           {channels.map((ch, i) => (
-            <div className="channel-card" key={i}>
-              <div className="channel-icon">{ch.icon}</div>
+            <div className={styles['channel-card']} key={i}>
+              <div className={styles['channel-icon']}>{ch.icon}</div>
               <h3>{ch.title}</h3>
               <p>{ch.desc}</p>
               <button className='btn btn-sm'>Subscribe</button>

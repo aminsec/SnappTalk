@@ -5,7 +5,7 @@ import logo from '../../assets/images/logo.png';
 import sliderImage from '../../assets/images/Slider.png';
 import { ICONS } from '../../icons';
 import { useNavigate } from 'react-router-dom';
-import './Login.module.css';
+import styles from './Login.module.css';
 
 function Login() {
   const [emailState, setEmailState] = useState('');
@@ -125,21 +125,21 @@ function Login() {
   };
 
   return (
-    <div className="loginPage">
+    <div className={styles.loginPage}>
       <Toaster position="top-center" />
-      <div className={`popUp ${isAnimating ? 'form-fade' : ''}`}>
-        <div className="slider">
-          <img src={sliderImage} alt="Slider Image" className="sliderImage" />
+      <div className={`${styles.popUp} ${isAnimating ? styles['form-fade'] : ''}`}>
+        <div className={styles.slider}>
+          <img src={sliderImage} alt="Slider Image" className={styles.sliderImage} />
         </div>
-        <div className="form">
-          <img src={logo} alt="Logo" className="logo" />
+        <div className={styles.form}>
+          <img src={logo} alt="Logo" className={styles.logo} />
 
           {loginStep === 1 ? (
             <>
-              <h2 className="Titr">Login to your account</h2>
-              <h4 className="Discription">Enter your email address and password to login</h4>
+              <h2 className={styles.Titr}>Login to your account</h2>
+              <h4 className={styles.Discription}>Enter your email address and password to login</h4>
 
-              <form className="form-inputs" onSubmit={handleFirstStep}>
+              <form className={styles['form-inputs']} onSubmit={handleFirstStep}>
                 <div className="textbox">
                   <img src={ICONS.email} alt="Email Icon" className="icon" />
                   <input onChange={e => setEmailState(e.target.value)} type="email" name="email" id="email" className="input" placeholder="Email" />
@@ -158,16 +158,16 @@ function Login() {
             </>
           ) : (
             <>
-              <h2 className="Titr">Enter Username</h2>
-              <h4 className="Discription">Please enter your username to complete login</h4>
+              <h2 className={styles.Titr}>Enter Username</h2>
+              <h4 className={styles.Discription}>Please enter your username to complete login</h4>
 
-              <form className="form-inputs" onSubmit={handleUsernameSubmit}>
-                <div className="textbox slide-in">
+              <form className={styles['form-inputs']} onSubmit={handleUsernameSubmit}>
+                <div className={`${"textbox"} ${styles['slide-in']}`}>
                   <img src={ICONS.userName} alt="Username Icon" className="icon" />
                   <input value={usernameState} onChange={e => setUsernameState(e.target.value)} type="text" name="username" id="username" className="input" placeholder="Username" autoFocus />
                 </div>
                 <p className='Error-message'>{errorMessage}</p>
-                <button type="submit" className="LoginBtn slide-in btn btn-lg ">Continue</button>
+                <button type="submit" className={`LoginBtn btn btn-lg ${styles['slide-in']}`}>Continue</button>
               </form>
             </>
           )}

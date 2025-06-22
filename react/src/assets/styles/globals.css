@@ -55,8 +55,8 @@ html, body {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  background-color: #2D90E4;
-  color: #fff;
+  background-color: var(--btn-color);
+  color: var(--text-main);
   border: none;
   border-radius: 6px;
   font-weight: 600;
@@ -67,7 +67,7 @@ html, body {
 }
 
 .btn:hover {
-  background-color: #2478c5;
+  background-color: var(btn-hover);
 }
 
 .btn:active {
@@ -75,7 +75,7 @@ html, body {
 }
 
 .btn:disabled {
-  background-color: #b0c9e5;
+  background-color: var(--bg-color);
   cursor: not-allowed;
 }
 
@@ -133,19 +133,19 @@ html, body {
   padding: 0 1rem 0 3rem;
   border: 2px solid transparent;
   border-radius: 6px;
-  background-color: #F9FDFF;
-  color: #0d0c22;
+  background-color: var(--input-bg);
+  color: var(--text-main);
   font-size: 15px;
   outline: none;
   transition: border-color 0.3s ease;
 }
 
 .input:focus {
-  border-color: #2D90E4;
+  border-color: var(--input-border);
 }
 
 .input::placeholder {
-  color: #9e9ea7;
+  color: var(--input-placeholder);
 }
 
 .textbox {
@@ -168,7 +168,7 @@ html, body {
    Error Message & Links
 —————————————————————————————————————————————————————————————— */
 .Error-message {
-  color: red;
+  color: var(--error-color);
   font-size: 12px;
 }
 

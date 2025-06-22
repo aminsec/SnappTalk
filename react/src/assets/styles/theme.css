@@ -3,16 +3,23 @@
     --bg-panel: #161B1C;
 
     --btn-color: #2D90E4;
+    --btn-hover: #2478c5;
+    --btn-desable: #b0c9e5;
+
+    --input-bg: #202427;
+    --input-border: #24292A;
+    --input-placeholder: #202427;
 
     --buble-sent: #2D90E4;
     --bubble-received: #2A2D2F;
 
     --text-main: #F5F6FA;
     --text-muted: #9BA1AC;
+
     --icon-color: #9CA3AF;
     --icon-active: #FFFFFF;
 
-    --green-color: #00C897;
-    --red-color: #FF5C5C;
-    --yellow-color: #FFCB00;
+    --success-color: #00C897;
+    --error-color: #FF5C5C;
+    --warning-color: #FFCB00;
 }
