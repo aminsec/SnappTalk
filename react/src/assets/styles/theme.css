@@ -1,0 +1,18 @@
+:root {
+    --bg-color: #0A0E0F;
+    --bg-panel: #161B1C;
+
+    --btn-color: #2D90E4;
+
+    --buble-sent: #2D90E4;
+    --bubble-received: #2A2D2F;
+
+    --text-main: #F5F6FA;
+    --text-muted: #9BA1AC;
+    --icon-color: #9CA3AF;
+    --icon-active: #FFFFFF;
+
+    --green-color: #00C897;
+    --red-color: #FF5C5C;
+    --yellow-color: #FFCB00;
+}
