@@ -6,6 +6,7 @@ import sliderImage from '../../assets/images/Slider.png';
 import { ICONS } from '../../icons';
 import { useNavigate } from 'react-router-dom';
 import styles from './Login.module.css';
+import { Button } from '../../components';
 
 function Login() {
   const [emailState, setEmailState] = useState('');
@@ -20,12 +21,12 @@ function Login() {
   const handleFirstStep = async (e) => {
     e.preventDefault();
 
-    if(emailState === "" || passwordState === ""){
+    if (emailState === "" || passwordState === "") {
       toast.error("Please fill in all fields");
       return;
     }
 
-    if(passwordState.length < 6){
+    if (passwordState.length < 6) {
       toast.error("Password must be at least 6 character");
       return;
     }
@@ -43,23 +44,23 @@ function Login() {
       },
     });
 
-    if(!request.ok){
+    if (!request.ok) {
       const resp = await request.json();
       toast.error(resp.message);
       return;
     }
 
-    if(request.ok){
+    if (request.ok) {
       const resp = await request.json();
-      if(resp.state === "success"){
-        if(resp.step_2 === true){
+      if (resp.state === "success") {
+        if (resp.step_2 === true) {
           setIsAnimating(true);
           setTimeout(() => {
             setLoginStep(2);
             setIsAnimating(false);
             setErrorMessage('');
           }, 300);
-        }else{
+        } else {
           setUserState(1); //Marking user as login
           navigate("/home");
         }
@@ -70,18 +71,18 @@ function Login() {
   const handleUsernameSubmit = async (e) => {
     e.preventDefault();
 
-    if(usernameState === ""){
+    if (usernameState === "") {
       toast.error("Please enter a username");
       return;
     }
 
-    if(usernameState.length > 24){
+    if (usernameState.length > 24) {
       toast.error("Maximum lenght for username is 24 character");
       return;
     }
 
     const usernameRegex = new RegExp("^[a-zA-Z0-9_\.]+$");
-    if(usernameRegex.test(usernameState) === false){
+    if (usernameRegex.test(usernameState) === false) {
       toast.error(`Username can only include a-z, 0-9, "." and "_" `);
       return;
     }
@@ -92,16 +93,16 @@ function Login() {
       method: "GET"
     });
 
-    if(!userDataRequest.ok){
+    if (!userDataRequest.ok) {
       const resp = await userDataRequest.json();
       toast.error(resp.message);
       return;
     }
 
-    if(userDataRequest.ok){
+    if (userDataRequest.ok) {
       const resp = await userDataRequest.json();
       const userInfo = resp.userInfo;
-      
+
       //Updating username
       userInfo.username = usernameState;
       const usernameUpdateRequest = await fetch("/api/v1/user/info", {
@@ -113,11 +114,11 @@ function Login() {
         body: JSON.stringify(userInfo)
       });
 
-      if(!usernameUpdateRequest.ok){
+      if (!usernameUpdateRequest.ok) {
         const resp = await usernameUpdateRequest.json();
         toast.error(resp.message);
 
-      }else{
+      } else {
         setUserState(1); //Marking user as login
         navigate("/home");
       }
@@ -153,7 +154,8 @@ function Login() {
                 <p className='Error-message' >{errorMessage}</p>
                 <a className='form-link' href="/forgetpassword">Forgot Password</a>
 
-                <button type="submit" className="LoginBtn btn btn-lg">Login</button>
+                <Button type='submit' size='lg' fullWidth>Login</Button>
+
               </form>
             </>
           ) : (

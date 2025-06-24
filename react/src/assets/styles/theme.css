@@ -8,7 +8,7 @@
 
     --input-bg: #202427;
     --input-border: #24292A;
-    --input-placeholder: #202427;
+    --input-placeholder: #828282;
 
     --buble-sent: #2D90E4;
     --bubble-received: #2A2D2F;
@@ -22,4 +22,8 @@
     --success-color: #00C897;
     --error-color: #FF5C5C;
     --warning-color: #FFCB00;
+
+
+    --border-radius: 6px;
+    --transition: all 0.3s ease;
 }
