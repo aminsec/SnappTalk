@@ -4,7 +4,6 @@ import { check } from 'express-validator';
 import { checkThereIsAnyError } from "../middlewares/errors";
 const router = express.Router();
 
-//TODO: validate paramters in this route
 router.get("/info", accountController.showUserInfo);
 router.put("/info", [
     check(["username", "email"], {state: "failed", message: "Parameters are invalid or missing.", type: "input_error"}).isString().notEmpty(),
