@@ -81,7 +81,15 @@ export async function createUser(email: string, password: string): Promise<[Prot
             const createdUserInfoResult = await usersCollection.insertOne(userInfoToInsert);
 
             if(createdUserInfoResult.acknowledged === true){
-                const userInfo: ProtectedUserInfo = {...userInfoToInsert, id: createdUserInfoResult.insertedId.toString()};
+                const userInfo: ProtectedUserInfo = { 
+                    id: createdUserInfoResult.insertedId.toString(),
+                    email: userInfoToInsert.email,
+                    username: userInfoToInsert.username,
+                    profilePic: userInfoToInsert.profilePic,
+                    role: userInfoToInsert.role,
+                    joinedAt: userInfoToInsert.joinedAt
+                };
+                
                 return [userInfo, null];
 
             }else{

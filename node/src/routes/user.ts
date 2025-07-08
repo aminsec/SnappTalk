@@ -6,10 +6,18 @@ const router = express.Router();
 
 router.get("/info", accountController.showUserInfo);
 router.put("/info", [
-    check(["username", "email"], {state: "failed", message: "Parameters are invalid or missing.", type: "input_error"}).isString().notEmpty(),
-    check("username", {state: "failed", message: "username must have at least 4 and maximum 24 character", type: "input_error"}).isLength({min: 4, max: 24}),
-    check("email", {state: "failed", message: "Invalid email address", type: "input_error"}).isEmail(),
-    checkThereIsAnyError
+  check("username")
+    .isString().withMessage("Username must be a string.")
+    .notEmpty().withMessage("Username is required.")
+    .isLength({ min: 4, max: 24 }).withMessage("Username must be 4–24 characters.")
+    .matches(/^[a-zA-Z0-9_]+$/).withMessage("Only a-z, 0-9, and '_' are allowed."),
+  
+  check("email")
+    .isString().withMessage("Email must be a string.")
+    .notEmpty().withMessage("Email is required.")
+    .isEmail().withMessage("Invalid email address."),
+  
+  checkThereIsAnyError
 ], accountController.updateUserInfo);
 
 export default router;
