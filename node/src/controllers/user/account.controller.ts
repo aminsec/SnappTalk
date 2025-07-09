@@ -1,5 +1,5 @@
-import { checkUserExistsByUsername, getUserInfoById, revokeUserToken, updateEmail, updateUsername } from "../../services/account.services";
-import { showError, sendResponse } from "../../utils/operations";
+import { checkUserExistsByUsername, getRawUserInfo, getUserInfoById, revokeUserToken, updateEmail, updatePassword, updateUsername } from "../../services/account.services";
+import { showError, sendResponse, checkBcrypt, makeBcryptHash } from "../../utils/operations";
 import { Request, Response } from "express";
 import { Error } from "../../types/response.types";
 import { checkUserExistsByEmail } from "../../services/auth.services";
@@ -17,7 +17,6 @@ export async function showUserInfo(req: Request, resp: Response) {
     sendResponse(responseData, {}, 200, resp);
 };
 
-//TODO: set new token when info updated
 export async function updateUserInfo(req: Request, resp: Response) {
     const { username, email } = req.body;
     const { userInfo } = req;
@@ -115,6 +114,45 @@ export async function updateUserInfo(req: Request, resp: Response) {
         }
     }else{
         const error: Error = {state: "failed", message: "Couldn't update profile", type: "system_error"};
+        showError(error, resp);
+    }
+};
+
+export async function updateUserPassword(req: Request, resp: Response) {
+    const { old_password, new_password } = req.body;
+    const { userInfo } = req;
+
+    //checking old password is correct
+    const [rawUserInfo, err] = await getRawUserInfo(userInfo.id);
+    if(err){
+        showError(err, resp);
+        return;
+    }
+
+    if(!rawUserInfo){
+        const error: Error = {state: "failed", message: "User not found", type: "input_error"};
+        showError(error, resp);
+        return;
+    }
+
+    const isOldPasswordCorrect: Boolean = await checkBcrypt(old_password, rawUserInfo.password);
+    if(isOldPasswordCorrect === true){
+        const [updatePasswordResult, err] = await updatePassword(userInfo.id, new_password);
+        if(err){
+            showError(err, resp);
+            return;
+        }
+
+        if(updatePasswordResult === true){
+            const message = {state: "success", message: "Password updated successfully."};
+            sendResponse(message, {}, 200, resp);
+
+        }else{
+            const error: Error = {state: "failed", message: "Couldn't update password", type: "system_error"};
+            showError(error, resp);
+        }
+    }else{
+        const error: Error = {state: "failed", message: "Old password is incorrect", type: "input_error"};
         showError(error, resp);
     }
 };

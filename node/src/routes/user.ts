@@ -20,4 +20,18 @@ router.put("/info", [
   checkThereIsAnyError
 ], accountController.updateUserInfo);
 
+router.put("/info/password", [
+  check("old_password")
+  .isString().withMessage("Old password must be a string.")
+  .notEmpty().withMessage("Old password is required."),
+
+  check("new_password")
+  .isString().withMessage("New password must be a string.")
+  .notEmpty().withMessage("New password is required.")
+  .matches(/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]).{6,}$/).withMessage("Password is weak. It must contain at least one uppercase letter, one lowercase letter, one digit, and one special character.")
+  .isLength({ min: 6, max: 24 }).withMessage("New password must be 6–24 characters."),
+
+  checkThereIsAnyError
+], accountController.updateUserPassword);
+
 export default router;

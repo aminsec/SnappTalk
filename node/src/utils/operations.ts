@@ -46,6 +46,6 @@ export async function makeBcryptHash(value: string) {
     return await bcrypt.hash(value, saltRounds);
 };
 
-export async function checkBcrypt(plainText: string, hash: string) {
+export async function checkBcrypt(plainText: string, hash: string): Promise<boolean> {
     return await bcrypt.compare(plainText, hash);
 };
