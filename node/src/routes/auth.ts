@@ -9,7 +9,7 @@ router.post("/", [
     check("password")
     .isString().withMessage("Invalid password value")
     .notEmpty().withMessage("Password is required")
-    .isLength({min: 6, max: 24}).withMessage("Password must have at least 6 characters and maximum 24 character"),
+    .matches(/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]).{6,}$/).withMessage("Password is weak. It must contain at least one uppercase letter, one lowercase letter, one digit, and one special character."),
     checkThereIsAnyError
 ], handleAuth);
 
