@@ -5,9 +5,11 @@ import { checkThereIsAnyError } from "../middlewares/errors";
 const router = express.Router();
 
 router.post("/", [
-    check("email", {state: "failed", message: "Invalid email address", type: "input_error"}).isEmail(),
-    check("password", {state: "failed", messaeg: "Invalid password value", type: "input_error"}).isString().notEmpty(),
-    check("password", {state: "failed", message: "Password must have at least 6 characters and maximum 24 character", type: "input_error"}).isLength({min: 6, max: 24}),
+    check("email").isEmail().withMessage("Invalid email address"),
+    check("password")
+    .isString().withMessage("Invalid password value")
+    .notEmpty().withMessage("Password is required")
+    .isLength({min: 6, max: 24}).withMessage("Password must have at least 6 characters and maximum 24 character"),
     checkThereIsAnyError
 ], handleAuth);
 
