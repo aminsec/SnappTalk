@@ -1,6 +1,7 @@
 import * as bcrypt from 'bcrypt';
 import { Resp, Error } from '../types/response.types';
 import { Response } from 'express';
+import { ProtectedUserInfo, RawUserInfo } from '../types/user.types';
 const saltRounds = 10;
 
 //Function to send normall messages
@@ -27,11 +28,24 @@ export function showError(error: Error, resp: Response){
     return;
 };
 
+export function whiteListUserInfo(userData: RawUserInfo): ProtectedUserInfo{
+    const validatedUserData = {
+        id: userData._id.toString(),
+        username: userData.username,
+        email: userData.email,
+        role: userData.role,
+        profilePic: userData.profilePic,
+        joinedAt: userData.joinedAt
+    };
+
+    return validatedUserData;
+};
+
 //Generates salt automatically
 export async function makeBcryptHash(value: string) {
     return await bcrypt.hash(value, saltRounds);
 };
 
-export async function checkBcrypt(plainText: string, hash: string) {
+export async function checkBcrypt(plainText: string, hash: string): Promise<boolean> {
     return await bcrypt.compare(plainText, hash);
 };

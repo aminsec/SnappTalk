@@ -1,5 +1,5 @@
 import { getUsersCollection } from "../models/users.model";
-import { makeBcryptHash, checkBcrypt } from "../utils/operations";
+import { makeBcryptHash, checkBcrypt, whiteListUserInfo } from "../utils/operations";
 import { checkEmailIsValid } from "../utils/validate";
 import { ProtectedUserInfo, RawUserInfo, InsertUserInfo } from "../types/user.types";
 import { Error } from "../types/response.types";
@@ -48,14 +48,7 @@ export async function getUserInfoByEmail(email: string): Promise<[ProtectedUserI
         const user: RawUserInfo = await usersCollection.findOne({email: email});
         
         //White listing user data
-        const userData: ProtectedUserInfo = {
-            id: user._id.toString(),
-            username: user.username,
-            email: user.email,
-            role: user.role,
-            profilePic: user.profilePic,
-            joinedAt: user.joinedAt
-        };
+        const userData: ProtectedUserInfo = whiteListUserInfo(user);
 
         return [userData, null]; 
         
@@ -88,7 +81,15 @@ export async function createUser(email: string, password: string): Promise<[Prot
             const createdUserInfoResult = await usersCollection.insertOne(userInfoToInsert);
 
             if(createdUserInfoResult.acknowledged === true){
-                const userInfo: ProtectedUserInfo = {...userInfoToInsert, id: createdUserInfoResult.insertedId.toString()};
+                const userInfo: ProtectedUserInfo = { 
+                    id: createdUserInfoResult.insertedId.toString(),
+                    email: userInfoToInsert.email,
+                    username: userInfoToInsert.username,
+                    profilePic: userInfoToInsert.profilePic,
+                    role: userInfoToInsert.role,
+                    joinedAt: userInfoToInsert.joinedAt
+                };
+                
                 return [userInfo, null];
 
             }else{

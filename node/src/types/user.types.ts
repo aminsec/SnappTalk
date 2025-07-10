@@ -1,11 +1,3 @@
-export interface Token {
-    id: string,
-    email: string,
-    username: string,
-    profilePic: string,
-    role: string,
-};
-
 export interface ProtectedUserInfo {
     id: string,
     email: string,

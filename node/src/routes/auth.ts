@@ -5,8 +5,11 @@ import { checkThereIsAnyError } from "../middlewares/errors";
 const router = express.Router();
 
 router.post("/", [
-    check("email", {state: "failed", message: "Invalid email address", type: "input_error"}).isEmail(),
-    check("password", {state: "failed", messaeg: "Invalid password value", type: "input_error"}).isString().notEmpty(),
+    check("email").isEmail().withMessage("Invalid email address"),
+    check("password")
+    .isString().withMessage("Invalid password value")
+    .notEmpty().withMessage("Password is required")
+    .matches(/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]).{6,}$/).withMessage("Password is weak. It must contain at least one uppercase letter, one lowercase letter, one digit, and one special character."),
     checkThereIsAnyError
 ], handleAuth);
 
