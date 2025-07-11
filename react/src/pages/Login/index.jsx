@@ -6,7 +6,7 @@ import sliderImage from '../../assets/images/Slider.png';
 import { ICONS } from '../../icons';
 import { useNavigate } from 'react-router-dom';
 import styles from './Login.module.css';
-import { Button } from '../../components';
+import { Button, Input } from '../../components';
 
 function Login() {
   const [emailState, setEmailState] = useState('');
@@ -141,21 +141,35 @@ function Login() {
               <h4 className={styles.Discription}>Enter your email address and password to login</h4>
 
               <form className={styles['form-inputs']} onSubmit={handleFirstStep}>
-                <div className="textbox">
-                  <img src={ICONS.email} alt="Email Icon" className="icon" />
-                  <input onChange={e => setEmailState(e.target.value)} type="email" name="email" id="email" className="input" placeholder="Email" />
-                </div>
 
-                <div className="textbox">
-                  <img src={ICONS.password} alt="password Icon" className="icon" />
-                  <input onChange={e => setPasswordState(e.target.value)} type="password" name="password" id="password" className="input" placeholder="Password" />
-                </div>
+                <Input className='mb-3'
+                  type="email"
+                  name="email"
+                  id="email"
+                  placeholder="Email"
+                  icon={ICONS.email}
+                  value={emailState}
+                  onChange={(e) => setEmailState(e.target.value)}
+                  size="md"
+                  fullWidth
+                />
+
+                <Input className='mb-3'
+                  type="password"
+                  name="password"
+                  id="password"
+                  placeholder="Password"
+                  icon={ICONS.password}
+                  value={passwordState}
+                  onChange={(e) => setPasswordState(e.target.value)}
+                  size="md"
+                  fullWidth
+                />
 
                 <p className='Error-message' >{errorMessage}</p>
                 <a className='form-link' href="/forgetpassword">Forgot Password</a>
 
                 <Button type='submit' size='lg' fullWidth>Login</Button>
-
               </form>
             </>
           ) : (

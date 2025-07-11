@@ -5,7 +5,7 @@ function Button({
   children,
   onClick,
   type = 'button',
-  variant = 'primary', // primary, outline, danger...
+  variant = 'primary', // primary, outline, danger
   size = 'md',         // sm, md, lg
   fullWidth = false,
   disabled = false
