@@ -1,0 +1,29 @@
+:root {
+    --bg-color: #0A0E0F;
+    --bg-panel: #161B1C;
+
+    --btn-color: #2D90E4;
+    --btn-hover: #2478c5;
+    --btn-desable: #b0c9e5;
+
+    --input-bg: #202427;
+    --input-border: #24292A;
+    --input-placeholder: #828282;
+
+    --buble-sent: #2D90E4;
+    --bubble-received: #2A2D2F;
+
+    --text-main: #F5F6FA;
+    --text-muted: #9BA1AC;
+
+    --icon-color: #9CA3AF;
+    --icon-active: #FFFFFF;
+
+    --success-color: #00C897;
+    --error-color: #FF5C5C;
+    --warning-color: #FFCB00;
+
+
+    --border-radius: 6px;
+    --transition: all 0.3s ease;
+}
