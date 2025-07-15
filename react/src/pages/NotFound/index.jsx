@@ -1,5 +1,6 @@
 import { Link } from 'react-router-dom';
-import styles from './NotFound.module.css';  // استفاده از CSS Module
+import styles from './NotFound.module.css';
+import { Input, Button } from '../../components/ui';
 
 const channels = [
   { icon: '🎮', title: 'Gamers Hub', desc: 'Gameplay & reviews' },
@@ -15,7 +16,11 @@ export default function NotFound() {
         <h1>404</h1>
         <p className={styles.headline}>Page not found</p>
         <p className={styles.subtext}>The page you’re looking for might have been removed or moved.</p>
-        <Link to="/" className="btn btn-md">Back to Home</Link>
+        <Link to="/" style={{ textDecoration: 'none' }}>
+          <Button size="md">
+            Back to Home
+          </Button>
+        </Link>
       </div>
 
       <section className={styles['popular-channels']}>
@@ -25,8 +30,8 @@ export default function NotFound() {
             <div className={styles['channel-card']} key={i}>
               <div className={styles['channel-icon']}>{ch.icon}</div>
               <h3>{ch.title}</h3>
-              <p>{ch.desc}</p>
-              <button className='btn btn-sm'>Subscribe</button>
+              <p className='mb-2'>{ch.desc}</p>
+              <Button size="sm">Subscribe</Button>
             </div>
           ))}
         </div>

@@ -128,7 +128,7 @@ function Login() {
   return (
     <div className={styles.loginPage}>
       <Toaster position="top-center" />
-      <div className={`${styles.popUp} ${isAnimating ? styles['form-fade'] : ''}`}>
+      <div className={`${styles.popUp} ${isAnimating ? 'form-fade' : ''}`}>
         <div className={styles.slider}>
           <img src={sliderImage} alt="Slider Image" className={styles.sliderImage} />
         </div>
@@ -140,9 +140,8 @@ function Login() {
               <h2 className={styles.Titr}>Login to your account</h2>
               <h4 className={styles.Discription}>Enter your email address and password to login</h4>
 
-              <form className={styles['form-inputs']} onSubmit={handleFirstStep}>
-
-                <Input className='mb-3'
+              <form className={`${styles['form-inputs']} `} onSubmit={handleFirstStep}>
+                <Input
                   type="email"
                   name="email"
                   id="email"
@@ -154,7 +153,7 @@ function Login() {
                   fullWidth
                 />
 
-                <Input className='mb-3'
+                <Input
                   type="password"
                   name="password"
                   id="password"
@@ -178,12 +177,31 @@ function Login() {
               <h4 className={styles.Discription}>Please enter your username to complete login</h4>
 
               <form className={styles['form-inputs']} onSubmit={handleUsernameSubmit}>
-                <div className={`${"textbox"} ${styles['slide-in']}`}>
-                  <img src={ICONS.userName} alt="Username Icon" className="icon" />
-                  <input value={usernameState} onChange={e => setUsernameState(e.target.value)} type="text" name="username" id="username" className="input" placeholder="Username" autoFocus />
-                </div>
+
+                <Input
+                  value={usernameState}
+                  onChange={(e) => setUsernameState(e.target.value)}
+                  type='text'
+                  name='username'
+                  id='username'
+                  placeholder='Username'
+                  icon={ICONS.userName}
+                  autoFocus
+                  size='md'
+                  fullWidth
+                  error={errorMessage}
+                  className={`slide-in`}
+                />
                 <p className='Error-message'>{errorMessage}</p>
-                <button type="submit" className={`LoginBtn btn btn-lg ${styles['slide-in']}`}>Continue</button>
+                <Button
+                  type="submit"
+                  size="lg"
+                  variant="primary"
+                  className={'slide-in'}
+                  fullWidth
+                >
+                  Continue
+                </Button>
               </form>
             </>
           )}
