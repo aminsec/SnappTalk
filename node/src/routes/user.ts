@@ -17,6 +17,10 @@ router.put("/info", [
     .notEmpty().withMessage("Email is required.")
     .isEmail().withMessage("Invalid email address."),
   
+  check("bio")
+  .isString().withMessage("Bio must be a string.")
+  .isLength({ max: 160 }).withMessage("Bio must be at most 160 characters long."),
+
   checkThereIsAnyError
 ], accountController.updateUserInfo);
 

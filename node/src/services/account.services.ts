@@ -129,6 +129,27 @@ export async function updatePassword(userid: string, newPassword: string): Promi
     }
 };
 
+export async function updateBio(userid: string, newBio: string): Promise<[true | false | null, null | Error]> {
+    try {
+        const usersCollection  = await getUsersCollection();
+        const result = await usersCollection.updateOne(
+            {_id: new ObjectId(userid)},
+            {$set: {bio: newBio}}
+        );
+
+        if(result.acknowledged === true){
+            return [true, null];
+        }else{
+            return [false, null];
+        }
+
+    } catch (error) {
+        console.log(error);
+        const err: Error = {message: "A system error occurred", state: "failed", type: "system_error"};
+        return [null, err];
+    }
+};
+
 export async function revokeUserToken(token: string): Promise<[true | false | null, null | Error]> {
     try {
         const dead_sessionsCL = await getDeadSessionsCollection();

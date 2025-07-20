@@ -1,5 +1,5 @@
-import { checkUserExistsByUsername, getRawUserInfo, getUserInfoById, revokeUserToken, updateEmail, updatePassword, updateUsername } from "../../services/account.services";
-import { showError, sendResponse, checkBcrypt, makeBcryptHash } from "../../utils/operations";
+import { checkUserExistsByUsername, getRawUserInfo, getUserInfoById, revokeUserToken, updateEmail, updatePassword, updateUsername, updateBio } from "../../services/account.services";
+import { showError, sendResponse, checkBcrypt } from "../../utils/operations";
 import { Request, Response } from "express";
 import { Error } from "../../types/response.types";
 import { checkUserExistsByEmail } from "../../services/auth.services";
@@ -18,10 +18,11 @@ export async function showUserInfo(req: Request, resp: Response) {
 };
 
 export async function updateUserInfo(req: Request, resp: Response) {
-    const { username, email } = req.body;
+    const { username, email, bio } = req.body;
     const { userInfo } = req;
-    var emailUpdated: Boolean | null = false;
+    let emailUpdated: Boolean | null = false;
     let usernameUpdated: Boolean | null = false;
+    let bioUpdated: Boolean | null = false;
 
     //Preventing temp query to database if information was like before
     if(email === userInfo.email && username === userInfo.username){
@@ -88,7 +89,17 @@ export async function updateUserInfo(req: Request, resp: Response) {
         emailUpdated = true;
     }
 
-    if(emailUpdated === true && usernameUpdated === true){
+    //Updating bio
+    const [updateBioResult, updateBioError] = await updateBio(userInfo.id, bio);
+    if(updateBioError){
+        showError(updateBioError, resp);
+        return;
+    }
+
+    bioUpdated = updateBioResult;
+
+    //Checking if everything was fine
+    if(emailUpdated === true && usernameUpdated === true && bioUpdated === true){
         //Adding user current session to dead_sessions and assigning new token
         const [revoked, err] = await revokeUserToken(req.cookies.token);
         if(err){
@@ -112,6 +123,7 @@ export async function updateUserInfo(req: Request, resp: Response) {
                 sendResponse(message, responseHeaders, 200, resp);
             }
         }
+
     }else{
         const error: Error = {state: "failed", message: "Couldn't update profile", type: "system_error"};
         showError(error, resp);

@@ -5,6 +5,7 @@ export interface ProtectedUserInfo {
     profilePic: string,
     role: string,
     joinedAt: string,
+    bio: string
 };
 
 export interface RawUserInfo {
@@ -15,6 +16,7 @@ export interface RawUserInfo {
     profilePic: string,
     role: string,
     joinedAt: string,
+    bio: string
 };
 
 export interface InsertUserInfo {
@@ -24,4 +26,5 @@ export interface InsertUserInfo {
     profilePic: string,
     role: string,
     joinedAt: string,
+    bio: string
 };
