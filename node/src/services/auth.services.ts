@@ -75,7 +75,8 @@ export async function createUser(email: string, password: string): Promise<[Prot
                 username: Date.now().toString(),
                 profilePic: '/statics/images/default.png',
                 role: "user",
-                joinedAt: Date.now().toString()
+                joinedAt: Date.now().toString(),
+                bio: "" // Default bio is empty
             };
 
             const createdUserInfoResult = await usersCollection.insertOne(userInfoToInsert);
@@ -87,7 +88,8 @@ export async function createUser(email: string, password: string): Promise<[Prot
                     username: userInfoToInsert.username,
                     profilePic: userInfoToInsert.profilePic,
                     role: userInfoToInsert.role,
-                    joinedAt: userInfoToInsert.joinedAt
+                    joinedAt: userInfoToInsert.joinedAt,
+                    bio: userInfoToInsert.bio
                 };
                 
                 return [userInfo, null];
