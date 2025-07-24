@@ -1,5 +1,5 @@
-import { checkUserExistsByUsername, getRawUserInfo, getUserInfoById, revokeUserToken, updateEmail, updatePassword, updateUsername, updateBio } from "../../services/account.services";
-import { showError, sendResponse, checkBcrypt } from "../../utils/operations";
+import { checkUserExistsByUsername, getRawUserInfo, getUserInfoById, revokeUserToken, updateEmail, updatePassword, updateUsername, updateBio, updateProfilePicAddress } from "../../services/account.services";
+import { showError, sendResponse, checkBcrypt, uploadFile, deleteFileFromUploads } from "../../utils/operations";
 import { Request, Response } from "express";
 import { Error } from "../../types/response.types";
 import { checkUserExistsByEmail } from "../../services/auth.services";
@@ -168,3 +168,69 @@ export async function updateUserPassword(req: Request, resp: Response) {
         showError(error, resp);
     }
 };
+
+export async function updateUserProfile(req: Request, resp: Response) {
+    const { content } = req.body;
+    const { userInfo } = req;
+    
+    //Removing the old profile file, if profile image was not the default image
+    const userProfilePicAdress = userInfo.profilePic;
+    const profilePicFileName = userProfilePicAdress.split("/")[-1]; // --> /statics/images/default.png -> default.png
+    
+   
+    const [removeResult, error] = await deleteFileFromUploads(profilePicFileName);
+    if(error){
+        showError(error, resp);
+        return;
+    }
+
+    if(removeResult === true){
+        const [updateProfileResult, err] = await uploadFile(content);
+        if(err){
+            showError(err, resp);
+            return;
+        }
+
+        if(updateProfileResult){
+            //Updating user profilePic address in db
+            const [updateResult, error] = await updateProfilePicAddress(userInfo.id, updateProfileResult);
+            if(error){
+                showError(error, resp);
+                return;
+            }
+
+            if(updateResult === true){
+                //Assigning new token
+                const [revoked, err] = await revokeUserToken(req.cookies.token);
+                if(err){
+                    showError(err, resp);
+                    return;
+                }
+
+                if(revoked === true){
+                    userInfo.profilePic = updateProfileResult; // Updating userInfo with new profile pic address
+                    const token = jwt.sign(userInfo, String(process.env.JWT_SECRET_KEY), {expiresIn: "1h"});
+                    const responseData = {state: "success", message: "Profile picture updated successfully."};
+                    const responseHeaders = {"Set-Cookie": `token=${token}; path=/;`};
+                    sendResponse(responseData, responseHeaders, 200,resp);
+
+                }else{
+                    const error: Error = {state: "failed", message: "Couldn't update profile", type: "system_error"};
+                    showError(error, resp);
+                }
+
+            }else{
+                const error: Error = {state: "failed", message: "Couldn't update profile", type: "system_error"};
+                showError(error, resp);
+            }
+
+        }else{
+            const error: Error = {state: "failed", message: "Couldn't upload profile", type: "system_error"};
+            showError(error, resp);
+        }
+
+    }else{
+        const error: Error = {state: "failed", message: "Couldn't update profile", type: "system_error"};
+        showError(error, resp);
+    }
+}; 

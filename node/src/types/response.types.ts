@@ -8,4 +8,4 @@ export interface Resp {
     state: string,
     message?: any,
     userInfo?: any
-}
+};

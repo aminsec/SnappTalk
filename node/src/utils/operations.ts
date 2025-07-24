@@ -2,6 +2,7 @@ import * as bcrypt from 'bcrypt';
 import { Resp, Error } from '../types/response.types';
 import { Response } from 'express';
 import { ProtectedUserInfo, RawUserInfo } from '../types/user.types';
+import * as fs from 'fs';
 const saltRounds = 10;
 
 //Function to send normall messages
@@ -40,6 +41,63 @@ export function whiteListUserInfo(userData: RawUserInfo): ProtectedUserInfo{
     };
 
     return validatedUserData;
+};
+
+export function getRandomString(): string {
+    const length = 25;
+    const chars = 'abcdefghijklmnopqrstuvwxyz';
+    let result = '';
+    for (let i = 0; i < length; i++) {
+        result += chars.charAt(Math.floor(Math.random() * chars.length));
+    }
+    return result;
+};
+
+export async function uploadFile(content: string): Promise<[string | null, Error | null]> {
+    //Decoding the base64 to save in buffer
+    const file: Buffer = Buffer.from(content, "base64");
+
+    //Writing the binary into a file in /uploads folder
+    try {
+        //Avoiding using file extention for security reasons
+        const filename: string = getRandomString();
+        const uploadPath = "/up/node/uploads/" + filename;
+        fs.writeFile(uploadPath, file, err => {
+            if(err){
+                throw new Error("System error occurred. Coudln't upload file")
+            }
+        });
+
+        return [filename, null];
+
+    } catch (error) {
+        console.log(error);
+        const err: Error = {message: "A system error occurred. Couldn't upload file", state: "failed", type: "system_error"};
+        return [null, err];
+    }
+};
+
+export async function deleteFileFromUploads(filename: string): Promise<[Boolean | null, Error | null]>  {
+    try {
+        //Preventing deleting default image
+        if(filename === "default.png"){
+            return [true, null];
+        }
+
+        const filePath = "/up/node/uploads/" + filename;
+        fs.unlink(filePath, error => {
+            if(error){
+                throw new Error("System error occurred. Coudln't upload file")
+            }
+        });
+
+        return [true, null]
+
+    } catch (error) {
+        console.log(error);
+        const err: Error = {message: "A system error occurred", state: "failed", type: "system_error"};
+        return [null, err];
+    }
 };
 
 //Generates salt automatically

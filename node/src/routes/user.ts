@@ -38,4 +38,10 @@ router.put("/info/password", [
   checkThereIsAnyError
 ], accountController.updateUserPassword);
 
+router.post("/info/profile", [
+  check("content")
+  .isString().withMessage("Content must be a string")
+  .notEmpty().withMessage("Content parameter is required")
+], accountController.updateUserProfile);
+
 export default router;
