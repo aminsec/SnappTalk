@@ -1,7 +1,7 @@
 import { checkUserExistsByUsername, getRawUserInfo, getUserInfoById, revokeUserToken, updateEmail, updatePassword, updateUsername, updateBio, updateProfilePicAddress } from "../../services/account.services";
 import { showError, sendResponse, checkBcrypt, uploadFile, deleteFileFromUploads } from "../../utils/operations";
 import { Request, Response } from "express";
-import { Error } from "../../types/response.types";
+import {ErrorResponse } from "../../types/response.types";
 import { checkUserExistsByEmail } from "../../services/auth.services";
 import * as jwt from "jsonwebtoken";
 
@@ -41,7 +41,7 @@ export async function updateUserInfo(req: Request, resp: Response) {
         }
 
         if(userExists === true){
-            const error: Error = {state: "failed", message: "This username already exists", type: "input_error"};
+            const error:ErrorResponse = {state: "failed", message: "This username already exists", type: "input_error"};
             showError(error, resp);
             return;
         }
@@ -70,7 +70,7 @@ export async function updateUserInfo(req: Request, resp: Response) {
         }
 
         if(emailExists === true){
-            const error: Error = {state: "failed", message: "This email already exists", type: "input_error"};
+            const error:ErrorResponse = {state: "failed", message: "This email already exists", type: "input_error"};
             showError(error, resp);
             return;
         }
@@ -125,7 +125,7 @@ export async function updateUserInfo(req: Request, resp: Response) {
         }
 
     }else{
-        const error: Error = {state: "failed", message: "Couldn't update profile", type: "system_error"};
+        const error:ErrorResponse = {state: "failed", message: "Couldn't update profile", type: "system_error"};
         showError(error, resp);
     }
 };
@@ -142,7 +142,7 @@ export async function updateUserPassword(req: Request, resp: Response) {
     }
 
     if(!rawUserInfo){
-        const error: Error = {state: "failed", message: "User not found", type: "input_error"};
+        const error:ErrorResponse = {state: "failed", message: "User not found", type: "input_error"};
         showError(error, resp);
         return;
     }
@@ -160,11 +160,11 @@ export async function updateUserPassword(req: Request, resp: Response) {
             sendResponse(message, {}, 200, resp);
 
         }else{
-            const error: Error = {state: "failed", message: "Couldn't update password", type: "system_error"};
+            const error:ErrorResponse = {state: "failed", message: "Couldn't update password", type: "system_error"};
             showError(error, resp);
         }
     }else{
-        const error: Error = {state: "failed", message: "Old password is incorrect", type: "input_error"};
+        const error:ErrorResponse = {state: "failed", message: "Old password is incorrect", type: "input_error"};
         showError(error, resp);
     }
 };
@@ -215,22 +215,22 @@ export async function updateUserProfile(req: Request, resp: Response) {
                     sendResponse(responseData, responseHeaders, 200,resp);
 
                 }else{
-                    const error: Error = {state: "failed", message: "Couldn't update profile", type: "system_error"};
+                    const error:ErrorResponse = {state: "failed", message: "Couldn't update profile", type: "system_error"};
                     showError(error, resp);
                 }
 
             }else{
-                const error: Error = {state: "failed", message: "Couldn't update profile", type: "system_error"};
+                const error:ErrorResponse = {state: "failed", message: "Couldn't update profile", type: "system_error"};
                 showError(error, resp);
             }
 
         }else{
-            const error: Error = {state: "failed", message: "Couldn't upload profile", type: "system_error"};
+            const error:ErrorResponse = {state: "failed", message: "Couldn't upload profile", type: "system_error"};
             showError(error, resp);
         }
 
     }else{
-        const error: Error = {state: "failed", message: "Couldn't update profile", type: "system_error"};
+        const error:ErrorResponse = {state: "failed", message: "Couldn't update profile", type: "system_error"};
         showError(error, resp);
     }
 }; 

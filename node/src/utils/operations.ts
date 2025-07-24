@@ -1,5 +1,5 @@
 import * as bcrypt from 'bcrypt';
-import { Resp, Error } from '../types/response.types';
+import { Resp, ErrorResponse } from '../types/response.types';
 import { Response } from 'express';
 import { ProtectedUserInfo, RawUserInfo } from '../types/user.types';
 import * as fs from 'fs';
@@ -14,7 +14,7 @@ export function sendResponse(data: Resp, headers: any = {}, code:number, resp: R
     resp.end();
 };
 
-export function showError(error: Error, resp: Response){
+export function showError(error: ErrorResponse, resp: Response){
     sendResponse(error, {}, (
         error.type === "not_found" ? 404 : 
         error.type === "system_error" ? 500 : 
@@ -53,7 +53,7 @@ export function getRandomString(): string {
     return result;
 };
 
-export async function uploadFile(content: string): Promise<[string | null, Error | null]> {
+export async function uploadFile(content: string): Promise<[string | null, ErrorResponse | null]> {
     //Decoding the base64 to save in buffer
     const file: Buffer = Buffer.from(content, "base64");
 
@@ -72,12 +72,12 @@ export async function uploadFile(content: string): Promise<[string | null, Error
 
     } catch (error) {
         console.log(error);
-        const err: Error = {message: "A system error occurred. Couldn't upload file", state: "failed", type: "system_error"};
+        const err: ErrorResponse = {message: "A system error occurred. Couldn't upload file", state: "failed", type: "system_error"};
         return [null, err];
     }
 };
 
-export async function deleteFileFromUploads(filename: string): Promise<[Boolean | null, Error | null]>  {
+export async function deleteFileFromUploads(filename: string): Promise<[Boolean | null, ErrorResponse | null]>  {
     try {
         //Preventing deleting default image
         if(filename === "default.png"){
@@ -95,7 +95,7 @@ export async function deleteFileFromUploads(filename: string): Promise<[Boolean 
 
     } catch (error) {
         console.log(error);
-        const err: Error = {message: "A system error occurred", state: "failed", type: "system_error"};
+        const err: ErrorResponse = {message: "A system error occurred", state: "failed", type: "system_error"};
         return [null, err];
     }
 };
