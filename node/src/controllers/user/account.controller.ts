@@ -1,9 +1,10 @@
-import { checkUserExistsByUsername, getRawUserInfo, getUserInfoById, revokeUserToken, updateEmail, updatePassword, updateUsername, updateBio } from "../../services/account.services";
-import { showError, sendResponse, checkBcrypt } from "../../utils/operations";
+import { checkUserExistsByUsername, getRawUserInfo, getUserInfoById, revokeUserToken, updateEmail, updatePassword, updateUsername, updateBio, updateProfilePicAddress } from "../../services/account.services";
+import { showError, sendResponse, checkBcrypt, uploadFile, deleteFileFromUploads, generateJWTToken } from "../../utils/operations";
 import { Request, Response } from "express";
-import { Error } from "../../types/response.types";
+import {ErrorResponse } from "../../types/response.types";
 import { checkUserExistsByEmail } from "../../services/auth.services";
 import * as jwt from "jsonwebtoken";
+import { ProtectedUserInfo } from "../../types/user.types";
 
 export async function showUserInfo(req: Request, resp: Response) {
     const userid = req.userInfo.id;
@@ -41,7 +42,7 @@ export async function updateUserInfo(req: Request, resp: Response) {
         }
 
         if(userExists === true){
-            const error: Error = {state: "failed", message: "This username already exists", type: "input_error"};
+            const error:ErrorResponse = {state: "failed", message: "This username already exists", type: "input_error"};
             showError(error, resp);
             return;
         }
@@ -70,7 +71,7 @@ export async function updateUserInfo(req: Request, resp: Response) {
         }
 
         if(emailExists === true){
-            const error: Error = {state: "failed", message: "This email already exists", type: "input_error"};
+            const error:ErrorResponse = {state: "failed", message: "This email already exists", type: "input_error"};
             showError(error, resp);
             return;
         }
@@ -125,7 +126,7 @@ export async function updateUserInfo(req: Request, resp: Response) {
         }
 
     }else{
-        const error: Error = {state: "failed", message: "Couldn't update profile", type: "system_error"};
+        const error:ErrorResponse = {state: "failed", message: "Couldn't update profile", type: "system_error"};
         showError(error, resp);
     }
 };
@@ -142,7 +143,7 @@ export async function updateUserPassword(req: Request, resp: Response) {
     }
 
     if(!rawUserInfo){
-        const error: Error = {state: "failed", message: "User not found", type: "input_error"};
+        const error:ErrorResponse = {state: "failed", message: "User not found", type: "input_error"};
         showError(error, resp);
         return;
     }
@@ -160,11 +161,89 @@ export async function updateUserPassword(req: Request, resp: Response) {
             sendResponse(message, {}, 200, resp);
 
         }else{
-            const error: Error = {state: "failed", message: "Couldn't update password", type: "system_error"};
+            const error:ErrorResponse = {state: "failed", message: "Couldn't update password", type: "system_error"};
             showError(error, resp);
         }
     }else{
-        const error: Error = {state: "failed", message: "Old password is incorrect", type: "input_error"};
+        const error:ErrorResponse = {state: "failed", message: "Old password is incorrect", type: "input_error"};
         showError(error, resp);
     }
 };
+
+export async function updateUserProfile(req: Request, resp: Response) {
+    const { content } = req.body;
+    const { userInfo } = req;
+    
+    //Removing the old profile file, if profile image was not the default "default.png" image
+    const userProfilePicAdress = userInfo.profilePic;
+    const profilePicFileName = userProfilePicAdress.split("/").pop() ?? "default.png"; // --> /statics/images/default.png -> default.png
+   
+    const [removeResult, error] = await deleteFileFromUploads(profilePicFileName);
+    if(error){
+        showError(error, resp);
+        return;
+    }
+
+    if(removeResult === true){
+        const [updateProfileResult, err] = await uploadFile(content);
+        if(err){
+            showError(err, resp);
+            return;
+        }
+
+        if(updateProfileResult){
+            //Updating user profilePic address in db
+            const [updateResult, error] = await updateProfilePicAddress(userInfo.id, updateProfileResult);
+            if(error){
+                showError(error, resp);
+                return;
+            }
+
+            if(updateResult === true){
+                //Assigning new token
+                const [revoked, err] = await revokeUserToken(req.cookies.token);
+                if(err){
+                    showError(err, resp);
+                    return;
+                }
+
+                if(revoked === true){
+                    const [userData, err] = await getUserInfoById(userInfo.id);
+                    if(err){
+                        showError(err, resp);
+                        return;
+                    }
+
+                    if(userData){
+                        userData.profilePic = "/statics/images/" + updateProfileResult; // Updating userInfo with new profile pic address
+                        const [newToken, error] = await generateJWTToken(userData);
+                        if(error){
+                            showError(error, resp);
+                            return;
+                        }
+
+                        const responseData = {state: "success", message: "Profile picture updated successfully."};
+                        const responseHeaders = {"Set-Cookie": `token=${newToken}; path=/;`};
+                        sendResponse(responseData, responseHeaders, 200, resp);
+                    }
+
+                }else{
+                    const error:ErrorResponse = {state: "failed", message: "Couldn't update profile", type: "system_error"};
+                    showError(error, resp);
+                }
+
+            }else{
+                const error:ErrorResponse = {state: "failed", message: "Couldn't update profile", type: "system_error"};
+                showError(error, resp);
+            }
+
+        }else{
+            const error:ErrorResponse = {state: "failed", message: "Couldn't upload profile", type: "system_error"};
+            showError(error, resp);
+        }
+
+    }else{
+        const error:ErrorResponse = {state: "failed", message: "Couldn't update profile", type: "system_error"};
+        showError(error, resp);
+    }
+}; 
