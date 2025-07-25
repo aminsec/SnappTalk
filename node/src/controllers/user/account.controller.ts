@@ -1,9 +1,10 @@
 import { checkUserExistsByUsername, getRawUserInfo, getUserInfoById, revokeUserToken, updateEmail, updatePassword, updateUsername, updateBio, updateProfilePicAddress } from "../../services/account.services";
-import { showError, sendResponse, checkBcrypt, uploadFile, deleteFileFromUploads } from "../../utils/operations";
+import { showError, sendResponse, checkBcrypt, uploadFile, deleteFileFromUploads, generateJWTToken } from "../../utils/operations";
 import { Request, Response } from "express";
 import {ErrorResponse } from "../../types/response.types";
 import { checkUserExistsByEmail } from "../../services/auth.services";
 import * as jwt from "jsonwebtoken";
+import { ProtectedUserInfo } from "../../types/user.types";
 
 export async function showUserInfo(req: Request, resp: Response) {
     const userid = req.userInfo.id;
@@ -173,10 +174,9 @@ export async function updateUserProfile(req: Request, resp: Response) {
     const { content } = req.body;
     const { userInfo } = req;
     
-    //Removing the old profile file, if profile image was not the default image
+    //Removing the old profile file, if profile image was not the default "default.png" image
     const userProfilePicAdress = userInfo.profilePic;
-    const profilePicFileName = userProfilePicAdress.split("/")[-1]; // --> /statics/images/default.png -> default.png
-    
+    const profilePicFileName = userProfilePicAdress.split("/").pop() ?? "default.png"; // --> /statics/images/default.png -> default.png
    
     const [removeResult, error] = await deleteFileFromUploads(profilePicFileName);
     if(error){
@@ -208,11 +208,24 @@ export async function updateUserProfile(req: Request, resp: Response) {
                 }
 
                 if(revoked === true){
-                    userInfo.profilePic = updateProfileResult; // Updating userInfo with new profile pic address
-                    const token = jwt.sign(userInfo, String(process.env.JWT_SECRET_KEY), {expiresIn: "1h"});
-                    const responseData = {state: "success", message: "Profile picture updated successfully."};
-                    const responseHeaders = {"Set-Cookie": `token=${token}; path=/;`};
-                    sendResponse(responseData, responseHeaders, 200,resp);
+                    const [userData, err] = await getUserInfoById(userInfo.id);
+                    if(err){
+                        showError(err, resp);
+                        return;
+                    }
+
+                    if(userData){
+                        userData.profilePic = "/statics/images/" + updateProfileResult; // Updating userInfo with new profile pic address
+                        const [newToken, error] = await generateJWTToken(userData);
+                        if(error){
+                            showError(error, resp);
+                            return;
+                        }
+
+                        const responseData = {state: "success", message: "Profile picture updated successfully."};
+                        const responseHeaders = {"Set-Cookie": `token=${newToken}; path=/;`};
+                        sendResponse(responseData, responseHeaders, 200, resp);
+                    }
 
                 }else{
                     const error:ErrorResponse = {state: "failed", message: "Couldn't update profile", type: "system_error"};

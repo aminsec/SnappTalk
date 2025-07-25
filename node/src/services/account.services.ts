@@ -155,7 +155,7 @@ export async function updateProfilePicAddress(userid: string, newProfilePicAddre
         const usersCollection  = await getUsersCollection();
         const result = await usersCollection.updateOne(
             {_id: new ObjectId(userid)},
-            {$set: {profilePic: newProfilePicAddress}}
+            {$set: {profilePic: "/statics/images/" + newProfilePicAddress}}
         );
 
         if(result.acknowledged === true){

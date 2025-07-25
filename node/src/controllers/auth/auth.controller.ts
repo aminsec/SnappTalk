@@ -2,7 +2,7 @@ import { Request, Response } from "express";
 import { checkUserExistsByEmail, checkCredentials, getUserInfoByEmail, createUser } from "../../services/auth.services";
 import { showError, sendResponse } from "../../utils/operations";
 import { ProtectedUserInfo } from "../../types/user.types";
-import { Error } from "../../types/response.types";
+import {ErrorResponse } from "../../types/response.types";
 import * as jwt from 'jsonwebtoken';
 
 export async function handleAuth(req: Request, resp: Response): Promise<void> {
@@ -40,13 +40,13 @@ export async function handleAuth(req: Request, resp: Response): Promise<void> {
             }
 
         }else{
-            const error: Error = {state: "failed", message: "Invalid username or password", type: "creds_error"};
+            const error:ErrorResponse = {state: "failed", message: "Invalid username or password", type: "creds_error"};
             showError(error, resp);
             return;
         }
         
     }else{
-        const [createUserResult, error]:[ProtectedUserInfo | null, Error | null] = await createUser(email, password);
+        const [createUserResult, error]:[ProtectedUserInfo | null,ErrorResponse | null] = await createUser(email, password);
         if(error){
             showError(error, resp);
             return;

@@ -2,9 +2,9 @@ import { getUsersCollection } from "../models/users.model";
 import { makeBcryptHash, checkBcrypt, whiteListUserInfo } from "../utils/operations";
 import { checkEmailIsValid } from "../utils/validate";
 import { ProtectedUserInfo, RawUserInfo, InsertUserInfo } from "../types/user.types";
-import { Error } from "../types/response.types";
+import {ErrorResponse } from "../types/response.types";
 
-export async function checkUserExistsByEmail(email: string): Promise<[true | false | null, null | Error]>  {
+export async function checkUserExistsByEmail(email: string): Promise<[true | false | null, null |ErrorResponse]>  {
     try {
         const usersCollection  = await getUsersCollection();
         const user: RawUserInfo = await usersCollection.findOne({email: email});
@@ -16,12 +16,12 @@ export async function checkUserExistsByEmail(email: string): Promise<[true | fal
         
     } catch (error) {
         console.log(error);
-        const err: Error = {message: "A system error occurred", state: "failed", type: "system_error"};
+        const err:ErrorResponse = {message: "A system error occurred", state: "failed", type: "system_error"};
         return [null, err];
     }
 };
 
-export async function checkCredentials(email: string, password: string): Promise<[true | false | null, null | Error]> {
+export async function checkCredentials(email: string, password: string): Promise<[true | false | null, null |ErrorResponse]> {
     try {
         const usersCollection  = await getUsersCollection();
         const user: RawUserInfo = await usersCollection.findOne({email: email});
@@ -37,12 +37,12 @@ export async function checkCredentials(email: string, password: string): Promise
         }
     } catch (error) {
         console.log(error);
-        const err: Error = {message: "A system error occurred", state: "failed", type: "system_error"};
+        const err:ErrorResponse = {message: "A system error occurred", state: "failed", type: "system_error"};
         return [null, err];
     }
 };
 
-export async function getUserInfoByEmail(email: string): Promise<[ProtectedUserInfo | null, Error | null]>{
+export async function getUserInfoByEmail(email: string): Promise<[ProtectedUserInfo | null,ErrorResponse | null]>{
     try {
         const usersCollection = await getUsersCollection();
         const user: RawUserInfo = await usersCollection.findOne({email: email});
@@ -54,12 +54,12 @@ export async function getUserInfoByEmail(email: string): Promise<[ProtectedUserI
         
     } catch (error) {
         console.log(error);
-        const err: Error = {message: "A system error occurred", state: "failed", type: "system_error"};
+        const err:ErrorResponse = {message: "A system error occurred", state: "failed", type: "system_error"};
         return [null, err];
     }
 };
 
-export async function createUser(email: string, password: string): Promise<[ProtectedUserInfo | null, Error | null]> {
+export async function createUser(email: string, password: string): Promise<[ProtectedUserInfo | null,ErrorResponse | null]> {
     try {
         const [isEmaillCorrect, error] = await checkEmailIsValid(email);
         if(error){
@@ -95,18 +95,18 @@ export async function createUser(email: string, password: string): Promise<[Prot
                 return [userInfo, null];
 
             }else{
-                const error: Error = {state: "failed", message: "Couldn't create user", type: "system_error"};
+                const error:ErrorResponse = {state: "failed", message: "Couldn't create user", type: "system_error"};
                 return [null, error];
             }
 
         }else{
-            const error: Error = {state: "failed", message: "Invalid email format", type: "input_error"};
+            const error:ErrorResponse = {state: "failed", message: "Invalid email format", type: "input_error"};
             return [null, error];
         }
 
     } catch (error) {
         console.log(error);
-        const err: Error = {message: "A system error occurred", state: "failed", type: "system_error"};
+        const err:ErrorResponse = {message: "A system error occurred", state: "failed", type: "system_error"};
         return [null, err];
     }
 };
