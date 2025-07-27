@@ -1,0 +1,28 @@
+.avatar {
+  object-fit: cover;
+  display: block;
+}
+
+.rounded {
+  border-radius: 50%;
+}
+
+.sm {
+  width: 32px;
+  height: 32px;
+}
+
+.md {
+  width: 48px;
+  height: 48px;
+}
+
+.lg {
+  width: 72px;
+  height: 72px;
+}
+
+.xl {
+  width: 100px;
+  height: 100px;
+}
