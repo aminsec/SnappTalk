@@ -5,6 +5,7 @@ import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import Login from './pages/Login';  
 import Home from './pages/Home';
 import NotFound from './pages/NotFound';
+import Settings from './pages/Settings';
 import { CheckUserIsLogin } from './utils/protectRoutes';
 import { CheckUserIsLogout } from './utils/protectRoutes';
 import { userStateContext } from './contexts/userState';
@@ -40,6 +41,7 @@ export default function App() {
           {/* Protected routes */}
           <Route element={<CheckUserIsLogout />}>
             <Route path="/home" element={<Home />} /> 
+            <Route path="/settings" element={<Settings />} />
           </Route>
 
           {/* Public routes */}
