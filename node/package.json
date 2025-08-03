@@ -24,11 +24,17 @@
   "devDependencies": {
     "@types/bcrypt": "^5.0.2",
     "@types/body-parser": "^1.19.5",
+    "@types/chai": "^5.2.2",
     "@types/cookie-parser": "^1.4.8",
     "@types/express": "^5.0.2",
     "@types/jsonwebtoken": "^9.0.9",
+    "@types/mocha": "^10.0.10",
     "@types/node": "^22.15.29",
+    "@types/supertest": "^6.0.3",
     "@types/ws": "^8.18.1",
+    "chai": "^5.2.1",
+    "mocha": "^11.7.1",
+    "supertest": "^7.1.4",
     "ts-node": "^10.9.2",
     "tsx": "^4.19.4",
     "typescript": "^5.8.3"
