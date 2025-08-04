@@ -1,0 +1,29 @@
+.settingsContainer {
+    width: 100vw;
+    height: 100vh;
+    display: flex;
+    flex-direction: row;
+    flex-wrap: wrap;
+    align-content: stretch;
+    justify-content: flex-start;
+    align-items: stretch;
+}
+
+.settingsSidebar {
+    border: solid 3px var(--input-border);
+    padding: 10px;
+    width: 25%;
+    height: 100%;
+    background: var(--bg-panel);
+    display: flex;
+    flex-direction: column;
+    flex-wrap: nowrap;
+    align-content: center;
+    justify-content: flex-start;
+    align-items: center;
+    gap: 20px
+}
+
+.settingsPageName {
+    background: var(--color-background);
+}

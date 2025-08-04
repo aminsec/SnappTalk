@@ -26,3 +26,14 @@
   width: 100px;
   height: 100px;
 }
+
+.skeleton {
+  background-color: #2c2c2c;
+  animation: pulse 1.2s ease-in-out infinite;
+}
+
+@keyframes pulse {
+  0% { opacity: 0.8; }
+  50% { opacity: 0.4; }
+  100% { opacity: 0.8; }
+}

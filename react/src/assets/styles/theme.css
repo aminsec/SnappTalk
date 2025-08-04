@@ -2,9 +2,11 @@
     --bg-color: #0A0E0F;
     --bg-panel: #161B1C;
 
+    --bg-cart: #202427;
+
     --btn-color: #2D90E4;
     --btn-hover: #2478c5;
-    --btn-desable: #b0c9e5;
+    --btn-disable: #b0c9e5;
 
     --input-bg: #202427;
     --input-border: #24292A;
