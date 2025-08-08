@@ -16,7 +16,9 @@
     --bubble-received: #2A2D2F;
 
     --text-main: #F5F6FA;
+    --text-sub: #a1a1a1;
     --text-muted: #9BA1AC;
+    --text-link: #4faeff;
 
     --icon-color: #9CA3AF;
     --icon-active: #FFFFFF;
@@ -26,6 +28,10 @@
     --error-color: #FF5C5C;
     --warning-color: #FFCB00;
 
+    --item-hover: #2e2e2e;
+    
+    --white: white;
+    --black: black;
 
     --border-radius: 6px;
     --transition: all 0.3s ease;
