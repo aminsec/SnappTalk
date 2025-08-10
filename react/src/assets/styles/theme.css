@@ -2,9 +2,11 @@
     --bg-color: #0A0E0F;
     --bg-panel: #161B1C;
 
+    --bg-cart: #202427;
+
     --btn-color: #2D90E4;
     --btn-hover: #2478c5;
-    --btn-desable: #b0c9e5;
+    --btn-disable: #b0c9e5;
 
     --input-bg: #202427;
     --input-border: #24292A;
@@ -14,15 +16,22 @@
     --bubble-received: #2A2D2F;
 
     --text-main: #F5F6FA;
+    --text-sub: #a1a1a1;
     --text-muted: #9BA1AC;
+    --text-link: #4faeff;
 
     --icon-color: #9CA3AF;
     --icon-active: #FFFFFF;
+    --icon-active-bg: #2D90E4;
 
     --success-color: #00C897;
     --error-color: #FF5C5C;
     --warning-color: #FFCB00;
 
+    --item-hover: #2e2e2e;
+    
+    --white: white;
+    --black: black;
 
     --border-radius: 6px;
     --transition: all 0.3s ease;

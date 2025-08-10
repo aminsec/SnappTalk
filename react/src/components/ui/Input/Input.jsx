@@ -16,7 +16,7 @@ function Input({
   ...rest
 }) {
   return (
-    <div className={clsx(styles.inputWrapper, fullWidth && styles.fullWidth,className)}>
+    <div className={clsx(styles.inputWrapper, fullWidth && styles.fullWidth, className)}>
       <div className={clsx(
         styles.inputContainer,
         styles[`input--${size}`],
@@ -34,7 +34,10 @@ function Input({
           value={value}
           onChange={onChange}
           placeholder={placeholder}
-          className={styles.input}
+          className={clsx(
+            styles.input,
+            icon && styles.inputWithIcon
+          )}
           {...rest}
         />
       </div>

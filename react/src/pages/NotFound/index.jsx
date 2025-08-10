@@ -1,6 +1,6 @@
 import { Link } from 'react-router-dom';
 import styles from './NotFound.module.css';
-import { Input, Button } from '../../components/ui';
+import { Input, Button } from '../../components';
 
 const channels = [
   { icon: '🎮', title: 'Gamers Hub', desc: 'Gameplay & reviews' },

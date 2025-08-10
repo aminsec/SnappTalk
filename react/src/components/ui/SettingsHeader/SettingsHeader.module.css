@@ -1,0 +1,29 @@
+.header {
+  flex: 1;
+  display: flex;
+  width: 100%;
+  max-height: 50px;
+  text-align: center;
+  padding: 15px 0px;
+  background-color: var(--bg-panel);
+  font-weight: 500;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+}
+
+.title {
+  flex: 1;
+  font-size: 22px;
+  font-weight: 600;
+  color: var(--text-main);
+  text-align: center;
+  order: 1;
+}
+
+.actions {
+  display: flex;
+  gap: 10px;
+  margin-right: 20px;
+  order: 2;
+}

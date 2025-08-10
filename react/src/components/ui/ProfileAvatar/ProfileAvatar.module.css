@@ -1,0 +1,39 @@
+.avatar {
+  object-fit: cover;
+  display: block;
+}
+
+.rounded {
+  border-radius: 50%;
+}
+
+.sm {
+  width: 32px;
+  height: 32px;
+}
+
+.md {
+  width: 48px;
+  height: 48px;
+}
+
+.lg {
+  width: 72px;
+  height: 72px;
+}
+
+.xl {
+  width: 100px;
+  height: 100px;
+}
+
+.skeleton {
+  background-color: #2c2c2c;
+  animation: pulse 1.2s ease-in-out infinite;
+}
+
+@keyframes pulse {
+  0% { opacity: 0.8; }
+  50% { opacity: 0.4; }
+  100% { opacity: 0.8; }
+}

@@ -8,7 +8,8 @@ function Button({
   variant = 'primary', // primary, outline, danger
   size = 'md',         // sm, md, lg
   fullWidth = false,
-  disabled = false
+  disabled = false,
+  className = '',
 }) {
   return (
     <button
@@ -19,7 +20,8 @@ function Button({
         styles.btn,
         styles[`btn--${variant}`],
         styles[`btn--${size}`],
-        fullWidth && styles.fullWidth
+        fullWidth && styles.fullWidth,
+        className
       )}
     >
       {children}
