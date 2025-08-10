@@ -96,16 +96,6 @@ export default function ProfileSection() {
               />
             </div>
             <div className={styles.editInputCart}>
-              <label htmlFor="bio">Bio:</label>
-              <Input
-                name="bio"
-                id="bio"
-                value={user.bio}
-                onChange={handleInputChange}
-                fullWidth
-              />
-            </div>
-            <div className={styles.editInputCart}>
               <label htmlFor="email">Email:</label>
               <Input
                 name="email"
@@ -115,6 +105,17 @@ export default function ProfileSection() {
                 fullWidth
               />
             </div>
+            <div className={styles.editInputCart}>
+              <label htmlFor="bio">Bio:</label>
+              <Input
+                name="bio"
+                id="bio"
+                value={user.bio}
+                onChange={handleInputChange}
+                fullWidth
+              />
+            </div>
+
             <div className={styles.actionRow}>
               <Button size="md" variant="outline" onClick={handleCancel} fullWidth>Cancel</Button>
               <Button size="md" onClick={handleSave} fullWidth>Save</Button>
