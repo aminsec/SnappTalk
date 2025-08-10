@@ -63,7 +63,6 @@ export default function ProfileSection() {
           <ProfileImageUpload
             currentImage={user.profilePic}
             onImageChange={(file) => {
-              console.log(file.result)
             }}
             size={120}
             border

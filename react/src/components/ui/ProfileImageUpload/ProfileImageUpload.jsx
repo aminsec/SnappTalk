@@ -20,7 +20,6 @@ export default function ProfileImageUpload({
 
     const reader = new FileReader();
     reader.onloadend = async() => {
-      setPreview(reader.result);
       onImageChange(file);
 
       //Requesting to upload image
@@ -38,7 +37,14 @@ export default function ProfileImageUpload({
         body: JSON.stringify(requestBody)
       });
 
-      if(!request.ok){
+      if(request.ok){
+        window.location.reload();
+      }
+      if(request.status === 413){
+        toast.error("File is too large. Maximum is 5MB");
+      }
+
+      if(!request.ok && request.status !== 413){
         toast.error("Couldn't upload image");
       }
     };
