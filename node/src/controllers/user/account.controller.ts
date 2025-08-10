@@ -157,7 +157,7 @@ export async function updateUserPassword(req: Request, resp: Response) {
         }
 
         if(updatePasswordResult === true){
-            const message = {state: "success", message: "Password updated successfully."};
+            const message = {state: "success", message: "Password updated successfully"};
             sendResponse(message, {}, 200, resp);
 
         }else{

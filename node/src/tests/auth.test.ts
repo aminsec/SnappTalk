@@ -11,8 +11,14 @@ describe('Authentication Tests', () => {
     //Sample data for testing
     let sampleValidEmail = Date.now().toString() + "a" + "@example.com";
     let sampleValidPassword = "validPassword123_";
+    let sampleInvalidEmail = "invalidEmailFormat";
+    let sampleWeakPassword = "123";
 
-    describe("POST /auth/", () => {        
+    describe("POST /auth/", () => {
+         it("should return 400 for invalid email format and week password", async () => {
+
+         })
+        
         it("should create user with valid email and password", async () => {
             let requestBody = {
                 email: sampleValidEmail, // Unique email
