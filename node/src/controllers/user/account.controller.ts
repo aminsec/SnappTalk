@@ -20,11 +20,11 @@ export async function showUserInfo(req: Request, resp: Response) {
 export async function updateUserInfo(req: Request, resp: Response) {
     const { username, email, bio } = req.body;
     const { userInfo } = req;
-    let emailUpdated: Boolean | null = false;
-    let usernameUpdated: Boolean | null = false;
+    let emailUpdated: Boolean | null = true;
+    let usernameUpdated: Boolean | null = true;
     let bioUpdated: Boolean | null = false;
 
-    //Updating username if it was not equal to the current one
+    //Checking username
     if(username !== userInfo.username){
         //Checking if the username exists
         const [userExists, error] = await checkUserExistsByUsername(username);
@@ -38,22 +38,9 @@ export async function updateUserInfo(req: Request, resp: Response) {
             showError(error, resp);
             return;
         }
-
-        //Updating user info if everything was fine
-        const [usernameUpdatedResult, usernameUpdateError] = await updateUsername(userInfo.id, username);
-        if(usernameUpdateError){
-            showError(usernameUpdateError, resp);
-            return;
-        }
-
-        usernameUpdated = usernameUpdatedResult;
-
-    }else{
-        //If username is equal to the current one, then just set it to true
-        usernameUpdated = true;
     }
 
-    //Updating email if it was not equal to the current one
+    //Checking email
     if(email !== userInfo.email){
         //Checking if email exists
         const [emailExists, err] = await checkUserExistsByEmail(email);
@@ -67,8 +54,21 @@ export async function updateUserInfo(req: Request, resp: Response) {
             showError(error, resp);
             return;
         }
+    }
 
-        //Updating email
+    //Updating username if was not equal to the current one
+    if(username !== userInfo.username){
+        const [usernameUpdatedResult, usernameUpdateError] = await updateUsername(userInfo.id, username);
+        if(usernameUpdateError){
+            showError(usernameUpdateError, resp);
+            return;
+        }
+
+        usernameUpdated = usernameUpdatedResult;
+    }
+
+    //Updating email if was not equal to the current one
+    if(email !== userInfo.email){
         const [emailUpdatedResult, emailUpdateError] = await updateEmail(userInfo.id, email);
         if(emailUpdateError){
             showError(emailUpdateError, resp);
@@ -76,10 +76,6 @@ export async function updateUserInfo(req: Request, resp: Response) {
         }
 
         emailUpdated = emailUpdatedResult;
-
-    }else{
-        //If email is equal to the current one, then just set it to true
-        emailUpdated = true;
     }
 
     //Updating bio
@@ -93,6 +89,7 @@ export async function updateUserInfo(req: Request, resp: Response) {
 
     //Checking if everything was fine
     if(emailUpdated === true && usernameUpdated === true && bioUpdated === true){
+       
         //Adding user current session to dead_sessions and assigning new token
         const [revoked, err] = await revokeUserToken(req.cookies.token);
         if(err){
@@ -110,7 +107,12 @@ export async function updateUserInfo(req: Request, resp: Response) {
 
             //Creating new token
             if(newUserInfo){
-                const token = jwt.sign(newUserInfo, String(process.env.JWT_SECRET_KEY), {expiresIn: "1h"});
+                const [token, error] = await generateJWTToken(newUserInfo);
+                 if(error){
+                    showError(error, resp);
+                    return;
+                }
+
                 const message = {state: "success", message: "Profile updated."};
                 const responseHeaders = {"Set-Cookie": `token=${token}; path=/;`};
                 sendResponse(message, responseHeaders, 200, resp);
