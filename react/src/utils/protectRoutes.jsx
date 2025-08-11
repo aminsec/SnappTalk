@@ -6,7 +6,7 @@ import { userStateContext } from "../contexts/userState";
 export function CheckUserIsLogin() {
     const { userState } = useContext(userStateContext);
     if (userState === 1) {
-        return <Navigate to="/home" replace />;
+        return <Navigate to="/chats" replace />;
     }
 
     return <Outlet />;
