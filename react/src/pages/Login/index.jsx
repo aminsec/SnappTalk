@@ -62,7 +62,7 @@ function Login() {
           }, 300);
         } else {
           setUserState(1); //Marking user as login
-          navigate("/home");
+          navigate("/chats");
         }
       }
     }
@@ -120,7 +120,7 @@ function Login() {
 
       } else {
         setUserState(1); //Marking user as login
-        navigate("/home");
+        navigate("/chats");
       }
     }
   };

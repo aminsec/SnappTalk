@@ -35,7 +35,7 @@ function App() {
       <BrowserRouter>
         <Routes>
           <Route element={<CheckUserIsLogout />}>
-            <Route path="/home" element={<Home />} />
+            <Route path="/chats" element={<Home />} />
             <Route path="/settings/*" element={<Settings />}>
               <Route path="profile" element={<ProfileSection />} />
               <Route path="general" element={<GeneralSection />} />
