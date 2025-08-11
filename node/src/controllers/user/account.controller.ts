@@ -25,13 +25,6 @@ export async function updateUserInfo(req: Request, resp: Response) {
     let usernameUpdated: Boolean | null = false;
     let bioUpdated: Boolean | null = false;
 
-    //Preventing temp query to database if information was like before
-    if(email === userInfo.email && username === userInfo.username){
-        const message = {state: "success", message: "Profile updated."};
-        sendResponse(message, {}, 200, resp);
-        return;
-    }
-
     //Updating username if it was not equal to the current one
     if(username !== userInfo.username){
         //Checking if the username exists
