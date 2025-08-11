@@ -4,7 +4,6 @@ import { Response } from 'express';
 import { ProtectedUserInfo, RawUserInfo } from '../types/user.types';
 import * as fs from 'fs';
 import * as jwt from "jsonwebtoken";
-import { getUserInfoById } from '../services/account.services';
 const saltRounds = 10;
 
 //Function to send normall messages

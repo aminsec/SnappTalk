@@ -4,7 +4,6 @@ import { Request, Response } from "express";
 import {ErrorResponse } from "../../types/response.types";
 import { checkUserExistsByEmail } from "../../services/auth.services";
 import * as jwt from "jsonwebtoken";
-import { ProtectedUserInfo } from "../../types/user.types";
 
 export async function showUserInfo(req: Request, resp: Response) {
     const userid = req.userInfo.id;
