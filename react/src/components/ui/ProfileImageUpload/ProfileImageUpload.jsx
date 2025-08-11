@@ -1,6 +1,7 @@
 import { useRef, useState } from "react";
 import styles from "./ProfileImageUpload.module.css";
 import clsx from "clsx";
+import toast, { Toaster } from 'react-hot-toast';
 
 export default function ProfileImageUpload({
   currentImage,
@@ -13,19 +14,46 @@ export default function ProfileImageUpload({
   const fileRef = useRef();
   const [preview, setPreview] = useState(null);
 
-  const handleFileChange = (e) => {
+  const handleFileChange =  (e) => {
     const file = e.target.files[0];
     if (!file) return;
 
     const reader = new FileReader();
-    reader.onloadend = () => {
-      setPreview(reader.result);
+    reader.onloadend = async() => {
       onImageChange(file);
+
+      //Requesting to upload image
+      const requestBody = {
+        content: reader.result.split(",").pop() // removing data:image url
+      };
+
+      const request = await fetch("/api/v1/user/info/profile", {
+        method: "POST",
+        credentials: "include",
+        headers: {
+          "content-type": "application/json"
+        },
+
+        body: JSON.stringify(requestBody)
+      });
+
+      if(request.ok){
+        window.location.reload();
+      }
+      if(request.status === 413){
+        toast.error("File is too large. Maximum is 5MB");
+      }
+
+      if(!request.ok && request.status !== 413){
+        toast.error("Couldn't upload image");
+      }
     };
-    reader.readAsDataURL(file);
+    reader.readAsDataURL(file);    
   };
 
   return (
+    <>
+    <Toaster position="top-center" />
     <div
       className={clsx(styles.wrapper, className)}
       style={{
@@ -53,5 +81,6 @@ export default function ProfileImageUpload({
         className={styles.fileInput}
       />
     </div>
+    </>
   );
 }

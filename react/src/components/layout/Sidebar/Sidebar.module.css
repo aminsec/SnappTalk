@@ -17,6 +17,7 @@
 .logo {
   width: 32px;
   height: auto;
+  cursor: pointer;
 }
 
 .navItems {

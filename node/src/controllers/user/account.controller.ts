@@ -4,7 +4,6 @@ import { Request, Response } from "express";
 import {ErrorResponse } from "../../types/response.types";
 import { checkUserExistsByEmail } from "../../services/auth.services";
 import * as jwt from "jsonwebtoken";
-import { ProtectedUserInfo } from "../../types/user.types";
 
 export async function showUserInfo(req: Request, resp: Response) {
     const userid = req.userInfo.id;
@@ -24,13 +23,6 @@ export async function updateUserInfo(req: Request, resp: Response) {
     let emailUpdated: Boolean | null = false;
     let usernameUpdated: Boolean | null = false;
     let bioUpdated: Boolean | null = false;
-
-    //Preventing temp query to database if information was like before
-    if(email === userInfo.email && username === userInfo.username){
-        const message = {state: "success", message: "Profile updated."};
-        sendResponse(message, {}, 200, resp);
-        return;
-    }
 
     //Updating username if it was not equal to the current one
     if(username !== userInfo.username){

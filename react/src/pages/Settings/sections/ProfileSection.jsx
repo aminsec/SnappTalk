@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import styles from './ProfileSection.module.css';
 import { Input, Button, ProfileAvatar, ProfileImageUpload } from '@/components';
 import { ICONS } from '@/icons';
+import toast from 'react-hot-toast';
 
 export default function ProfileSection() {
   const [user, setUser] = useState({
@@ -16,6 +17,9 @@ export default function ProfileSection() {
 
   const [originalUser, setOriginalUser] = useState(null);
   const [editMode, setEditMode] = useState(false);
+  let [usernameValue, setUsernameValue] = useState();
+  let [emailValue, setEmailValue] = useState();
+  let [bioValue, setBioValue] = useState();
 
   useEffect(() => {
     fetch('/api/v1/user/info/', { credentials: 'include' })
@@ -31,20 +35,59 @@ export default function ProfileSection() {
             isOnline: data.userInfo.isOnline || false,
             profilePic: data.userInfo.profilePic || '',
           };
+
           setUser(userData);
+          setUsernameValue(userData.username);
+          setBioValue(userData.bio);
+          setEmailValue(userData.email);
           setOriginalUser(userData);
-        }
+        };
       });
   }, []);
 
-  const handleInputChange = (e) => {
+  const handleUsernameChange = (e) => {
     const { name, value } = e.target;
+    setUsernameValue(value);
     setUser(prev => ({ ...prev, [name]: value }));
   };
 
-  const handleSave = () => {
-    setOriginalUser(user);
-    setEditMode(false);
+  const handleEmailChange = (e) => {
+    const { name, value } = e.target;
+    setEmailValue(value);
+    setUser(prev => ({ ...prev, [name]: value }));
+  };
+
+  const handleBioChange = (e) => {
+    const { name, value } = e.target;
+    setUser(prev => ({ ...prev, [name]: value }));
+    setBioValue(value);
+  };
+
+  const handleSave = async () => {
+    //Requesting to update user public info
+    const reqeustBody = {
+      email: emailValue,
+      username: usernameValue,
+      bio: bioValue
+    };
+
+    const request = await fetch("/api/v1/user/info", {
+      method: "PUT",
+      credentials: "include",
+      headers: {
+        "content-type": "application/json"
+      },
+
+      body: JSON.stringify(reqeustBody)
+    });
+
+    if(request.ok){
+      window.location.reload();
+
+    }else{
+      const resp = await request.json();
+      toast.error(resp.message)
+    }
   };
 
   const handleCancel = () => {
@@ -63,7 +106,6 @@ export default function ProfileSection() {
           <ProfileImageUpload
             currentImage={user.profilePic}
             onImageChange={(file) => {
-              console.log(file);
             }}
             size={120}
             border
@@ -91,17 +133,7 @@ export default function ProfileSection() {
                 name="username"
                 id="username"
                 value={user.username}
-                onChange={handleInputChange}
-                fullWidth
-              />
-            </div>
-            <div className={styles.editInputCart}>
-              <label htmlFor="bio">Bio:</label>
-              <Input
-                name="bio"
-                id="bio"
-                value={user.bio}
-                onChange={handleInputChange}
+                onChange={handleUsernameChange}
                 fullWidth
               />
             </div>
@@ -111,10 +143,21 @@ export default function ProfileSection() {
                 name="email"
                 id="email"
                 value={user.email}
-                onChange={handleInputChange}
+                onChange={handleEmailChange}
                 fullWidth
               />
             </div>
+            <div className={styles.editInputCart}>
+              <label htmlFor="bio">Bio:</label>
+              <Input
+                name="bio"
+                id="bio"
+                value={user.bio}
+                onChange={handleBioChange}
+                fullWidth
+              />
+            </div>
+
             <div className={styles.actionRow}>
               <Button size="md" variant="outline" onClick={handleCancel} fullWidth>Cancel</Button>
               <Button size="md" onClick={handleSave} fullWidth>Save</Button>

@@ -10,12 +10,12 @@ function Sidebar() {
     <aside className={styles.sidebar}>
       {/* Top Logo */}
       <div className={styles.logoWrapper}>
-        <img src={Logo} alt="Logo" className={styles.logo} />
+        <img src={Logo} alt="Logo" className={styles.logo} onClick={() => {window.location.href = "/home"}} />
       </div>
 
       {/* Main Nav Items */}
       <nav className={styles.navItems}>
-        <SidebarItem to="/chats" icon={ICONS.chat} label="Chats" />
+        <SidebarItem to="/home" icon={ICONS.chat} label="Chats" />
       </nav>
 
       {/* Bottom Section */}
