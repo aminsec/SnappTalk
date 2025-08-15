@@ -3,7 +3,7 @@ import { NavLink } from 'react-router-dom';
 import Logo from '@/assets/images/MiniLogo.png';
 import { ProfileAvatar } from '@/components/';
 import SidebarItem from './SidebarItem';
-import { ICONS } from '@/icons';
+import { faCog , faComment} from '@fortawesome/free-solid-svg-icons';
 
 function Sidebar() {
   return (
@@ -15,7 +15,7 @@ function Sidebar() {
 
       {/* Main Nav Items */}
       <nav className={styles.navItems}>
-        <SidebarItem to="/chats" icon={ICONS.chat} label="Chats" />
+        <SidebarItem to="/chats" icon={faComment} label="Chats" />
       </nav>
 
       {/* Bottom Section */}
@@ -24,7 +24,7 @@ function Sidebar() {
           size={50}
           borderColor="var(--primary-color)"
         />
-        <SidebarItem to="/settings" icon={ICONS.setting} label="Settings" />
+        <SidebarItem to="/settings" icon={faCog} label="Settings" />
       </div>
     </aside>
   );

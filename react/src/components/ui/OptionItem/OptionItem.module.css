@@ -36,10 +36,10 @@
   background-color: var(--icon-bg);
 }
 
-.iconWrapper img {
-  width: 22px;
-  height: 22px;
-  object-fit: contain;
+.iconWrapper svg {
+  width: 20px;
+  height: 20px;
+  color: white;
 }
 
 .sm {

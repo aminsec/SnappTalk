@@ -1,4 +1,5 @@
 import { NavLink } from 'react-router-dom';
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import styles from './SidebarItem.module.css';
 
 function SidebarItem({ to, icon, label }) {
@@ -10,7 +11,7 @@ function SidebarItem({ to, icon, label }) {
       }
       title={label}
     >
-      <img src={icon} alt={`${label} Icon`} className={styles.icon} />
+      <FontAwesomeIcon icon={icon} className={styles.icon} />
     </NavLink>
   );
 }

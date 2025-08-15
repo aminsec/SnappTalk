@@ -1,7 +1,6 @@
 import { useEffect, useState } from 'react';
 import styles from './ProfileSection.module.css';
 import { Input, Button, ProfileAvatar, ProfileImageUpload } from '@/components';
-import { ICONS } from '@/icons';
 import toast from 'react-hot-toast';
 
 export default function ProfileSection() {
