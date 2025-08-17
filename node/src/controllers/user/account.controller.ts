@@ -3,7 +3,6 @@ import { showError, sendResponse, checkBcrypt, uploadFile, deleteFileFromUploads
 import { Request, Response } from "express";
 import {ErrorResponse } from "../../types/response.types";
 import { checkUserExistsByEmail } from "../../services/auth.services";
-import * as jwt from "jsonwebtoken";
 
 export async function showUserInfo(req: Request, resp: Response) {
     const userid = req.userInfo.id;

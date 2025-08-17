@@ -12,12 +12,27 @@ describe('Authentication Tests', () => {
     let sampleValidEmail = Date.now().toString() + "a" + "@example.com";
     let sampleValidPassword = "validPassword123_";
     let sampleInvalidEmail = "invalidEmailFormat";
-    let sampleWeakPassword = "123";
+    let sampleWeakPassword = "123_a";
 
     describe("POST /auth/", () => {
-         it("should return 400 for invalid email format and week password", async () => {
+         it("should return 400 for invalid email format and weak password", async () => {
+            let requestBody = {
+                email: sampleInvalidEmail, // Unique email
+                password: sampleWeakPassword
+            };
 
-         })
+            const response = await server 
+                .post('/auth/')
+                .send(JSON.stringify(requestBody))
+                .set('Content-Type', 'application/json');
+            
+            //Parsing the response
+            const resp = JSON.parse(response.text);
+
+            //Expectings
+            expect(response.status).to.equal(400);
+            expect(resp).to.have.property('state', 'failed');
+         });
         
         it("should create user with valid email and password", async () => {
             let requestBody = {
