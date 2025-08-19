@@ -15,7 +15,7 @@ describe('Authentication Tests', () => {
     let sampleWeakPassword = "123_a";
 
     describe("POST /auth/", () => {
-         it("should return 400 for invalid email format and weak password", async () => {
+        it("should return 400 for invalid email format and weak password", async () => {
             let requestBody = {
                 email: sampleInvalidEmail, // Unique email
                 password: sampleWeakPassword
@@ -32,7 +32,7 @@ describe('Authentication Tests', () => {
             //Expectings
             expect(response.status).to.equal(400);
             expect(resp).to.have.property('state', 'failed');
-         });
+        });
         
         it("should create user with valid email and password", async () => {
             let requestBody = {

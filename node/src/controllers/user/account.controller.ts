@@ -106,7 +106,7 @@ export async function updateUserInfo(req: Request, resp: Response) {
 
             //Creating new token
             if(newUserInfo){
-                const [token, error] = await generateJWTToken(newUserInfo);
+                const [token, error] = generateJWTToken(newUserInfo);
                  if(error){
                     showError(error, resp);
                     return;
@@ -209,7 +209,7 @@ export async function updateUserProfile(req: Request, resp: Response) {
 
                     if(userData){
                         userData.profilePic = "/statics/images/" + updateProfileResult; // Updating userInfo with new profile pic address
-                        const [newToken, error] = await generateJWTToken(userData);
+                        const [newToken, error] = generateJWTToken(userData);
                         if(error){
                             showError(error, resp);
                             return;
