@@ -45,4 +45,27 @@ describe('Account tests', async () => {
             expect(resp.userInfo).to.have.property('id');
         });
     });
+
+    describe("PUT /user/info", () => {
+        it("should update user info", async () => {
+            const requestBody = {
+                username: Date.now().toString() + "b", //unique username
+                email: sampleValidEmail,
+                bio: "This is a new bio."
+            };
+
+            const response = await server 
+                .put('/user/info')
+                .set('Cookie', `token=${sampleToken}`)
+                .send(JSON.stringify(requestBody))
+                .set('Content-Type', 'application/json');
+            
+            //Parsing the response
+            const resp = JSON.parse(response.text);
+
+            //Expectings
+            expect(response.status).to.equal(200);
+            expect(resp).to.have.property('state', 'success');
+        });
+    });
 }); 
