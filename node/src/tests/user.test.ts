@@ -46,6 +46,29 @@ describe('Account tests', async () => {
         });
     });
 
+    describe("PUT /user/info/password", () => {
+        it("should update user password", async () => {
+            const requestBody = {
+                old_password: sampleValidPassword,
+                new_password: sampleValidPassword + "New"
+            };
+
+            const response = await server 
+                .put('/user/info/password')
+                .set('Cookie', `token=${sampleToken}`)
+                .send(requestBody)
+                .set('Content-Type', 'application/json');
+
+            //Parsing the response
+            const resp = response.body
+
+            //Expectings
+            expect(response.status).to.equal(200);
+            expect(resp).to.have.property('state', 'success');
+        });
+    });
+
+    //This is must be last test because token will change
     describe("PUT /user/info", () => {
         it("should update user info", async () => {
             const requestBody = {

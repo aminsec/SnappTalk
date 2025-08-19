@@ -23,11 +23,10 @@ describe('Authentication Tests', () => {
 
             const response = await server 
                 .post('/auth/')
-                .send(JSON.stringify(requestBody))
+                .send(requestBody) // It stringifies object by itself  
                 .set('Content-Type', 'application/json');
-            
-            //Parsing the response
-            const resp = JSON.parse(response.text);
+
+            const resp = response.body; // dont need to parse JSON
 
             //Expectings
             expect(response.status).to.equal(400);
@@ -42,15 +41,14 @@ describe('Authentication Tests', () => {
 
             const response = await server 
                 .post('/auth/')
-                .send(JSON.stringify(requestBody))
+                .send(requestBody)
                 .set('Content-Type', 'application/json');
             
-            //Parsing the response
-            const resp = JSON.parse(response.text);
+            const resp = response.body;
 
             //Expectings
             expect(response.status).to.equal(200);
-            expect(response.headers['set-cookie'][0].startsWith("token=ey"));
+            expect(response.headers['set-cookie'][0]).to.match(/^token=ey/);
             expect(resp).to.have.property('state', 'success');
         });
 
