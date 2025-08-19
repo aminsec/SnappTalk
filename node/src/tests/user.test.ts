@@ -22,12 +22,12 @@ describe('Account tests', async () => {
 
     const response = await server 
         .post('/auth/')
-        .send(JSON.stringify(requestBody))
+        .send(requestBody)
         .set('Content-Type', 'application/json');
             
     //Parsing the response
     const sampleToken = response.headers['set-cookie'][0].split(';')[0].split('=')[1];
-    const sampleUserInfo = JSON.parse(response.text);
+    const sampleUserInfo = response.body;
 
     //Tests
     describe("GET /user/info", () => {
@@ -37,7 +37,7 @@ describe('Account tests', async () => {
                 .set('Cookie', `token=${sampleToken}`);
             
             //Parsing the response
-            const resp = JSON.parse(response.text);
+            const resp = response.body;
 
             //Expectings
             expect(response.status).to.equal(200);
@@ -80,11 +80,11 @@ describe('Account tests', async () => {
             const response = await server 
                 .put('/user/info')
                 .set('Cookie', `token=${sampleToken}`)
-                .send(JSON.stringify(requestBody))
+                .send(requestBody)
                 .set('Content-Type', 'application/json');
             
             //Parsing the response
-            const resp = JSON.parse(response.text);
+            const resp = response.body
 
             //Expectings
             expect(response.status).to.equal(200);
