@@ -13,6 +13,8 @@ describe('Account tests', async () => {
     let sampleValidPassword = "validPassword123_";
     let sampleInvalidEmail = "invalidEmailFormat";
     let sampleWeakPassword = "123_a";
+    let sampleTakenEmail = Date.now().toString() + "ThisIsTakenEmail" + "@example.com";
+    let sampleTakenUsername = "ThisIsTakenUsername";
     
     //Making a sample user info to test with it
     let requestBody = {
@@ -27,7 +29,6 @@ describe('Account tests', async () => {
             
     //Parsing the response
     let sampleToken = response.headers['set-cookie'][0].split(';')[0].split('=')[1];
-    const sampleUserInfo = response.body;
 
     //Tests
     describe("GET /user/info", () => {
@@ -47,6 +48,7 @@ describe('Account tests', async () => {
     });
 
     describe("PUT /user/info/password", () => {
+        //Happy path 
         it("should update user password", async () => {
             const requestBody = {
                 old_password: sampleValidPassword,
@@ -66,11 +68,50 @@ describe('Account tests', async () => {
             expect(response.status).to.equal(200);
             expect(resp).to.have.property('state', 'success');
         });
+
+        it("should not update password with incorrect old password", async () => {
+            const requestBody = {
+                old_password: Date.now().toString(), //as incorrect password
+                new_password: sampleValidEmail + "New"
+            };
+
+            const response = await server 
+                .put('/user/info/password')
+                .set('Cookie', `token=${sampleToken}`)
+                .send(requestBody)
+                .set('Content-Type', 'application/json');
+            
+            //Parsing the response
+            const resp = response.body;
+
+            //Expectings
+            expect(response.status).to.equal(400);
+            expect(resp).to.have.property('state', 'failed');
+        });
+
+        it("should not update password with weak new password", async () => {
+            const requestBody = {
+                old_password: sampleValidPassword,
+                new_password: sampleWeakPassword
+            };
+
+            const response = await server 
+                .put('/user/info/password')
+                .set('Cookie', `token=${sampleToken}`)
+                .send(requestBody)
+                .set('Content-Type', 'application/json');
+            
+            //Parsing the response
+            const resp = response.body;
+
+            //Expectings
+            expect(response.status).to.equal(400);
+            expect(resp).to.have.property('state', 'failed');
+        });
     });
 
-    //This is must be last test because token will change
     describe("PUT /user/info", () => {
-        it("should update user info", async () => {
+        it("should update user info with correct and acceptable information", async () => {
             const requestBody = {
                 username: Date.now().toString() + "b", //unique username
                 email: sampleValidEmail,
@@ -94,12 +135,16 @@ describe('Account tests', async () => {
             expect(response.status).to.equal(200);
             expect(resp).to.have.property('state', 'success');
         });
+
+        it("should not update username to a taken username", async () => {
+
+        });
     });
 
     describe("POST /user/info/profile", () => {
         it("should update user profile", async () => {
             const requestBody = {
-                content: "iVBORw0KGgoQ5IlyODP+z3L8b8vNkQzFsIRNJVMcEiOdM6zb7ewpYVKsAnGfMC0iEmJNiD8IeDJ/iFFKpiQkXu6PGnDzWLBmQAdiRx4nIAxiA4iDhDkR4Qo+LV0QxIYYrhB0uiCfHQexLsRL+HmBsQqfLeIpMYpYaH26mMVU8Oc5YllcaayHkux4pkL/dSafrdDHVAsz4xIhpkBsXiBIiIBYFWKHvOzYMIXP2MJMVsSQj1gSI83fHOIYvjDYX66PFaSLg2IU/sW5eUPzxbZkCtgRCnwgPzMuRF4frIXLkeUP54Jd4QuZ8UM6/Lyk8KG58PgBgfK5Y8/4wvhYhc4HUb5/jHwsThHlRCn8cVN+TrCUN4XYJa8gVjEWT8iHC1Kuj6eL8qPi5HnihVmc0Ch5PvhKEA5YIADQgQS2NDAFZAFBe19DH/wn7wkCHCAGGYAP7BXM0IhEWY8QHmNBIfgTIj7IGx7nL+vlgwLIfx1m5Ud7kC7rLZCNyAZPIM4FYSAH/pfIRgmHoyWAx5AR/CM6BzYuzDcHNmn/v+eH2O8MEzLhCiAgIDxyZGY6UkRGIHhtbG5zOnJkZj0iaHR0cDovL3d3dy53My5vcmcvMTk5OS8wMi8yMi1yZGYtc3ludGF4LW5zIyI+CiAgICAgIDxyZGY6RGVzY3JpcHRpb24gcmRmOmFib3V0PSIiCiAgICAgICAgICAgIHhtbG5zOmV4aWY9Imh0dHA6Ly9ucy5hZG9iZS5jb20vZXhpZi8xLjAvIgogICAgICAgICAgICB4bWxuczp0aWZmPSJodHRwOi8vbnMuYWRvYmUuY29tL3RpZmYvMS4wLyI+CiAgICAgICAgIDxleGlmOlVzZXJDb21tZW50PlNjcmVlbnNob3Q8L2V4aWY6VXNlckNvbW1lbnQ+CiAgICAgICAgIDxleGlmOlBpeGVsWERpbWVuc2lvbj4yODgwPC9leGlmOlBpeGVsWERpbWVuc2lvbj4KICAgICAgICAgPGV4aWY6UGl4ZWxZRGltZW5zaW9uPjE4MDA8L2V4aWY6UGl4ZWxZRGltZW5zaW9uPgogICAgICAgICA8dGlmZjpSZXNvbHV0aW9uVW5pdD4yPC90aWZmOlJlc29sdXRpb25Vbml0PgogICAgICAgICA8dGlmZjpYUmVzb2x1dGlvbj4xNDQvMTwvdGlmZjpYUmVzb2x1dGlvbj4KICAgICAgICAgPHRpZmY6WVJlc29sdXRpb24+MTQ0LzE8L3RpZmY6WVJlc29sdXRpb24+CiAgICAgICAgIDx0aWZmOk9yaWVudGF0aW9uPjE8L3RpZmY6T3JpZW50YXRpb24+CiAgICAgIDwvcmRmOkRlc2NyaXB0aW9uPgogICA8L3JkZjpSREY+CjwveDp4bXBtZXRhPgqLxgFpAAAAHElEQVQYGWPk5uP/z4AHMOGRA0uNKoCEEOXhAADYLwE/Q181RAAAAABJRU5ErkJgggo="
+                content: "iVBORw0KGgoQ5IlyODP+z3L8b8vNkQzFsIRNJVMcEiOdM6ThHlRCn8cVN+TrCUN4XYJa8gVjEWT8iHC1Kuj6eL8qPi5HnihVmc0Ch5PvhKEA5YIADQgQS2NDAFZAFBe19DH/wn7wkCHCAGGYAP7BXM0IhEWY8QHmNBIfgTIj7IGx7nL+vlgwLIfx1m5Ud7kC7rLZCNyAZPIM4FYSAH/pfIRgmHoyWAx5AR/CM6BzYuzDcHNmn/v+eH2O8MEzLhCiAgIDxyZGY6UkRGIHhtbG5zOnJkZj0iaHR0cDovL3d3dy53My5vcmcvMTk5OS8wMi8yMi1yZGYtc3ludGF4LW5zIyI+CiAgICAgIDxyZGY6RGVzY3JpcHRpb24gcmRmOmFib3V0PSIiCiAgICAgICAgICAgIHhtbG5zOmV4aWY9Imh0dHA6Ly9ucy5hZG9iZS5jb20vZXhpZi8xLjAvIgogICAgICAgICAgICB4bWxuczp0aWZmPSJodHRwOi8vbnMuYWRvYmUuY29tL3RpZmYvMS4wLyI+CiAgICAgICAgIDxleGlmOlVzZXJDb21tZW50PlNjcmVlbnNob3Q8L2V4aWY6VXNlckNvbW1lbnQ+CiAgICAgICAgIDxleGlmOlBpeGVsWERpbWVuc2lvbj4yODgwPC9leGlmOlBpeGVsWERpbWVuc2lvbj4KICAgICAgICAgPGV4aWY6UGl4ZWxZRGltZW5zaW9uPjE4MDA8L2V4aWY6UGl4ZWxZRGltZW5zaW9uPgogICAgICAgICA8dGlmZjpSZXNvbHV0aW9uVW5pdD4yPC90aWZmOlJlc29sdXRpb25Vbml0PgogICAgICAgICA8dGlmZjpYUmVzb2x1dGlvbj4xNDQvMTwvdGlmZjpYUmVzb2x1dGlvbj4KICAgICAgICAgPHRpZmY6WVJlc29sdXRpb24+MTQ0LzE8L3RpZmY6WVJlc29sdXRpb24+CiAgICAgICAgIDx0aWZmOk9yaWVudGF0aW9uPjE8L3RpZmY6T3JpZW50YXRpb24+CiAgICAgIDwvcmRmOkRlc2NyaXB0aW9uPgogICA8L3JkZjpSREY+CjwveDp4bXBtZXRhPgqLxgFpAAAAHElEQVQYGWPk5uP/z4AHMOGRA0uNKoCEEOXhAADYLwE/Q181RAAAAABJRU5ErkJgggo="
             };
 
             const response = await server 
@@ -110,6 +155,10 @@ describe('Account tests', async () => {
 
             //Parsing the response
             const resp = response.body
+
+            //Saving new token for other tests
+            const newToken = response.headers['set-cookie'][0].split(';')[0].split('=')[1];
+            sampleToken = newToken;
 
             //Expectings
             expect(response.status).to.equal(200);
