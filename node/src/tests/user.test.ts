@@ -62,7 +62,10 @@ describe('Account tests', async () => {
                 .set('Content-Type', 'application/json');
 
             //Parsing the response
-            const resp = response.body
+            const resp = response.body;
+
+            //Updating password with new one for other test
+            sampleValidPassword = requestBody.new_password;
 
             //Expectings
             expect(response.status).to.equal(200);
@@ -86,10 +89,10 @@ describe('Account tests', async () => {
 
             //Expectings
             expect(response.status).to.equal(400);
-            expect(resp).to.have.property('state', 'failed');
+            expect(resp).to.have.property('type', 'input_error');
         });
 
-        it("should not update password with weak new password", async () => {
+        it("should not update password with new weak password", async () => {
             const requestBody = {
                 old_password: sampleValidPassword,
                 new_password: sampleWeakPassword
@@ -106,7 +109,68 @@ describe('Account tests', async () => {
 
             //Expectings
             expect(response.status).to.equal(400);
-            expect(resp).to.have.property('state', 'failed');
+            expect(resp).to.have.property('type', 'input_error');
+        });
+
+        it("should not accept password with more than 24 character", async () => {
+            const requestBody = {
+                old_password: sampleValidPassword,
+                new_password: "loooooooooooooooooooooooooooooongPassword"
+            };
+
+            const response = await server 
+                .put('/user/info/password')
+                .set('Cookie', `token=${sampleToken}`)
+                .send(requestBody)
+                .set('Content-Type', 'application/json');
+            
+            //Parsing the response
+            const resp = response.body;
+
+            //Expectings
+            expect(response.status).to.equal(400);
+            expect(resp).to.have.property('type', 'input_error');            
+        });
+
+        it("should not accept password with less than 6 character", async () => {
+            const requestBody = {
+                old_password: sampleValidPassword,
+                new_password: "123" //as short pass
+            };
+
+            const response = await server 
+                .put('/user/info/password')
+                .set('Cookie', `token=${sampleToken}`)
+                .send(requestBody)
+                .set('Content-Type', 'application/json');
+            
+            //Parsing the response
+            const resp = response.body;
+
+            //Expectings
+            expect(response.status).to.equal(400);
+            expect(resp).to.have.property('type', 'input_error');            
+        });
+
+        it("should not accept empty password", async () => {
+            const requestBody = {
+                old_password: "",
+                new_password: "" //as short pass
+            };
+
+            const response = await server 
+                .put('/user/info/password')
+                .set('Cookie', `token=${sampleToken}`)
+                .send(requestBody)
+                .set('Content-Type', 'application/json');
+            
+            //Parsing the response
+            const resp = response.body;
+            console.log(resp)
+
+            //Expectings
+            expect(response.status).to.equal(400);
+            expect(resp).to.have.property('type', 'input_error');  
         });
     });
 
