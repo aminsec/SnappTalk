@@ -20,6 +20,35 @@ html, body {
 }
 
 /* ———————————————————————————————————————————————————————————————
+  Scrollbar style
+—————————————————————————————————————————————————————————————— */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background-color: var(--icon-color); 
+  border-radius: 4px;
+  transition: opacity 0.3s ease;
+  opacity: 0;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background-color: var(--btn-hover);
+}
+
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--icon-color) transparent;
+  scroll-margin: 20px;
+}
+
+/* ———————————————————————————————————————————————————————————————
    Animations & Transitions
 —————————————————————————————————————————————————————————————— */
 .form-fade {
