@@ -1,0 +1,14 @@
+.chatsPageContainer {
+    width: 100vw;
+    height: 100vh;
+    display: flex;
+    flex-direction: row;
+    flex-wrap: nowrap;
+    align-items: stretch;
+    overflow: hidden;
+}
+
+.sidebar {
+    flex: 0 0 80px;
+    height: 100vh;
+}

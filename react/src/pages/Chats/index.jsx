@@ -3,8 +3,12 @@ import { Sidebar, Input, Button, ProfileAvatar } from '@/components';
 
 function ChatPage() {
     return (
-        <div className={styles.noChatSelected}>
-            <h2>Select a chat to start messaging</h2>
+        <div className={styles.chatsPageContainer}>
+            <Sidebar className={styles.sidebar} />
+
+            <div className={styles.noChatSelected}>
+                <h2>Select a chat to start messaging</h2>
+            </div>
         </div>
     );
 }
