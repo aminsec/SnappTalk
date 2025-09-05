@@ -1,11 +1,8 @@
 import { useState, navigate } from 'react';
-
-import styles from './Chat.module.css';
-import { Sidebar, Input, Button, ProfileAvatar } from '@/components';
-
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faSearch, faPaperPlane, faCheckDouble, faEllipsisVertical } from '@fortawesome/free-solid-svg-icons';
-
+import styles from './Chat.module.css';
+import { Sidebar, Input, Button, ProfileAvatar } from '@/components';
 import defaultAvatar from '@/assets/images/avatar.png';
 
 // Fake chat data
@@ -30,7 +27,7 @@ const FAKE_CHATS = Array(3).fill(null).map((_, i) => ({
             sender: Math.random() > 0.5 ? 'me' : 'them',
             text: `This is message ${j + 1} in chat ${i + 1}`,
             timestamp: date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-            _fullTimestamp: date 
+            _fullTimestamp: date
         };
     })
 }));
@@ -38,6 +35,8 @@ const FAKE_CHATS = Array(3).fill(null).map((_, i) => ({
 function ChatPage() {
     const [searchQuery, setSearchQuery] = useState('');
     const [selectedChat, setSelectedChat] = useState(null);
+    const [messageInput, setMessageInput] = useState('');
+    const [selectedFile, setSelectedFile] = useState(null);
 
     const filteredChats = FAKE_CHATS.filter(chat =>
         chat.username.toLowerCase().includes(searchQuery.toLowerCase())
@@ -98,9 +97,52 @@ function ChatPage() {
                 </div>
             </aside>
 
-            <div className={styles.noChatSelected}>
-                <h2>Select a chat to start messaging</h2>
-            </div>
+            <main className={styles.chatMain}>
+                {selectedChat ? (
+                    <>
+                        <div className={styles.chatHeader}>
+                            <div className={styles.UserStatus}>
+                                <ProfileAvatar size="md" alt={selectedChat.username} />
+                                <div>
+                                    <h2>{selectedChat.username}</h2>
+                                    <p className={styles.onlineStatus}>Online</p>
+                                </div>
+                            </div>
+
+                            <FontAwesomeIcon icon={faEllipsisVertical} size={24} />
+                        </div>
+
+                        <div className={styles.messagesContainer}>
+                            <div className={styles.messagesWrapper}>
+                                {selectedChat.messages.map(message => (
+                                    <div
+                                        key={message.id}
+                                        className={`${styles.message} ${message.sender === 'me' ? styles.sent : styles.received}`}
+                                    >
+                                        <p>{message.text}</p>
+                                        <span className={styles.timestamp}>{message.timestamp}</span>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+
+                        <div className={styles.inputBar}>
+                            <Input
+                                placeholder="Type a message..."
+                                value={messageInput}
+                                fullWidth
+                                onChange={(e) => setMessageInput(e.target.value)}
+                                className={styles.messageInput}
+                            />
+                            <Button><FontAwesomeIcon icon={faPaperPlane} /></Button>
+                        </div>
+                    </>
+                ) : (
+                    <div className={styles.noChatSelected}>
+                        <h2>Select a chat to start messaging</h2>
+                    </div>
+                )}
+            </main>
         </div>
     );
 }
