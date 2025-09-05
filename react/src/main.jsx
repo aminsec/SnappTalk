@@ -3,7 +3,7 @@ import ReactDOM from 'react-dom/client';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 
 import Login from './pages/Login';
-import Home from './pages/Home';
+import Chats from './pages/Chats';
 import NotFound from './pages/NotFound';
 import Settings from './pages/Settings';
 import ProfileSection from './pages/Settings/sections/ProfileSection';
@@ -35,7 +35,7 @@ function App() {
       <BrowserRouter>
         <Routes>
           <Route element={<CheckUserIsLogout />}>
-            <Route path="/chats" element={<Home />} />
+            <Route path="/chats" element={<Chats />} />
             <Route path="/settings/*" element={<Settings />}>
               <Route path="profile" element={<ProfileSection />} />
               <Route path="general" element={<GeneralSection />} />
