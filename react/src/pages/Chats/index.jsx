@@ -14,17 +14,25 @@ const FAKE_CHATS = Array(3).fill(null).map((_, i) => ({
     username: `User ${i + 1}`,
     avatar: defaultAvatar,
     notificationCount: Math.floor(Math.random() * 5),
-    lastMessage: {
-        text: `Last message from chat ${i + 1}...`,
-        seen: Math.random() > 0.5,
-        timestamp: new Date(Date.now() - Math.random() * 10000000).toLocaleTimeString()
-    },
-    messages: Array(30).fill(null).map((_, j) => ({
-        id: j,
-        sender: Math.random() > 0.5 ? 'me' : 'them',
-        text: `This is message ${j + 1} in chat ${i + 1}`,
-        timestamp: new Date(Date.now() - Math.random() * 10000000).toLocaleTimeString()
-    }))
+    lastMessage: (() => {
+        const date = new Date(Date.now() - Math.random() * 10000000);
+        return {
+            text: `Last message from chat ${i + 1}...`,
+            seen: Math.random() > 0.5,
+            timestamp: date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+            _fullTimestamp: date
+        };
+    })(),
+    messages: Array(30).fill(null).map((_, j) => {
+        const date = new Date(Date.now() - Math.random() * 10000000);
+        return {
+            id: j,
+            sender: Math.random() > 0.5 ? 'me' : 'them',
+            text: `This is message ${j + 1} in chat ${i + 1}`,
+            timestamp: date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+            _fullTimestamp: date 
+        };
+    })
 }));
 
 function ChatPage() {
