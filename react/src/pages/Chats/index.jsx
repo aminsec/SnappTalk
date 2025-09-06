@@ -1,10 +1,11 @@
 import { useState, navigate, useRef, useEffect } from 'react';
+import styles from './Chat.module.css';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faSearch, faPaperPlane, faCheckDouble, faEllipsisVertical, faTimes } from '@fortawesome/free-solid-svg-icons';
-import { faFile } from '@fortawesome/free-regular-svg-icons';
-import styles from './Chat.module.css';
+import { faFile , faFaceSmile } from '@fortawesome/free-regular-svg-icons';
 import { Sidebar, Input, Button, ProfileAvatar } from '@/components';
 import defaultAvatar from '@/assets/images/avatar.png';
+import EmojiPicker from 'emoji-picker-react';
 
 // Fake chat data
 const FAKE_CHATS = Array(3).fill(null).map((_, i) => ({
@@ -42,6 +43,7 @@ function ChatPage() {
     const [isUploading, setIsUploading] = useState(false);
     const [filePreview, setFilePreview] = useState(null);
     const [cancelUpload, setCancelUpload] = useState(false);
+    const [isEmojiPickerOpen, setIsEmojiPickerOpen] = useState(false);
 
     const filteredChats = FAKE_CHATS.filter(chat =>
         chat.username.toLowerCase().includes(searchQuery.toLowerCase())
@@ -282,6 +284,21 @@ function ChatPage() {
                                 onChange={(e) => setMessageInput(e.target.value)}
                                 className={styles.messageInput}
                             />
+                            <button 
+                                className={styles.emojiButton}
+                                onMouseEnter={() => setIsEmojiPickerOpen(true)}
+                                onMouseLeave={() => setIsEmojiPickerOpen(false)}
+                            >
+                                <FontAwesomeIcon icon={faFaceSmile} />
+                                <EmojiPicker 
+                                    className={styles.emojiPicker} 
+                                    open={isEmojiPickerOpen} 
+                                    theme='auto'
+                                    onEmojiClick={(emojiData) => {
+                                        setMessageInput(prev => prev + emojiData.emoji);
+                                    }}
+                                />
+                            </button>
                             <Button><FontAwesomeIcon icon={faPaperPlane} /></Button>
                         </div>
                     </>

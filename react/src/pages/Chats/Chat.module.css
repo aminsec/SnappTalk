@@ -6,6 +6,7 @@
     flex-wrap: nowrap;
     align-items: stretch;
     overflow: hidden;
+    cursor: default;
 }
 
 .sidebar {
@@ -221,12 +222,12 @@
 .inputBar {
     display: flex;
     align-items: center;
-    padding: 5px 16px;
+    padding: 6px 16px 8px 16px;
     background-color: var(--input-bg);
     border-top: 1px solid var(--input-border);
 }
 
-.messageInput input{
+.messageInput input {
     border: none !important;
     border-color: none;
 }
@@ -238,7 +239,7 @@
     cursor: pointer;
 }
 
-.inputBar .fileUploadIcon:hover{
+.inputBar .fileUploadIcon:hover {
     color: var(--text-main);
     transition: color 0.6s ease;
 }
@@ -327,6 +328,37 @@
 
 .cancelUpload:hover {
     background: var(--error-dark);
+}
+
+/* Emoji List Styles */
+.inputBar .emojiButton {
+    height: 46px;
+    font-size: 15px;
+    padding: 0 1.2rem;
+    transition: color 0.3s ease;
+    background: none;
+    color: var(--text-muted);
+    border: none;
+    font-size: 24px;
+    cursor: pointer;
+}
+
+.inputBar .emojiButton:hover {
+    color: var(--text-main);
+    transition: color 0.6s ease;
+    background: none;
+}
+
+.inputBar .emojiButton .emojiPicker {
+    position: absolute;
+    bottom: 60px;
+    right: 20px;
+    z-index: 1000;
+    display: block;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    overflow-y: auto;
+    transition: opacity 0.3s ease, visibility 0.3s ease;
+    border-radius: 8px;
 }
 
 @media (max-width: 768px) {
