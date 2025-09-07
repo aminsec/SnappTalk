@@ -1,7 +1,13 @@
-function Home(){
-    return(
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+import { faUser, faCog } from '@fortawesome/free-solid-svg-icons';
+
+
+function Home() {
+    return (
         <>
-        <h1>Welcome home </h1>
+        Hello
+        <FontAwesomeIcon icon={faUser} size="lg" color="#fff"/>
+        <FontAwesomeIcon icon={faCog} size="lg"/>
         </>
     );
 };

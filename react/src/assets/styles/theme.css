@@ -15,6 +15,11 @@
     --buble-sent: #2D90E4;
     --bubble-received: #2A2D2F;
 
+    --notification-badge: #2D90E4;
+
+    --online-color: #00af75;
+    --offline-color: #9BA1AC;
+
     --text-main: #F5F6FA;
     --text-sub: #a1a1a1;
     --text-muted: #9BA1AC;

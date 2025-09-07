@@ -1,15 +1,15 @@
-import { ICONS } from "@/icons";
+import { faUser, faCog } from '@fortawesome/free-solid-svg-icons';
 
 export const settingsOptions = [
   {
     label: "Profile",
-    icon: ICONS.userName,
+    icon: faUser,
     iconBg: "#fd295b",
     path: "/settings/profile",
   },
   {
     label: "General",
-    icon: ICONS.setting,
+    icon: faCog,
     iconBg: "#898a8c",
     path: "/settings/general",
   },

@@ -3,7 +3,8 @@ import toast, { Toaster } from 'react-hot-toast';
 import { userStateContext } from '../../contexts/userState';
 import logo from '../../assets/images/logo.png';
 import sliderImage from '../../assets/images/Slider.png';
-import { ICONS } from '../../icons';
+import { faUser, faEnvelope } from '@fortawesome/free-regular-svg-icons';
+import { faLock } from '@fortawesome/free-solid-svg-icons';
 import { useNavigate } from 'react-router-dom';
 import styles from './Login.module.css';
 import { Button, Input } from '../../components';
@@ -146,11 +147,12 @@ function Login() {
                   name="email"
                   id="email"
                   placeholder="Email"
-                  icon={ICONS.email}
+                  icon={faEnvelope}
                   value={emailState}
                   onChange={(e) => setEmailState(e.target.value)}
                   size="md"
                   fullWidth
+                  iconColor="var(--icon-color)"
                 />
 
                 <Input
@@ -158,11 +160,12 @@ function Login() {
                   name="password"
                   id="password"
                   placeholder="Password"
-                  icon={ICONS.password}
+                  icon={faLock}
                   value={passwordState}
                   onChange={(e) => setPasswordState(e.target.value)}
                   size="md"
                   fullWidth
+                  iconColor="var(--icon-color)"
                 />
 
                 <p className='Error-message' >{errorMessage}</p>
@@ -185,12 +188,13 @@ function Login() {
                   name='username'
                   id='username'
                   placeholder='Username'
-                  icon={ICONS.userName}
+                  icon={faUser}
                   autoFocus
                   size='md'
                   fullWidth
                   error={errorMessage}
                   className={`slide-in`}
+                  iconColor="var(--icon-color)"
                 />
                 <p className='Error-message'>{errorMessage}</p>
                 <Button

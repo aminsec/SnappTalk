@@ -1,10 +1,11 @@
 import clsx from 'clsx';
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import styles from './OptionItem.module.css';
 
 function OptionItem({
   icon,
   iconColor = 'var(--icon-color)',
-  iconBg = 'transparent',
+  iconBg = 'var(--bg-cart)',
   iconPosition = 'left',
   label,
   description = '',
@@ -32,7 +33,7 @@ function OptionItem({
     >
       {icon && iconPosition === 'left' && (
         <span className={styles.iconWrapper} style={iconStyles}>
-          <img src={icon} alt="icon" />
+          <FontAwesomeIcon icon={icon} />
         </span>
       )}
 
@@ -43,7 +44,7 @@ function OptionItem({
 
       {icon && iconPosition === 'right' && (
         <span className={styles.iconWrapper} style={iconStyles}>
-          <img src={icon} alt="icon" />
+          <FontAwesomeIcon icon={icon} />
         </span>
       )}
     </div>

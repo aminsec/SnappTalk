@@ -1,5 +1,6 @@
 import styles from './Input.module.css';
 import clsx from 'clsx';
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 
 function Input({
   icon = null,
@@ -24,7 +25,7 @@ function Input({
       )}>
         {icon && (
           <span className={styles.icon}>
-            <img src={icon} alt="icon" />
+            <FontAwesomeIcon icon={icon} />
           </span>
         )}
         <input

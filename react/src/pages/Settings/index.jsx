@@ -1,7 +1,7 @@
 import { Outlet, useNavigate, useLocation } from "react-router-dom";
 import { Sidebar, Input, UserCard, OptionItem } from "@/components";
 import styles from './Settings.module.css';
-import { ICONS } from '@/icons';
+import { faUser, faCog, faSearch } from '@fortawesome/free-solid-svg-icons';
 
 function Settings() {
   const navigate = useNavigate();
@@ -11,13 +11,13 @@ function Settings() {
   const settingsOptions = [
     {
       label: "Profile",
-      icon: ICONS.userName,
+      icon: faUser,
       iconBg: "#fd295b",
       path: "/settings/profile"
     },
     {
       label: "General",
-      icon: ICONS.setting,
+      icon: faCog,
       iconBg: "#898a8c",
       path: "/settings/general"
     },
@@ -28,7 +28,7 @@ function Settings() {
       <Sidebar className={styles.sidebar}/>
 
       <aside className={styles.settingsSidebar}>
-        <Input type="text" name="text" id="search" placeholder="Search..." icon={ICONS.search} size="lg" fullWidth className="mb-3"/>
+        <Input type="text" name="text" id="search" placeholder="Search..." icon={faSearch} size="lg" fullWidth className="mb-3"/>
 
         <UserCard fullWidth className="mb-4"/>
 
