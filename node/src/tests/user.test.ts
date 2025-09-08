@@ -259,6 +259,27 @@ describe('Account tests', async () => {
             expect(resp).to.have.property('state', 'failed');
             expect(resp).to.have.property('message', 'This email already exists');
         });
+
+        it("should not update email to an invalid email", async () => {
+            const requestBody = {
+                username: Date.now().toString(), //A valid username
+                email: sampleInvalidEmail,
+                bio: "This is a new bio."
+            };
+
+            const response = await server 
+                .put('/user/info')
+                .set('Cookie', `token=${sampleToken}`)
+                .send(requestBody)
+                .set('Content-Type', 'application/json');
+
+            //Parsing the response
+            const resp = response.body;
+
+            expect(response.status).to.equal(400);
+            expect(resp).to.have.property('state', 'failed');
+            expect(resp).to.have.property('message', 'Invalid email address.');
+        });
     });
 
     describe("POST /user/info/profile", () => {
