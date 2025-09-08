@@ -286,5 +286,16 @@ describe('Account tests', async () => {
         });
     });
 
-    //TODO: clean up the database 
+    after(async () => {
+        //Cleaning up the database after tests
+        const usersCollection = await getUsersCollection();
+        const deleteResult = await usersCollection.deleteMany({
+            email: {
+                $in: [sampleValidEmail, sampleTakenEmail]
+            }
+        });
+
+        //Expectings
+        expect(deleteResult.acknowledged).to.equal(true);
+    });
 }); 
