@@ -8,27 +8,44 @@ import { after } from "node:test";
 const server = request(app);
 
 describe('Account tests', async () => {
-    //Sample data for testing
+    //Preparing sample data for testing
     let sampleValidEmail = Date.now().toString() + "a" + "@example.com";
     let sampleValidPassword = "validPassword123_";
     let sampleInvalidEmail = "invalidEmailFormat";
     let sampleWeakPassword = "123_a";
     let sampleTakenEmail = Date.now().toString() + "ThisIsTakenEmail" + "@example.com";
-    let sampleTakenUsername = "ThisIsTakenUsername";
+    let sampleTakenUsername = "";
     
-    //Making a sample user info to test with it
+    //Main user's info to use in tests
     let requestBody = {
         email: sampleValidEmail, // Unique email
         password: sampleValidPassword
     };
 
-    const response = await server 
-        .post('/auth/')
-        .send(requestBody)
-        .set('Content-Type', 'application/json');
-            
-    //Parsing the response
-    let sampleToken = response.headers['set-cookie'][0].split(';')[0].split('=')[1];
+    //Thirdanry user's info
+    let secondUserRequestBody = {
+        email: sampleTakenEmail,
+        password: sampleValidPassword
+    };
+
+    //Creating main user
+    const firstResponse = await server
+    .post('/auth/')
+    .send(requestBody)
+    .set('Content-Type', 'application/json');
+
+    //Creating thirdanry user
+    const secondResponse = await server
+    .post('/auth/')
+    .send(secondUserRequestBody)
+    .set('Content-Type', 'application/json');
+
+    //Parsing the response to take token
+    let sampleToken = firstResponse.headers['set-cookie'][0].split(';')[0].split('=')[1];
+    let sampleSecondToken = secondResponse.headers['set-cookie'][0].split(';')[0].split('=')[1];
+
+    const thirdanryUserInfo = await server.get('/user/info').set("cookie", `token=${sampleSecondToken}`); // Getting thirdanry user info
+    sampleTakenUsername = thirdanryUserInfo.body.userInfo.username; // Assigning as taken username
 
     //Tests
     describe("GET /user/info", () => {
@@ -166,7 +183,6 @@ describe('Account tests', async () => {
             
             //Parsing the response
             const resp = response.body;
-            console.log(resp)
 
             //Expectings
             expect(response.status).to.equal(400);
@@ -189,7 +205,7 @@ describe('Account tests', async () => {
                 .set('Content-Type', 'application/json');
             
             //Parsing the response
-            const resp = response.body
+            const resp = response.body;
 
             //Saving new token for other tests
             const newToken = response.headers['set-cookie'][0].split(';')[0].split('=')[1];
@@ -201,7 +217,47 @@ describe('Account tests', async () => {
         });
 
         it("should not update username to a taken username", async () => {
+            const requestBody = {
+                username: sampleTakenUsername, //taken username
+                email: sampleValidEmail,
+                bio: "This is a new bio."
+            };
 
+            const response = await server 
+                .put('/user/info')
+                .set('Cookie', `token=${sampleToken}`)
+                .send(requestBody)
+                .set('Content-Type', 'application/json');
+            
+            //Parsing the response
+            const resp = response.body;
+
+            //Expectings
+            expect(response.status).to.equal(400);
+            expect(resp).to.have.property('state', 'failed');
+            expect(resp).to.have.property('message', 'This username already exists');
+        });
+
+        it("should not update email to a taken email", async () => {
+            const requestBody = {
+                username: Date.now().toString(), //A valid username
+                email: sampleTakenEmail,
+                bio: "This is a new bio."
+            };
+
+            const response = await server 
+                .put('/user/info')
+                .set('Cookie', `token=${sampleToken}`)
+                .send(requestBody)
+                .set('Content-Type', 'application/json');
+
+            //Parsing the response
+            const resp = response.body;
+
+            //Expectings
+            expect(response.status).to.equal(400);
+            expect(resp).to.have.property('state', 'failed');
+            expect(resp).to.have.property('message', 'This email already exists');
         });
     });
 
@@ -229,4 +285,6 @@ describe('Account tests', async () => {
             expect(resp).to.have.property('state', 'success');
         });
     });
+
+    //TODO: clean up the database 
 }); 
