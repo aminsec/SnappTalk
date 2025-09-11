@@ -7,6 +7,16 @@ import { after } from "node:test";
 //Creating a server instance for testing. This allows us to use the app instance in our tests
 const server = request(app);
 
+// Helper to safely extract the auth token from Set-Cookie header
+function extractTokenFromResponse(response: any): string {
+    const setCookie: string[] = response?.headers?.['set-cookie'] || [];
+    const tokenCookie = setCookie.find((c: string) => c.startsWith('token='));
+    if (!tokenCookie) {
+        throw new Error('Missing token cookie in response');
+    }
+    return tokenCookie.split(';')[0].split('=')[1];
+};
+
 describe('Account tests', async () => {
     //Preparing sample data for testing
     let sampleValidEmail = Date.now().toString() + "a" + "@example.com";
@@ -41,8 +51,8 @@ describe('Account tests', async () => {
     .set('Content-Type', 'application/json');
 
     //Parsing the response to take token
-    let sampleToken = firstResponse.headers['set-cookie'][0].split(';')[0].split('=')[1];
-    let sampleSecondToken = secondResponse.headers['set-cookie'][0].split(';')[0].split('=')[1];
+    let sampleToken = extractTokenFromResponse(firstResponse);
+    let sampleSecondToken = extractTokenFromResponse(secondResponse);
 
     const thirdanryUserInfo = await server.get('/user/info').set("cookie", `token=${sampleSecondToken}`); // Getting thirdanry user info
     sampleTakenUsername = thirdanryUserInfo.body.userInfo.username; // Assigning as taken username
@@ -208,7 +218,7 @@ describe('Account tests', async () => {
             const resp = response.body;
 
             //Saving new token for other tests
-            const newToken = response.headers['set-cookie'][0].split(';')[0].split('=')[1];
+            const newToken = extractTokenFromResponse(response);
             sampleToken = newToken;
 
             //Expectings
@@ -285,7 +295,7 @@ describe('Account tests', async () => {
     describe("POST /user/info/profile", () => {
         it("should update user profile", async () => {
             const requestBody = {
-                content: "iVBORw0KGgoQ5IlyODP+z3L8b8vNkQzFsIRNJVMcEiOdM6ThHlRCn8cVN+TrCUN4XYJa8gVjEWT8iHC1Kuj6eL8qPi5HnihVmc0Ch5PvhKEA5YIADQgQS2NDAFZAFBe19DH/wn7wkCHCAGGYAP7BXM0IhEWY8QHmNBIfgTIj7IGx7nL+vlgwLIfx1m5Ud7kC7rLZCNyAZPIM4FYSAH/pfIRgmHoyWAx5AR/CM6BzYuzDcHNmn/v+eH2O8MEzLhCiAgIDxyZGY6UkRGIHhtbG5zOnJkZj0iaHR0cDovL3d3dy53My5vcmcvMTk5OS8wMi8yMi1yZGYtc3ludGF4LW5zIyI+CiAgICAgIDxyZGY6RGVzY3JpcHRpb24gcmRmOmFib3V0PSIiCiAgICAgICAgICAgIHhtbG5zOmV4aWY9Imh0dHA6Ly9ucy5hZG9iZS5jb20vZXhpZi8xLjAvIgogICAgICAgICAgICB4bWxuczp0aWZmPSJodHRwOi8vbnMuYWRvYmUuY29tL3RpZmYvMS4wLyI+CiAgICAgICAgIDxleGlmOlVzZXJDb21tZW50PlNjcmVlbnNob3Q8L2V4aWY6VXNlckNvbW1lbnQ+CiAgICAgICAgIDxleGlmOlBpeGVsWERpbWVuc2lvbj4yODgwPC9leGlmOlBpeGVsWERpbWVuc2lvbj4KICAgICAgICAgPGV4aWY6UGl4ZWxZRGltZW5zaW9uPjE4MDA8L2V4aWY6UGl4ZWxZRGltZW5zaW9uPgogICAgICAgICA8dGlmZjpSZXNvbHV0aW9uVW5pdD4yPC90aWZmOlJlc29sdXRpb25Vbml0PgogICAgICAgICA8dGlmZjpYUmVzb2x1dGlvbj4xNDQvMTwvdGlmZjpYUmVzb2x1dGlvbj4KICAgICAgICAgPHRpZmY6WVJlc29sdXRpb24+MTQ0LzE8L3RpZmY6WVJlc29sdXRpb24+CiAgICAgICAgIDx0aWZmOk9yaWVudGF0aW9uPjE8L3RpZmY6T3JpZW50YXRpb24+CiAgICAgIDwvcmRmOkRlc2NyaXB0aW9uPgogICA8L3JkZjpSREY+CjwveDp4bXBtZXRhPgqLxgFpAAAAHElEQVQYGWPk5uP/z4AHMOGRA0uNKoCEEOXhAADYLwE/Q181RAAAAABJRU5ErkJgggo="
+                content: "iVBORw0KGgoQ5IlyODP+z3L8b8vNkQzFsIRNJVMcEiOdM6ThHlRCn8cVN+Tr9sdXRpb24+CiAgICAgICAgIDx0aWZmOk9yaWVudGF0aW9uPjE8L3RpZmY6T3JpZW50YXRpb24+CiAgICAgIDwvcmRmOkRlc2NyaXB0aW9uPgogICA8L3JkZjpSREY+CjwveDp4bXBtZXRhPgqLxgFpAAAAHElEQVQYGWPk5uP/z4AHMOGRA0uNKoCEEOXhAADYLwE/Q181RAAAAABJRU5ErkJgggo="
             };
 
             const response = await server 
@@ -298,12 +308,50 @@ describe('Account tests', async () => {
             const resp = response.body
 
             //Saving new token for other tests
-            const newToken = response.headers['set-cookie'][0].split(';')[0].split('=')[1];
+            const newToken = extractTokenFromResponse(response);
             sampleToken = newToken;
 
             //Expectings
             expect(response.status).to.equal(200);
             expect(resp).to.have.property('state', 'success');
+            expect(resp).to.have.property('message', 'Profile picture updated successfully.')
+        });
+    });
+
+    // Unauthorized scenarios
+    describe("Unauthorized access", () => {
+        it("GET /user/info should return 401 without token", async () => {
+            const response = await server.get('/user/info');
+            expect(response.status).to.equal(401);
+        });
+
+        it("GET /user/info should return 401 with invalid token", async () => {
+            const response = await server.get('/user/info').set('Cookie', 'token=invalid');
+            expect(response.status).to.equal(401);
+        });
+
+        it("PUT /user/info should return 401 without token", async () => {
+            const response = await server
+                .put('/user/info')
+                .send({ username: "someone", email: "someone@example.com", bio: "x" })
+                .set('Content-Type', 'application/json');
+            expect(response.status).to.equal(401);
+        });
+
+        it("PUT /user/info/password should return 401 without token", async () => {
+            const response = await server
+                .put('/user/info/password')
+                .send({ old_password: 'a', new_password: 'b' })
+                .set('Content-Type', 'application/json');
+            expect(response.status).to.equal(401);
+        });
+
+        it("POST /user/info/profile should return 401 without token", async () => {
+            const response = await server
+                .post('/user/info/profile')
+                .send({ content: 'AAAA' })
+                .set('Content-Type', 'application/json');
+            expect(response.status).to.equal(401);
         });
     });
 
