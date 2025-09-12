@@ -102,7 +102,7 @@ export async function deleteFileFromUploads(filename: string): Promise<[Boolean 
     }
 };
 
-export async function generateJWTToken(userInfo: ProtectedUserInfo): Promise<[string | null, ErrorResponse | null]> {
+export function generateJWTToken(userInfo: ProtectedUserInfo): [string | null, ErrorResponse | null] {
     try {
         const userInfoToBeSign = {
             id: userInfo.id,

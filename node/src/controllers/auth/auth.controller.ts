@@ -1,9 +1,8 @@
 import { Request, Response } from "express";
 import { checkUserExistsByEmail, checkCredentials, getUserInfoByEmail, createUser } from "../../services/auth.services";
-import { showError, sendResponse } from "../../utils/operations";
+import { showError, sendResponse, generateJWTToken } from "../../utils/operations";
 import { ProtectedUserInfo } from "../../types/user.types";
 import {ErrorResponse } from "../../types/response.types";
-import * as jwt from 'jsonwebtoken';
 
 export async function handleAuth(req: Request, resp: Response): Promise<void> {
     const { email, password } = req.body;
@@ -33,7 +32,12 @@ export async function handleAuth(req: Request, resp: Response): Promise<void> {
 
             if(userInfo !== null){
                 //Signing token
-                const token = jwt.sign(userInfo, String(process.env.JWT_SECRET_KEY), {expiresIn: "1h"});
+                const [token, err] = generateJWTToken(userInfo);
+                if(err){
+                    showError(err, resp);
+                    return;
+                }
+
                 const responseData = {state: "success", message: "Login was successful"};
                 const responseHeaders = {"Set-Cookie": `token=${token}; path=/;`};
                 sendResponse(responseData, responseHeaders, 200,resp);
@@ -52,10 +56,15 @@ export async function handleAuth(req: Request, resp: Response): Promise<void> {
             return;
         }
 
-        //If user was created successfully, then assign token
+        //Assigning token If user was created successfully
         if(createUserResult){
             //There is no need to whitelist created userinfo. It's safe
-            const token = jwt.sign(createUserResult, String(process.env.JWT_SECRET_KEY), {expiresIn: "1h"});
+            const [token, err] = generateJWTToken(createUserResult);
+            if(err){
+                showError(err, resp);
+                return;
+            }
+
             const responseData = {state: "success", message: "Registration was successful", step_2: true};
             const responseHeaders = {"Set-Cookie": `token=${token}; path=/;`};
             sendResponse(responseData, responseHeaders, 200, resp);

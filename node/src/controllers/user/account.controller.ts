@@ -3,7 +3,6 @@ import { showError, sendResponse, checkBcrypt, uploadFile, deleteFileFromUploads
 import { Request, Response } from "express";
 import {ErrorResponse } from "../../types/response.types";
 import { checkUserExistsByEmail } from "../../services/auth.services";
-import * as jwt from "jsonwebtoken";
 
 export async function showUserInfo(req: Request, resp: Response) {
     const userid = req.userInfo.id;
@@ -107,7 +106,7 @@ export async function updateUserInfo(req: Request, resp: Response) {
 
             //Creating new token
             if(newUserInfo){
-                const [token, error] = await generateJWTToken(newUserInfo);
+                const [token, error] = generateJWTToken(newUserInfo);
                  if(error){
                     showError(error, resp);
                     return;
@@ -151,7 +150,7 @@ export async function updateUserPassword(req: Request, resp: Response) {
         }
 
         if(updatePasswordResult === true){
-            const message = {state: "success", message: "Password updated successfully."};
+            const message = {state: "success", message: "Password updated successfully"};
             sendResponse(message, {}, 200, resp);
 
         }else{
@@ -210,7 +209,7 @@ export async function updateUserProfile(req: Request, resp: Response) {
 
                     if(userData){
                         userData.profilePic = "/statics/images/" + updateProfileResult; // Updating userInfo with new profile pic address
-                        const [newToken, error] = await generateJWTToken(userData);
+                        const [newToken, error] = generateJWTToken(userData);
                         if(error){
                             showError(error, resp);
                             return;
