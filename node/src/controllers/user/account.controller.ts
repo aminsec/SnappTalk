@@ -113,7 +113,7 @@ export async function updateUserInfo(req: Request, resp: Response) {
                 }
 
                 const message = {state: "success", message: "Profile updated."};
-                const responseHeaders = {"Set-Cookie": `token=${token}; path=/;`};
+                const responseHeaders = {"Set-Cookie": `token=${token}; path=/; secure; sameSite=lax`};
                 sendResponse(message, responseHeaders, 200, resp);
             }
         }
@@ -216,7 +216,7 @@ export async function updateUserProfile(req: Request, resp: Response) {
                         }
 
                         const responseData = {state: "success", message: "Profile picture updated successfully."};
-                        const responseHeaders = {"Set-Cookie": `token=${newToken}; path=/;`};
+                        const responseHeaders = {"Set-Cookie": `token=${newToken}; path=/; secure; sameSite=lax`};
                         sendResponse(responseData, responseHeaders, 200, resp);
                     }
 
