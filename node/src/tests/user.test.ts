@@ -2,7 +2,7 @@ import request from "supertest";
 import app from "../app";
 import { getUsersCollection } from "../models/users.model";
 import { expect } from "chai";
-import { after } from "node:test";
+import { after, before } from "node:test";
 
 //Creating a server instance for testing. This allows us to use the app instance in our tests
 const server = request(app);
@@ -25,37 +25,41 @@ describe('Account tests', async () => {
     let sampleWeakPassword = "123_a";
     let sampleTakenEmail = Date.now().toString() + "ThisIsTakenEmail" + "@example.com";
     let sampleTakenUsername = "";
+    let sampleToken = "";
+    let sampleSecondToken = "";
     
-    //Main user's info to use in tests
-    let requestBody = {
-        email: sampleValidEmail, // Unique email
-        password: sampleValidPassword
-    };
+    before(async () => {
+        //Main user's info to use in tests
+        let requestBody = {
+            email: sampleValidEmail, // Unique email
+            password: sampleValidPassword
+        };
 
-    //Thirdanry user's info
-    let secondUserRequestBody = {
-        email: sampleTakenEmail,
-        password: sampleValidPassword
-    };
+        //Thirdanry user's info
+        let secondUserRequestBody = {
+            email: sampleTakenEmail,
+            password: sampleValidPassword
+        };
 
-    //Creating main user
-    const firstResponse = await server
-    .post('/auth/')
-    .send(requestBody)
-    .set('Content-Type', 'application/json');
+        //Creating main user
+        const firstResponse = await server
+        .post('/auth/')
+        .send(requestBody)
+        .set('Content-Type', 'application/json');
 
-    //Creating thirdanry user
-    const secondResponse = await server
-    .post('/auth/')
-    .send(secondUserRequestBody)
-    .set('Content-Type', 'application/json');
+        //Creating thirdanry user
+        const secondResponse = await server
+        .post('/auth/')
+        .send(secondUserRequestBody)
+        .set('Content-Type', 'application/json');
 
-    //Parsing the response to take token
-    let sampleToken = extractTokenFromResponse(firstResponse);
-    let sampleSecondToken = extractTokenFromResponse(secondResponse);
+        //Parsing the response to take token
+        sampleToken = extractTokenFromResponse(firstResponse);
+        sampleSecondToken = extractTokenFromResponse(secondResponse);
 
-    const thirdanryUserInfo = await server.get('/user/info').set("cookie", `token=${sampleSecondToken}`); // Getting thirdanry user info
-    sampleTakenUsername = thirdanryUserInfo.body.userInfo.username; // Assigning as taken username
+        const thirdanryUserInfo = await server.get('/user/info').set("cookie", `token=${sampleSecondToken}`); // Getting thirdanry user info
+        sampleTakenUsername = thirdanryUserInfo.body.userInfo.username; // Assigning as taken username
+    });
 
     //Tests
     describe("GET /user/info", () => {
@@ -320,38 +324,38 @@ describe('Account tests', async () => {
 
     // Unauthorized scenarios
     describe("Unauthorized access", () => {
-        it("GET /user/info should return 401 without token", async () => {
+        it("GET /user/info should return 302 without token", async () => {
             const response = await server.get('/user/info');
-            expect(response.status).to.equal(401);
+            expect(response.status).to.equal(302);
         });
 
-        it("GET /user/info should return 401 with invalid token", async () => {
+        it("GET /user/info should return 302 with invalid token", async () => {
             const response = await server.get('/user/info').set('Cookie', 'token=invalid');
-            expect(response.status).to.equal(401);
+            expect(response.status).to.equal(302);
         });
 
-        it("PUT /user/info should return 401 without token", async () => {
+        it("PUT /user/info should return 302 without token", async () => {
             const response = await server
                 .put('/user/info')
                 .send({ username: "someone", email: "someone@example.com", bio: "x" })
                 .set('Content-Type', 'application/json');
-            expect(response.status).to.equal(401);
+            expect(response.status).to.equal(302);
         });
 
-        it("PUT /user/info/password should return 401 without token", async () => {
+        it("PUT /user/info/password should return 302 without token", async () => {
             const response = await server
                 .put('/user/info/password')
                 .send({ old_password: 'a', new_password: 'b' })
                 .set('Content-Type', 'application/json');
-            expect(response.status).to.equal(401);
+            expect(response.status).to.equal(302);
         });
 
-        it("POST /user/info/profile should return 401 without token", async () => {
+        it("POST /user/info/profile should return 302 without token", async () => {
             const response = await server
                 .post('/user/info/profile')
                 .send({ content: 'AAAA' })
                 .set('Content-Type', 'application/json');
-            expect(response.status).to.equal(401);
+            expect(response.status).to.equal(302);
         });
     });
 
