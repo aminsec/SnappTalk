@@ -76,6 +76,16 @@ describe('Account tests', async () => {
             expect(resp).to.have.property('state', 'success');
             expect(resp.userInfo).to.have.property('id');
         });
+
+        it("should return 302 without token", async () => {
+            const response = await server.get('/user/info');
+            expect(response.status).to.equal(302);
+        });
+
+        it("should return 302 with invalid token", async () => {
+            const response = await server.get('/user/info').set('Cookie', 'token=invalid');
+            expect(response.status).to.equal(302);
+        });
     });
 
     describe("PUT /user/info/password", () => {
@@ -202,6 +212,14 @@ describe('Account tests', async () => {
             expect(response.status).to.equal(400);
             expect(resp).to.have.property('type', 'input_error');  
         });
+
+        it("should return 302 without token", async () => {
+            const response = await server
+                .put('/user/info/password')
+                .send({ old_password: 'a', new_password: 'b' })
+                .set('Content-Type', 'application/json');
+            expect(response.status).to.equal(302);
+        });
     });
 
     describe("PUT /user/info", () => {
@@ -294,6 +312,14 @@ describe('Account tests', async () => {
             expect(resp).to.have.property('state', 'failed');
             expect(resp).to.have.property('message', 'Invalid email address.');
         });
+
+        it("should return 302 without token", async () => {
+            const response = await server
+                .put('/user/info')
+                .send({ username: "someone", email: "someone@example.com", bio: "x" })
+                .set('Content-Type', 'application/json');
+            expect(response.status).to.equal(302);
+        });
     });
 
     describe("POST /user/info/profile", () => {
@@ -320,37 +346,8 @@ describe('Account tests', async () => {
             expect(resp).to.have.property('state', 'success');
             expect(resp).to.have.property('message', 'Profile picture updated successfully.')
         });
-    });
 
-    // Unauthorized scenarios
-    describe("Unauthorized access", () => {
-        it("GET /user/info should return 302 without token", async () => {
-            const response = await server.get('/user/info');
-            expect(response.status).to.equal(302);
-        });
-
-        it("GET /user/info should return 302 with invalid token", async () => {
-            const response = await server.get('/user/info').set('Cookie', 'token=invalid');
-            expect(response.status).to.equal(302);
-        });
-
-        it("PUT /user/info should return 302 without token", async () => {
-            const response = await server
-                .put('/user/info')
-                .send({ username: "someone", email: "someone@example.com", bio: "x" })
-                .set('Content-Type', 'application/json');
-            expect(response.status).to.equal(302);
-        });
-
-        it("PUT /user/info/password should return 302 without token", async () => {
-            const response = await server
-                .put('/user/info/password')
-                .send({ old_password: 'a', new_password: 'b' })
-                .set('Content-Type', 'application/json');
-            expect(response.status).to.equal(302);
-        });
-
-        it("POST /user/info/profile should return 302 without token", async () => {
+        it("should return 302 without token", async () => {
             const response = await server
                 .post('/user/info/profile')
                 .send({ content: 'AAAA' })
