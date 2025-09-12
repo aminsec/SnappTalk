@@ -17,7 +17,7 @@ function extractTokenFromResponse(response: any): string {
     return tokenCookie.split(';')[0].split('=')[1];
 };
 
-describe('Account tests', async () => {
+describe('Account tests', () => {
     //Preparing sample data for testing
     let sampleValidEmail = Date.now().toString() + "a" + "@example.com";
     let sampleValidPassword = "validPassword123_";
@@ -80,11 +80,13 @@ describe('Account tests', async () => {
         it("should return 302 without token", async () => {
             const response = await server.get('/user/info');
             expect(response.status).to.equal(302);
+            expect(response.headers).to.have.property('location');
         });
 
         it("should return 302 with invalid token", async () => {
             const response = await server.get('/user/info').set('Cookie', 'token=invalid');
             expect(response.status).to.equal(302);
+            expect(response.headers).to.have.property('location');
         });
     });
 
@@ -219,6 +221,7 @@ describe('Account tests', async () => {
                 .send({ old_password: 'a', new_password: 'b' })
                 .set('Content-Type', 'application/json');
             expect(response.status).to.equal(302);
+            expect(response.headers).to.have.property('location');
         });
     });
 
@@ -319,6 +322,7 @@ describe('Account tests', async () => {
                 .send({ username: "someone", email: "someone@example.com", bio: "x" })
                 .set('Content-Type', 'application/json');
             expect(response.status).to.equal(302);
+            expect(response.headers).to.have.property('location');
         });
     });
 
@@ -353,6 +357,7 @@ describe('Account tests', async () => {
                 .send({ content: 'AAAA' })
                 .set('Content-Type', 'application/json');
             expect(response.status).to.equal(302);
+            expect(response.headers).to.have.property('location');
         });
     });
 
