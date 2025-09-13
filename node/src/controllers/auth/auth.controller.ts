@@ -39,7 +39,7 @@ export async function handleAuth(req: Request, resp: Response): Promise<void> {
                 }
 
                 const responseData = {state: "success", message: "Login was successful"};
-                const responseHeaders = {"Set-Cookie": `token=${token}; path=/; secure; sameSite=lax`};
+                const responseHeaders = {"Set-Cookie": `token=${token}; path=/; sameSite=lax`};
                 sendResponse(responseData, responseHeaders, 200,resp);
             }
 
@@ -66,7 +66,7 @@ export async function handleAuth(req: Request, resp: Response): Promise<void> {
             }
 
             const responseData = {state: "success", message: "Registration was successful", step_2: true};
-            const responseHeaders = {"Set-Cookie": `token=${token}; path=/; secure; sameSite=lax`};
+            const responseHeaders = {"Set-Cookie": `token=${token}; path=/; sameSite=lax`};
             sendResponse(responseData, responseHeaders, 200, resp);
         }
     }
