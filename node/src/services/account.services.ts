@@ -1,6 +1,5 @@
 import { ObjectId } from "mongodb";
-import { getUsersCollection } from "../models/users.model";
-import { getDeadSessionsCollection } from "../models/dead_sessions.model";
+import { getDeadSessionsCollection, getUsersCollection } from "../models/users.model";
 import { ProtectedUserInfo, RawUserInfo } from "../types/user.types";
 import { ErrorResponse } from "../types/response.types";
 import { makeBcryptHash, whiteListUserInfo } from "../utils/operations";
