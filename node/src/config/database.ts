@@ -1,8 +1,8 @@
 import { MongoClient } from 'mongodb';
 import { Db } from 'mongodb';
 
-const { DB_PASS } = process.env;
-const uri = `mongodb://topAdmin:${DB_PASS}@172.17.0.3:27017`;
+const { DB_PASS, DB_USER, DB_IP, DB_PORT } = process.env;
+const uri = `mongodb://${DB_USER}:${DB_PASS}@${DB_IP}:${DB_PORT}`;
 
 //Returning db connection once connected
 let SnappTalkDB: Db; 

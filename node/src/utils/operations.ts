@@ -65,7 +65,7 @@ export async function uploadFile(content: string): Promise<[string | null, Error
         const uploadPath = "/up/node/uploads/" + filename;
         fs.writeFile(uploadPath, file, err => {
             if(err){
-                throw new Error("System error occurred. Coudln't upload file")
+                throw new Error("System error occurred. Coudln't upload file");
             }
         });
 
@@ -88,8 +88,8 @@ export async function deleteFileFromUploads(filename: string): Promise<[Boolean 
         const filePath = "/up/node/uploads/" + filename;
         fs.unlink(filePath, error => {
             if(error){
-                console.log(error)
-                throw new Error("System error occurred. Coudln't upload file")
+                console.log(error);
+                throw new Error("System error occurred. Coudln't upload file");
             }
         });
 

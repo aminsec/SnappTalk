@@ -176,7 +176,7 @@ export async function revokeUserToken(token: string): Promise<[true | false | nu
         const dead_sessionsCL = await getDeadSessionsCollection();
         const revoked = await dead_sessionsCL.insertOne({
             token: token,
-            createdAt: Date.now().toString()
+            createdAt: new Date()
         });
 
         if(revoked.acknowledged){

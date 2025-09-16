@@ -4,6 +4,16 @@ import cookieParser from "cookie-parser";
 import authRoutes from "./routes/auth";
 import accountRoutes from "./routes/user";
 import validateJWT from "./middlewares/jwt";
+import helmet from "helmet";
+import { rateLimit } from 'express-rate-limit'
+
+//Rate limit config 
+const limiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 100, // Limit each IP to 100 requests per `windowMs`
+  standardHeaders: true, // Return rate limit info in the `RateLimit-*` headers
+  legacyHeaders: false, // Disable the `X-RateLimit-*` headers
+});
 
 const app = express();
 
@@ -11,7 +21,9 @@ app.get('/', (req: Request, res: Response) => {
   res.send('Hello World!');
 });
 
-app.use(bodyParser.json({ limit: "50mb" })); // Increasing body size limit
+app.use(limiter);
+app.use(helmet());
+app.use(bodyParser.json({ limit: "5mb" })); // Increasing body size limit
 app.use(cookieParser()); // Parsing cookies
 app.use("/auth", authRoutes);
 app.use("/user", validateJWT);
