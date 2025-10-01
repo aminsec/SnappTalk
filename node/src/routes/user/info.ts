@@ -1,7 +1,7 @@
 import express from "express";
-import * as accountInfoController  from "../controllers/user/info.controller";
+import * as accountInfoController  from "../../controllers/user/info.controller";
 import { check } from 'express-validator';
-import { checkThereIsAnyError } from "../middlewares/errors";
+import { checkThereIsAnyError } from "../../middlewares/errors";
 const router = express.Router();
 
 router.get("/contacts");

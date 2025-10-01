@@ -1,8 +1,8 @@
 import express, { Request, Response } from "express";
 import bodyParser from "body-parser";
 import cookieParser from "cookie-parser";
-import authRoutes from "./routes/auth";
-import accountRoutes from "./routes/user";
+import authRoutes from "./routes/auth/auth";
+import accountRoutes from "./routes/user/info";
 import validateJWT from "./middlewares/jwt";
 import helmet from "helmet";
 import { rateLimit } from 'express-rate-limit'
