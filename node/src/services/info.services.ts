@@ -191,3 +191,15 @@ export async function revokeUserToken(token: string): Promise<[true | false | nu
         return [null, err];
     }
 };
+
+export async function getUserContacts(userid: string) {
+    try {
+        const usersCollection  = await getUsersCollection();
+        const contacts = await usersCollection.find({_id: {$ne: new ObjectId(userid)}}).toArray();
+        return [contacts, null];
+    } catch (error) {
+        console.log(error);
+        const err: ErrorResponse = {message: "A system error occurred", state: "failed", type: "system_error"};
+        return [null, err];
+    }
+};

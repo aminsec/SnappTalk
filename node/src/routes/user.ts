@@ -1,10 +1,11 @@
 import express from "express";
-import * as accountController  from "../controllers/user/account.controller";
+import * as accountInfoController  from "../controllers/user/info.controller";
 import { check } from 'express-validator';
 import { checkThereIsAnyError } from "../middlewares/errors";
 const router = express.Router();
 
-router.get("/info", accountController.showUserInfo);
+router.get("/contacts");
+router.get("/info", accountInfoController.showUserInfo);
 router.put("/info", [
   check("username")
     .isString().withMessage("Username must be a string.")
@@ -22,7 +23,7 @@ router.put("/info", [
   .isLength({ max: 160 }).withMessage("Bio must be at most 160 characters long."),
 
   checkThereIsAnyError
-], accountController.updateUserInfo);
+], accountInfoController.updateUserInfo);
 
 router.put("/info/password", [
   check("old_password")
@@ -36,7 +37,7 @@ router.put("/info/password", [
   .isLength({ min: 6, max: 24 }).withMessage("New password must be 6–24 characters."),
 
   checkThereIsAnyError
-], accountController.updateUserPassword);
+], accountInfoController.updateUserPassword);
 
 router.post("/info/profile", [
   check("content")
@@ -44,6 +45,6 @@ router.post("/info/profile", [
   .isString().withMessage("Content must be a string"),
 
   checkThereIsAnyError
-], accountController.updateUserProfile);
+], accountInfoController.updateUserProfile);
 
 export default router;
