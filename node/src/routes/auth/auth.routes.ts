@@ -1,7 +1,7 @@
 import express from "express";
-import { handleAuth } from "../controllers/auth/auth.controller";
+import { handleAuth } from "../../controllers/auth/auth.controller";
 import { check } from "express-validator";
-import { checkThereIsAnyError } from "../middlewares/errors";
+import { checkThereIsAnyError } from "../../middlewares/errors";
 const router = express.Router();
 
 router.post("/", [

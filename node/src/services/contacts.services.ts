@@ -3,10 +3,10 @@ import { ProtectedUserInfo, RawUserInfo } from "../types/user.types";
 import { ErrorResponse } from "../types/response.types";
 import { getConversationsCollection } from "../models/conversatations.model";
 
-export async function getUserContacts(userid: string) {
+export async function getUserContacts(userid: string) { //TODO: add response type return to this function
     try {
-        const usersCollection  = await getConversationsCollection();
-        const contacts = await usersCollection.find({_id: {$ne: new ObjectId(userid)}}).toArray();
+        const conversationsCollection  = await getConversationsCollection();
+        const contacts = await conversationsCollection.find({members: {$in: [userid]}}).toArray();
         return [contacts, null];
     } catch (error) {
         console.log(error);
