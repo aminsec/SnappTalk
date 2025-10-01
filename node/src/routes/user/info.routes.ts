@@ -4,7 +4,6 @@ import { check } from 'express-validator';
 import { checkThereIsAnyError } from "../../middlewares/errors";
 const router = express.Router();
 
-router.get("/contacts");
 router.get("/info", accountInfoController.showUserInfo);
 router.put("/info", [
   check("username")

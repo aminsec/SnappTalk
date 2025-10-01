@@ -12,6 +12,6 @@ export async function getDeadSessionsCollection() {
 
     return deadSessionsCollection;
   } catch (error) {
-    console.error("Error connecting to users collection:", error);
+    console.error("Error connecting to dead_sessions collection:", error);
   }
 }
