@@ -5,7 +5,7 @@ import { showError, sendResponse } from "../../utils/operations";
 
 export async function showUserContacts(req: Request, resp: Response) {
     const { userInfo } = req;
-    const [contacts, error] = await getUserContacts(userInfo.id);
+    const [contacts, error] = await getUserContacts(userInfo);
     if(error){
         showError(error, resp);
         return;
