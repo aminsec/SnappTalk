@@ -4,6 +4,7 @@ import { getConversationsCollection } from "../models/conversatations.model";
 import { ProtectedUserInfo } from "../types/user.types";
 import { getUserInfoById } from "./info.services";
 
+//TODO: White list the conversation data before returning it to the client
 export async function getUserContacts(userInfo: ProtectedUserInfo): Promise<[Conversation[] | null, ErrorResponse | null]> {
     try {
         const conversationsCollection  = await getConversationsCollection();

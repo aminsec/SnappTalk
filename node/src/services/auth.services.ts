@@ -73,9 +73,9 @@ export async function createUser(email: string, password: string): Promise<[Prot
                 email: email,
                 password: hashedPassword,
                 username: Date.now().toString(),
-                profilePic: '/statics/images/default.png',
+                profile_pic: '/statics/images/default.png',
                 role: "user",
-                joinedAt: Date.now().toString(),
+                joined_at: Date.now().toString(),
                 bio: "" // Default bio is empty
             };
 
@@ -86,9 +86,9 @@ export async function createUser(email: string, password: string): Promise<[Prot
                     id: createdUserInfoResult.insertedId.toString(),
                     email: userInfoToInsert.email,
                     username: userInfoToInsert.username,
-                    profilePic: userInfoToInsert.profilePic,
+                    profile_pic: userInfoToInsert.profile_pic,
                     role: userInfoToInsert.role,
-                    joinedAt: userInfoToInsert.joinedAt,
+                    joined_at: userInfoToInsert.joined_at,
                     bio: userInfoToInsert.bio
                 };
                 

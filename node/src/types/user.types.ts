@@ -2,9 +2,9 @@ export interface ProtectedUserInfo {
     id: string,
     email: string,
     username: string,
-    profilePic: string,
+    profile_pic: string,
     role: string,
-    joinedAt: string,
+    joined_at: string,
     bio: string
 };
 
@@ -13,9 +13,9 @@ export interface RawUserInfo {
     email: string,
     username: string,
     password: string,
-    profilePic: string,
+    profile_pic: string,
     role: string,
-    joinedAt: string,
+    joined_at: string,
     bio: string
 };
 
@@ -23,8 +23,8 @@ export interface InsertUserInfo {
     email: string,
     username: string,
     password: string,
-    profilePic: string,
+    profile_pic: string,
     role: string,
-    joinedAt: string,
+    joined_at: string,
     bio: string
 };

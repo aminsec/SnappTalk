@@ -11,7 +11,7 @@ export default function ProfileSection() {
     bio: '',
     username: '',
     isOnline: false,
-    profilePic: '',
+    profile_pic: '',
   });
 
   const [originalUser, setOriginalUser] = useState(null);
@@ -32,7 +32,7 @@ export default function ProfileSection() {
             bio: data.userInfo.bio || '',
             username: data.userInfo.username || '',
             isOnline: data.userInfo.isOnline || false,
-            profilePic: data.userInfo.profilePic || '',
+            profile_pic: data.userInfo.profile_pic || '',
           };
 
           setUser(userData);
@@ -103,7 +103,7 @@ export default function ProfileSection() {
       <div className={styles.avatarRow}>
         {editMode ? (
           <ProfileImageUpload
-            currentImage={user.profilePic}
+            currentImage={user.profile_pic}
             onImageChange={(file) => {
             }}
             size={120}
@@ -112,7 +112,7 @@ export default function ProfileSection() {
           />
         ) : (
           <>
-            <ProfileAvatar profilePic={user.profilePic} size={110} className="mb-2" />
+            <ProfileAvatar profile_pic={user.profile_pic} size={110} className="mb-2" />
             <div>
               <h3>{"@" + user.username}</h3>
               <span className={user.isOnline ? styles.online : styles.offline}>

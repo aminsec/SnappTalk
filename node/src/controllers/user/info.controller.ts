@@ -168,7 +168,7 @@ export async function updateUserProfile(req: Request, resp: Response) {
     const { userInfo } = req;
     
     //Removing the old profile file, if profile image was not the default "default.png" image
-    const userProfilePicAdress = userInfo.profilePic;
+    const userProfilePicAdress = userInfo.profile_pic;
     const profilePicFileName = userProfilePicAdress.split("/").pop() ?? "default.png"; // --> /statics/images/default.png -> default.png
    
     const [removeResult, error] = await deleteFileFromUploads(profilePicFileName);
@@ -208,7 +208,7 @@ export async function updateUserProfile(req: Request, resp: Response) {
                     }
 
                     if(userData){
-                        userData.profilePic = "/statics/images/" + updateProfileResult; // Updating userInfo with new profile pic address
+                        userData.profile_pic = "/statics/images/" + updateProfileResult; // Updating userInfo with new profile pic address
                         const [newToken, error] = generateJWTToken(userData);
                         if(error){
                             showError(error, resp);

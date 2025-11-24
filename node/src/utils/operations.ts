@@ -36,8 +36,8 @@ export function whiteListUserInfo(userData: RawUserInfo): ProtectedUserInfo{
         username: userData.username,
         email: userData.email,
         role: userData.role,
-        profilePic: userData.profilePic,
-        joinedAt: userData.joinedAt,
+        profile_pic: userData.profile_pic,
+        joined_at: userData.joined_at,
         bio: userData.bio || "" // Default bio is empty if not provided
     };
 
@@ -108,9 +108,9 @@ export function generateJWTToken(userInfo: ProtectedUserInfo): [string | null, E
             id: userInfo.id,
             email: userInfo.email,
             username: userInfo.username,
-            profilePic: userInfo.profilePic,
+            profile_pic: userInfo.profile_pic,
             role: userInfo.role,
-            joinedAt: userInfo.joinedAt,
+            joined_at: userInfo.joined_at,
         }
     
         const token = jwt.sign(userInfoToBeSign, String(process.env.JWT_SECRET_KEY), {expiresIn: "1h"});

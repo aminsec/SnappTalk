@@ -19,8 +19,8 @@ function ProfileAvatar({
     fetch('/api/v1/user/info/')
       .then(res => res.json())
       .then(data => {
-        if (data?.userInfo?.profilePic) {
-          const pic = data.userInfo.profilePic;
+        if (data?.userInfo?.profile_pic) {
+          const pic = data.userInfo.profile_pic;
           if (pic === '/statics/images/default.png') {
             setImgSrc(defaultAvatar);
           } else {
