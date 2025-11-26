@@ -15,7 +15,7 @@ export default function SettingsHeader({
       {showEdit && (
         <div className={styles.actions}>
           {editMode && (
-            <Button variant="ghost" size="sm" onClick={onCancel}>
+            <Button variant="outline" size="sm" onClick={onCancel}>
               Cancel
             </Button>
           )}

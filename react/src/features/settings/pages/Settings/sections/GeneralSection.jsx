@@ -1,4 +1,4 @@
-function MainSection() {
+function GeneralSection() {
   return (
     <div>
       <h2>Coming Soon</h2>
@@ -6,4 +6,4 @@ function MainSection() {
   );
 }
 
-export default MainSection;
+export default GeneralSection;

@@ -14,6 +14,7 @@ const AppRouter = () => (
       <Route element={<RequireAuth />}>
         <Route path="/chats" element={<ChatsPage />} />
         <Route path="/settings/*" element={<SettingsPage />}>
+          <Route index element={<Navigate to="profile" replace />} />
           <Route path="profile" element={<ProfileSection />} />
           <Route path="general" element={<GeneralSection />} />
         </Route>

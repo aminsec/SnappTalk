@@ -149,6 +149,17 @@ function ChatsPage() {
     [resetFileUploadState, selectedChat]
   );
 
+  const handleSendMessage = useCallback(async () => {
+    if (!selectedChat || !messageInput.trim()) {
+      return;
+    }
+
+    // TODO: Implement actual message sending API call
+    // For now, just clear the input
+    setMessageInput('');
+    setIsEmojiPickerOpen(false);
+  }, [selectedChat, messageInput]);
+
   useEffect(() => {
     return () => {
       if (filePreview) {
@@ -280,6 +291,12 @@ function ChatsPage() {
                 value={messageInput}
                 fullWidth
                 onChange={(e) => setMessageInput(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' && !e.shiftKey) {
+                    e.preventDefault();
+                    handleSendMessage();
+                  }
+                }}
                 className={styles.messageInput}
               />
               <button
@@ -297,7 +314,7 @@ function ChatsPage() {
                   }}
                 />
               </button>
-              <Button type="button">
+              <Button type="button" onClick={handleSendMessage} disabled={!messageInput.trim()}>
                 <FontAwesomeIcon icon={faPaperPlane} />
               </Button>
             </div>

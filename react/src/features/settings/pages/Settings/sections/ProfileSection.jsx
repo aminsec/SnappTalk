@@ -39,6 +39,34 @@ export default function ProfileSection() {
       return;
     }
 
+    // Validation
+    if (!formValues.username || formValues.username.trim().length === 0) {
+      toast.error('Username is required.');
+      return;
+    }
+
+    if (formValues.username.length > 24) {
+      toast.error('Username can be at most 24 characters.');
+      return;
+    }
+
+    if (!/^[a-zA-Z0-9_.]+$/.test(formValues.username)) {
+      toast.error('Username can include letters, numbers, "." or "_".');
+      return;
+    }
+
+    if (!formValues.email || formValues.email.trim().length === 0) {
+      toast.error('Email is required.');
+      return;
+    }
+
+    // Basic email validation
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(formValues.email)) {
+      toast.error('Please enter a valid email address.');
+      return;
+    }
+
     setIsSaving(true);
     try {
       const response = await fetch('/api/v1/user/info', {

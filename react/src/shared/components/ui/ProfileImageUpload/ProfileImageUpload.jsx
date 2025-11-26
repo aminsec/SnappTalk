@@ -19,6 +19,14 @@ export default function ProfileImageUpload({
     const file = e.target.files[0];
     if (!file) return;
 
+    // Validate file size (5MB max)
+    const maxSize = 5 * 1024 * 1024; // 5MB in bytes
+    if (file.size > maxSize) {
+      toast.error("File is too large. Maximum is 5MB");
+      e.target.value = ''; // Reset file input
+      return;
+    }
+
     const reader = new FileReader();
     reader.onloadend = async() => {
       onImageChange?.(file);
