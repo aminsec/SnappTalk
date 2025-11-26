@@ -1,8 +1,9 @@
 import express, { Request, Response } from "express";
 import bodyParser from "body-parser";
 import cookieParser from "cookie-parser";
-import authRoutes from "./routes/auth";
-import accountRoutes from "./routes/user";
+import authRoutes from "./routes/auth/auth.routes";
+import accountRoutes from "./routes/user/info.routes";
+import accountContactsRoutes from "./routes/user/contacts.routes";
 import validateJWT from "./middlewares/jwt";
 import helmet from "helmet";
 import { rateLimit } from 'express-rate-limit'
@@ -28,5 +29,6 @@ app.use(cookieParser()); // Parsing cookies
 app.use("/auth", authRoutes);
 app.use("/user", validateJWT);
 app.use("/user", accountRoutes);
+app.use("/user", accountContactsRoutes);
 
 export default app;

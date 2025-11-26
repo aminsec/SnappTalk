@@ -1,7 +1,7 @@
 import * as jwt from "jsonwebtoken";
 import { Request, Response, NextFunction } from "express";
 import { ProtectedUserInfo } from "../types/user.types";
-import { getDeadSessionsCollection } from "../models/users.model";
+import { getDeadSessionsCollection } from "../models/dead_sessions.model";
 // import { Token } from "../types/user.types";
 
 //A middleware to validate JWT token

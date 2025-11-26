@@ -1,0 +1,174 @@
+@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@100..900&display=swap');
+
+/* ———————————————————————————————————————————————————————————————
+   Reset & Base
+—————————————————————————————————————————————————————————————— */
+*,
+*::before,
+*::after {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+html, body {
+  width: 100%;
+  height: 100%;
+  font-family: "Outfit", sans-serif;
+  background: var(--bg-color);
+  color: var(--text-main);
+  overflow-x: hidden;
+}
+
+/* Prevent horizontal scroll on mobile */
+* {
+  max-width: 100%;
+}
+
+img, video {
+  max-width: 100%;
+  height: auto;
+}
+
+/* ———————————————————————————————————————————————————————————————
+  Scrollbar style
+—————————————————————————————————————————————————————————————— */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background-color: var(--icon-color); 
+  border-radius: 4px;
+  transition: opacity 0.3s ease;
+  opacity: 0;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background-color: var(--btn-hover);
+}
+
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--icon-color) transparent;
+  scroll-margin: 20px;
+}
+
+/* ———————————————————————————————————————————————————————————————
+   Animations & Transitions
+—————————————————————————————————————————————————————————————— */
+.form-fade {
+  transition: opacity 0.3s ease-in-out;
+  opacity: 0.5;
+}
+
+.element-fade {
+  transition: all 0.3s ease-in-out;
+  opacity: 0.7;
+  transform: translateY(10px);
+}
+
+.slide-in {
+  animation: slideIn 0.4s ease-out forwards;
+}
+
+@keyframes slideIn {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* ———————————————————————————————————————————————————————————————
+   Forms (global)
+—————————————————————————————————————————————————————————————— */
+.form-inputs {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.input {
+  width: 100%;
+  height: 46px;
+  padding: 0 1rem 0 3rem;
+  border: 2px solid transparent;
+  border-radius: 6px;
+  background-color: var(--input-bg);
+  color: var(--text-main);
+  font-size: 15px;
+  outline: none;
+  transition: border-color 0.3s ease;
+}
+
+.input:focus {
+  border-color: var(--input-border);
+}
+
+.input::placeholder {
+  color: var(--input-placeholder);
+}
+
+.textbox {
+  display: flex;
+  align-items: center;
+  position: relative;
+  width: 100%;
+  margin-bottom: 14px;
+}
+
+/* Icons */
+.icon {
+  position: absolute;
+  left: 1rem;
+  width: 1.5rem;
+  height: 1.5rem;
+}
+
+/* ———————————————————————————————————————————————————————————————
+   Error Message & Links
+—————————————————————————————————————————————————————————————— */
+.Error-message {
+  color: var(--error-color);
+  font-size: 12px;
+}
+
+.form-link {
+  text-align: right;
+  display: block;
+  margin-bottom: 10px;
+  color: #2D90E4;
+  text-decoration: none;
+  font-weight: 500;
+  font-size: 14px;
+}
+
+.form-link:hover {
+  text-decoration: underline;
+}
+
+/* ———————————————————————————————————————————————————————————————
+   Utility Classes
+—————————————————————————————————————————————————————————————— */
+.text-center {
+  text-align: center;
+}
+
+.mt-1 { margin-top: 4px; }
+.mt-2 { margin-top: 8px; }
+.mt-3 { margin-top: 12px; }
+.mt-4 { margin-top: 16px; }
+
+.mb-1 { margin-bottom: 4px; }
+.mb-2 { margin-bottom: 8px; }
+.mb-3 { margin-bottom: 12px; }
+.mb-4 { margin-bottom: 16px; }
