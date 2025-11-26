@@ -68,3 +68,24 @@
 .fullWidth {
   width: 100%;
 }
+
+/* Responsive Design */
+@media (max-width: 480px) {
+  .btn--sm {
+    height: 32px;
+    font-size: 12px;
+    padding: 0 0.6rem;
+  }
+
+  .btn--md {
+    height: 42px;
+    font-size: 14px;
+    padding: 0 1rem;
+  }
+
+  .btn--lg {
+    height: 50px;
+    font-size: 15px;
+    padding: 0 1.4rem;
+  }
+}

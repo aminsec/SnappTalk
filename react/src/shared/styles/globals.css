@@ -17,6 +17,17 @@ html, body {
   font-family: "Outfit", sans-serif;
   background: var(--bg-color);
   color: var(--text-main);
+  overflow-x: hidden;
+}
+
+/* Prevent horizontal scroll on mobile */
+* {
+  max-width: 100%;
+}
+
+img, video {
+  max-width: 100%;
+  height: auto;
 }
 
 /* ———————————————————————————————————————————————————————————————

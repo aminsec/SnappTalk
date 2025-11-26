@@ -83,3 +83,37 @@
 .input--lg {
   height: 54px;
 }
+
+/* Responsive Design */
+@media (max-width: 480px) {
+  .input--sm {
+    height: 32px;
+    font-size: 14px;
+  }
+
+  .input--md {
+    height: 42px;
+    font-size: 14px;
+  }
+
+  .input--lg {
+    height: 50px;
+    font-size: 15px;
+  }
+
+  .input {
+    font-size: 14px;
+    padding: 0 0.8rem;
+  }
+
+  .inputWithIcon {
+    padding-left: 2.5rem;
+  }
+
+  .icon {
+    left: 0.7rem;
+    width: 1rem;
+    height: 1rem;
+    font-size: 1rem;
+  }
+}

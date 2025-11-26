@@ -7,6 +7,7 @@ import {
   faCheckDouble,
   faEllipsisVertical,
   faTimes,
+  faBars,
 } from '@fortawesome/free-solid-svg-icons';
 import { faFile, faFaceSmile } from '@fortawesome/free-regular-svg-icons';
 
@@ -55,6 +56,8 @@ function ChatsPage() {
   const [isUploading, setIsUploading] = useState(false);
   const [filePreview, setFilePreview] = useState(null);
   const [isEmojiPickerOpen, setIsEmojiPickerOpen] = useState(false);
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const [isChatListOpen, setIsChatListOpen] = useState(false);
 
   const filteredChats = useMemo(
     () => FAKE_CHATS.filter((chat) => chat.username.toLowerCase().includes(searchQuery.toLowerCase())),
@@ -168,11 +171,56 @@ function ChatsPage() {
     };
   }, [filePreview]);
 
+  // Close sidebars when chat is selected on mobile
+  useEffect(() => {
+    const handleResize = () => {
+      if (window.innerWidth > 768) {
+        setIsSidebarOpen(false);
+        setIsChatListOpen(false);
+      }
+    };
+
+    window.addEventListener('resize', handleResize);
+    
+    if (selectedChat && window.innerWidth <= 768) {
+      setIsChatListOpen(false);
+    }
+
+    return () => window.removeEventListener('resize', handleResize);
+  }, [selectedChat]);
+
   return (
     <div className={styles.chatsPageContainer}>
-      <Sidebar className={styles.sidebar} />
+      {(isSidebarOpen || isChatListOpen) && (
+        <div
+          className={`${styles.mobileBackdrop} ${(isSidebarOpen || isChatListOpen) ? styles.open : ''}`}
+          onClick={() => {
+            setIsSidebarOpen(false);
+            setIsChatListOpen(false);
+          }}
+        />
+      )}
+      <button
+        type="button"
+        className={styles.mobileMenuToggle}
+        onClick={() => setIsSidebarOpen(!isSidebarOpen)}
+        aria-label="Toggle menu"
+      >
+        <FontAwesomeIcon icon={faBars} />
+      </button>
+      <div className={`${styles.sidebarWrapper} ${isSidebarOpen ? styles.open : ''}`}>
+        <Sidebar />
+      </div>
 
-      <aside className={styles.chatListSidebar}>
+      <button
+        type="button"
+        className={styles.mobileChatListToggle}
+        onClick={() => setIsChatListOpen(!isChatListOpen)}
+        aria-label="Toggle chat list"
+      >
+        <FontAwesomeIcon icon={faBars} />
+      </button>
+      <aside className={`${styles.chatListSidebar} ${isChatListOpen ? styles.open : ''}`}>
         <div className={styles.searchContainer}>
           <Input
             type="text"
@@ -193,7 +241,12 @@ function ChatsPage() {
             <div
               key={chat.id}
               className={`${styles.chatItem} ${selectedChat?.id === chat.id ? styles.active : ''}`}
-              onClick={() => setSelectedChat(chat)}
+              onClick={() => {
+                setSelectedChat(chat);
+                if (window.innerWidth <= 768) {
+                  setIsChatListOpen(false);
+                }
+              }}
             >
               <ProfileAvatar size="md" alt={chat.username} src={chat.avatar} />
               <div className={styles.chatInfo}>
@@ -299,21 +352,26 @@ function ChatsPage() {
                 }}
                 className={styles.messageInput}
               />
-              <button
-                type="button"
-                className={styles.emojiButton}
-                onClick={() => setIsEmojiPickerOpen((prev) => !prev)}
-              >
-                <FontAwesomeIcon icon={faFaceSmile} />
-                <EmojiPicker
-                  className={styles.emojiPicker}
-                  open={isEmojiPickerOpen}
-                  theme="auto"
-                  onEmojiClick={(emojiData) => {
-                    setMessageInput((prev) => prev + emojiData.emoji);
-                  }}
-                />
-              </button>
+              <div className={styles.emojiButtonWrapper}>
+                <button
+                  type="button"
+                  className={styles.emojiButton}
+                  onClick={() => setIsEmojiPickerOpen((prev) => !prev)}
+                >
+                  <FontAwesomeIcon icon={faFaceSmile} />
+                </button>
+                {isEmojiPickerOpen && (
+                  <div className={styles.emojiPickerContainer}>
+                    <EmojiPicker
+                      theme="auto"
+                      onEmojiClick={(emojiData) => {
+                        setMessageInput((prev) => prev + emojiData.emoji);
+                        setIsEmojiPickerOpen(false);
+                      }}
+                    />
+                  </div>
+                )}
+              </div>
               <Button type="button" onClick={handleSendMessage} disabled={!messageInput.trim()}>
                 <FontAwesomeIcon icon={faPaperPlane} />
               </Button>

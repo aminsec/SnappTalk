@@ -6,9 +6,40 @@
     flex-wrap: nowrap;
     align-items: stretch;
     overflow: hidden;
+    position: relative;
 }
 
-.sidebar {
+/* Mobile Menu Toggle Buttons */
+.mobileMenuToggle,
+.mobileSettingsToggle {
+    display: none;
+    position: fixed;
+    top: 15px;
+    z-index: 1001;
+    background: var(--bg-panel);
+    border: 2px solid var(--input-border);
+    border-radius: 8px;
+    padding: 8px 12px;
+    color: var(--text-main);
+    cursor: pointer;
+    font-size: 20px;
+    transition: background-color 0.2s ease;
+}
+
+.mobileMenuToggle {
+    left: 15px;
+}
+
+.mobileSettingsToggle {
+    left: 70px;
+}
+
+.mobileMenuToggle:hover,
+.mobileSettingsToggle:hover {
+    background: var(--item-hover);
+}
+
+.sidebarWrapper {
     flex: 0 0 80px;
     height: 100vh;
 }
@@ -69,4 +100,114 @@
     border-top: solid 3px var(--input-border);
     border-left: solid 3px var(--input-border);
     text-align: center;
+}
+
+/* Responsive Design */
+@media (max-width: 992px) {
+    .settingsSidebar {
+        flex: 0 0 280px;
+        min-width: 200px;
+        max-width: 300px;
+    }
+
+    .settingsContents {
+        padding: 20px 30px;
+    }
+}
+
+/* Mobile Backdrop */
+.mobileBackdrop {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.5);
+    z-index: 997;
+    opacity: 0;
+    transition: opacity 0.3s ease;
+}
+
+.mobileBackdrop.open {
+    opacity: 1;
+}
+
+@media (max-width: 768px) {
+    .settingsContainer {
+        flex-direction: column;
+    }
+
+    .mobileBackdrop {
+        display: block;
+    }
+
+    .mobileMenuToggle,
+    .mobileSettingsToggle {
+        display: block;
+    }
+
+    .sidebarWrapper {
+        position: fixed;
+        left: 0;
+        top: 0;
+        transform: translateX(-100%);
+        transition: transform 0.3s ease;
+        z-index: 1000;
+    }
+
+    .sidebarWrapper.open {
+        transform: translateX(0);
+    }
+
+    .settingsSidebar {
+        position: fixed;
+        left: 0;
+        top: 0;
+        width: 100%;
+        max-width: 350px;
+        height: 100vh;
+        z-index: 998;
+        transform: translateX(-100%);
+        transition: transform 0.3s ease;
+        padding-top: 60px;
+    }
+
+    .settingsSidebar.open {
+        transform: translateX(0);
+    }
+
+    .settingsContent {
+        width: 100%;
+        margin-left: 0;
+        padding-top: 60px;
+    }
+
+    .settingsTitle {
+        font-size: 16px;
+        padding: 12px 0;
+    }
+
+    .settingsContents {
+        padding: 15px 20px;
+        border-left: none;
+        border-top: none;
+    }
+}
+
+@media (max-width: 480px) {
+    .settingsSidebar {
+        left: 0;
+        max-width: 100%;
+        width: 100%;
+    }
+
+    .settingsContents {
+        padding: 15px;
+    }
+
+    .settingsTitle {
+        font-size: 14px;
+        padding: 10px 0;
+    }
 }

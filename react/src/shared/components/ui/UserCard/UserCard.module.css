@@ -72,3 +72,53 @@
   0%, 100% { opacity: 1 }
   50% { opacity: 0.5 }
 }
+
+/* Responsive Design */
+@media (max-width: 768px) {
+  .Profilcart {
+    padding: 12px 15px;
+    gap: 12px;
+  }
+
+  .sm h3 {
+    font-size: 14px;
+  }
+
+  .sm p {
+    font-size: 11px;
+  }
+
+  .md h3 {
+    font-size: 18px;
+  }
+
+  .md p {
+    font-size: 13px;
+  }
+
+  .lg h3 {
+    font-size: 20px;
+  }
+
+  .lg p {
+    font-size: 14px;
+  }
+}
+
+@media (max-width: 480px) {
+  .Profilcart {
+    padding: 10px 12px;
+    gap: 10px;
+    flex-direction: column;
+    text-align: center;
+  }
+
+  .ProfileartInfo {
+    width: 100%;
+  }
+
+  .ProfileartInfo h3,
+  .ProfileartInfo p {
+    text-align: center;
+  }
+}
