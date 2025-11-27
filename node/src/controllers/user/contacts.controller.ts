@@ -1,5 +1,4 @@
 import { Request, Response } from "express";
-import { ErrorResponse } from "../../types/response.types";
 import { getUserContacts } from "../../services/contacts.services";
 import { showError, sendResponse } from "../../utils/operations";
 
@@ -13,4 +12,4 @@ export async function showUserContacts(req: Request, resp: Response) {
 
     const responseData = {state: "success", contacts: contacts};
     sendResponse(responseData, {}, 200, resp);
-}
+};

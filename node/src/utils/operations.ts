@@ -4,6 +4,7 @@ import { Response } from 'express';
 import { ProtectedUserInfo, RawUserInfo } from '../types/user.types';
 import * as fs from 'fs';
 import * as jwt from "jsonwebtoken";
+import { Conversation } from '../types/conversation.types';
 const saltRounds = 10;
 
 //Function to send normall messages
@@ -42,6 +43,24 @@ export function whiteListUserInfo(userData: RawUserInfo): ProtectedUserInfo{
     };
 
     return validatedUserData;
+};
+
+export function whiteListContacts(contacts: Conversation[]): Conversation[]{
+    const validContacts = [];
+
+    for(var contact of contacts){
+        const validContact: any = {};
+        validContact._id = contact._id;
+        validContact.type = contact.type;
+        validContact.group_name = contact.group_name;
+        validContact.group_avatar = contact.group_avatar;
+        validContact.contact_info = contact.contact_info;
+        validContact.last_message_id = contact.last_message_id;
+        validContact.created_at = contact.created_at;
+        validContacts.push(validContact);
+    }
+
+    return validContacts;
 };
 
 export function getRandomString(): string {
