@@ -4,15 +4,16 @@ import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import {
   faSearch,
   faPaperPlane,
-  faCheckDouble,
   faEllipsisVertical,
   faTimes,
+  faCheck,
 } from '@fortawesome/free-solid-svg-icons';
 import { faFile, faFaceSmile } from '@fortawesome/free-regular-svg-icons';
-
 import { Sidebar, Input, Button, ProfileAvatar } from '@/shared/components';
+import { useAuth } from '@/shared/state/useAuth';
 import defaultAvatar from '@/shared/assets/images/avatar.png';
-
+import sentIcon from "@/shared/assets/icons/sent.svg";
+import seenIcon from "@/shared/assets/icons/seen.svg";
 import styles from './Chat.module.css';
 
 // Fake chat data used for the static UI
@@ -46,7 +47,20 @@ const FAKE_CHATS = Array(3)
       }),
   }));
 
+function convertISOtoLocal(isoDate){
+  const date = new Date(isoDate);
+
+  const formatted = date.toLocaleTimeString("en-US", {
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+  
+  return formatted;
+};
+
 function ChatsPage() {
+  const { user, status, refreshUser } = useAuth();
+  const [contacts, setConctacts] = useState([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedChat, setSelectedChat] = useState(null);
   const [messageInput, setMessageInput] = useState('');
@@ -55,6 +69,22 @@ function ChatsPage() {
   const [isUploading, setIsUploading] = useState(false);
   const [filePreview, setFilePreview] = useState(null);
   const [isEmojiPickerOpen, setIsEmojiPickerOpen] = useState(false);
+
+  useEffect(() => {
+    const getContacts = async () => {
+      const request = await fetch('/api/v1/user/contacts', {
+        method: "GET",
+        credentials: "include"
+      });
+
+      if(request.ok){
+        const response = await request.json();
+        setConctacts(response.contacts)
+      }
+    }
+
+    getContacts()
+  }, [])
 
   const filteredChats = useMemo(
     () => FAKE_CHATS.filter((chat) => chat.username.toLowerCase().includes(searchQuery.toLowerCase())),
@@ -178,29 +208,53 @@ function ChatsPage() {
         </div>
 
         <div className={styles.chatList}>
-          {filteredChats.map((chat) => (
+          {contacts.map((chat) => (
             <div
-              key={chat.id}
+              key={chat._id}
               className={`${styles.chatItem} ${selectedChat?.id === chat.id ? styles.active : ''}`}
               onClick={() => setSelectedChat(chat)}
             >
-              <ProfileAvatar size="md" alt={chat.username} src={chat.avatar} />
+              <ProfileAvatar size="md" src={chat.type === "pv" ? chat.contact_info.profile_pic : chat.group_avatar} />
               <div className={styles.chatInfo}>
                 <div className={styles.chatInfoHeader}>
-                  <h3>{chat.username}</h3>
-                  <p className={styles.lastMessage}>{chat.lastMessage.text}</p>
+                  <h3>{chat.type === "pv" ? chat.contact_info.username : chat.group_name}</h3>
+                  <p className={styles.lastMessage}>
+                    {chat.type === "group" && chat.last_message.sender !== user.username && 
+                      <b>{chat.last_message.sender}: </b>
+                    }
+                    {chat.type === "group" && chat.last_message.sender === user.username && 
+                      <span className={styles.youText}>You: </span>
+                    }
+                    {chat.last_message.content.length > 25 ? chat.last_message.content.substring(0, 25) + "..." : chat.last_message.content}
+                  </p>
                 </div>
                 <div className={styles.chatInfoFooter}>
-                  <span className={styles.timestamp}>{chat.lastMessage.timestamp}</span>
-                  {chat.lastMessage.seen ? (
-                    <span className={styles.seenIcon}>
-                      <FontAwesomeIcon icon={faCheckDouble} />
-                    </span>
-                  ) : (
-                    <span className={styles.notificationBadge}>
-                      <p>{chat.notificationCount}</p>
-                    </span>
+                  <span className={styles.timestamp}>{convertISOtoLocal(chat.last_message.when)}</span>
+                  {chat.type === "pv" &&
+                    chat.last_message.sender === user.username &&
+                    chat.last_message.seen === true && (
+                      <span className={styles.seenIcon}>
+                        <img src={seenIcon} style={{ width: 16, height: 16 }} />
+                      </span>
                   )}
+
+                  {chat.type === "pv" &&
+                    chat.last_message.sender === user.username &&
+                    chat.last_message.seen === false && (
+                      <span className={styles.seenIcon}>
+                        <img src={sentIcon} style={{ width: 16, height: 16 }} />
+                      </span>
+                  )}
+
+                  {chat.type === "pv" &&
+                    chat.last_message.sender !== user.username &&
+                    !chat.last_message.seen === false && (
+                      <span className={styles.notificationBadge}>
+                        <p>{1}</p>
+                      </span>
+                  )}
+
+                  
                 </div>
               </div>
             </div>
@@ -213,9 +267,9 @@ function ChatsPage() {
           <>
             <div className={styles.chatHeader}>
               <div className={styles.UserStatus}>
-                <ProfileAvatar size="md" alt={selectedChat.username} src={selectedChat.avatar} />
+                <ProfileAvatar size="md" alt={selectedChat.contact_info.username} src={selectedChat.contact_info.avatar} />
                 <div>
-                  <h2>{selectedChat.username}</h2>
+                  <h2>{selectedChat.contact_info.username}</h2>
                   <p className={styles.onlineStatus}>Online</p>
                 </div>
               </div>

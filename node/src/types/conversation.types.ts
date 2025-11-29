@@ -5,8 +5,9 @@ export interface Conversation {
     type: "group" | "pv",
     group_name: string | null,
     group_avatar: string | null,
-    members?: string[],
+    members: string[],
     contact_info?: any,
     last_message_id: ObjectId,
+    last_message?: Object,
     created_at: string
 };

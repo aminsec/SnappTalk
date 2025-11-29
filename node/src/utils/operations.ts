@@ -55,8 +55,8 @@ export function whiteListContacts(contacts: Conversation[]): Conversation[]{
         validContact.group_name = contact.group_name;
         validContact.group_avatar = contact.group_avatar;
         validContact.contact_info = contact.contact_info;
-        validContact.last_message_id = contact.last_message_id;
         validContact.created_at = contact.created_at;
+        validContact.last_message = contact.last_message;
         validContacts.push(validContact);
     }
 
