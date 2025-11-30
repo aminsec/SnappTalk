@@ -30,7 +30,8 @@ export async function getUserInfoById(id: string): Promise<[ProtectedUserInfo | 
         const user: RawUserInfo = await usersCollection.findOne({_id: new ObjectId(id)});
         if(user){
             //White listing user data
-            const userData: ProtectedUserInfo = whiteListUserInfo(user)
+            const userData: ProtectedUserInfo = whiteListUserInfo(user);
+            console.log(userData)
             return [userData, null];
 
         }else{
@@ -156,7 +157,7 @@ export async function updateProfilePicAddress(userid: string, newProfilePicAddre
         const usersCollection  = await getUsersCollection();
         const result = await usersCollection.updateOne(
             {_id: new ObjectId(userid)},
-            {$set: {profilePic: "/statics/images/" + newProfilePicAddress}}
+            {$set: {profile_pic: "/statics/images/" + newProfilePicAddress}}
         );
 
         if(result.acknowledged === true){
