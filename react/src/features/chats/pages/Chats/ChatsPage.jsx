@@ -60,7 +60,7 @@ function convertISOtoLocal(isoDate){
 
 function ChatsPage() {
   const { user, status, refreshUser } = useAuth();
-  const [contacts, setConctacts] = useState([]);
+  const [contacts, setContacts] = useState([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedChat, setSelectedChat] = useState(null);
   const [messageInput, setMessageInput] = useState('');
@@ -79,7 +79,7 @@ function ChatsPage() {
 
       if(request.ok){
         const response = await request.json();
-        setConctacts(response.contacts)
+        setContacts(response.contacts)
       }
     }
 
@@ -87,8 +87,19 @@ function ChatsPage() {
   }, [])
 
   const filteredChats = useMemo(
-    () => FAKE_CHATS.filter((chat) => chat.username.toLowerCase().includes(searchQuery.toLowerCase())),
-    [searchQuery]
+    () => {
+      if (!searchQuery.trim()) return contacts;
+      
+      const query = searchQuery.toLowerCase();
+      return contacts.filter((chat) => {
+        if (chat.type === "pv") {
+          return chat.contact_info?.username?.toLowerCase().includes(query);
+        } else {
+          return chat.group_name?.toLowerCase().includes(query);
+        }
+      });
+    },
+    [searchQuery, contacts]
   );
 
   const formatFileSize = useCallback((bytes) => {
@@ -208,7 +219,7 @@ function ChatsPage() {
         </div>
 
         <div className={styles.chatList}>
-          {contacts.map((chat) => (
+          {filteredChats.map((chat) => (
             <div
               key={chat._id}
               className={`${styles.chatItem} ${selectedChat?.id === chat.id ? styles.active : ''}`}
