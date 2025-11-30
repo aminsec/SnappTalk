@@ -6,13 +6,11 @@ import {
   faPaperPlane,
   faEllipsisVertical,
   faTimes,
-  faCheck,
   faPlus,
 } from '@fortawesome/free-solid-svg-icons';
 import { faFile, faFaceSmile } from '@fortawesome/free-regular-svg-icons';
 import { Sidebar, Input, Button, ProfileAvatar } from '@/shared/components';
 import { useAuth } from '@/shared/state/useAuth';
-import defaultAvatar from '@/shared/assets/images/avatar.png';
 import sentIcon from "@/shared/assets/icons/sent.svg";
 import seenIcon from "@/shared/assets/icons/seen.svg";
 import bitcoinIcon from '@/shared/assets/images/mono/acn.svg';
@@ -30,6 +28,7 @@ import planetIcon from '@/shared/assets/images/mono/strategy.svg';
 import NewConversationModal from '../../components/NewConversationModal/NewConversationModal';
 import styles from './Chat.module.css';
 
+// Constants
 const monoIcons = [
   bitcoinIcon,
   coconutCocktailIcon,
@@ -45,50 +44,31 @@ const monoIcons = [
   planetIcon,
 ];
 
-// Fake chat data used for the static UI
-const FAKE_CHATS = Array(3)
-  .fill(null)
-  .map((_, i) => ({
-    id: i + 1,
-    username: `User ${i + 1}`,
-    avatar: defaultAvatar,
-    notificationCount: Math.floor(Math.random() * 5),
-    lastMessage: (() => {
-      const date = new Date(Date.now() - Math.random() * 10000000);
-      return {
-        text: `Last message from chat ${i + 1}...`,
-        seen: Math.random() > 0.5,
-        timestamp: date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-        _fullTimestamp: date,
-      };
-    })(),
-    messages: Array(30)
-      .fill(null)
-      .map((__, j) => {
-        const date = new Date(Date.now() - Math.random() * 10000000);
-        return {
-          id: j,
-          sender: Math.random() > 0.5 ? 'me' : 'them',
-          text: `This is message ${j + 1} in chat ${i + 1}`,
-          timestamp: date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-          _fullTimestamp: date,
-        };
-      }),
-  }));
+const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
 
-function convertISOtoLocal(isoDate){
+// Helper functions
+const convertISOtoLocal = (isoDate) => {
   const date = new Date(isoDate);
-
-  const formatted = date.toLocaleTimeString("en-US", {
+  return date.toLocaleTimeString("en-US", {
     hour: "2-digit",
     minute: "2-digit",
   });
-  
-  return formatted;
+};
+
+const formatFileSize = (bytes) => {
+  if (bytes === 0) return '0 Bytes';
+  const k = 1024;
+  const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+  const i = Math.floor(Math.log(bytes) / Math.log(k));
+  return `${parseFloat((bytes / Math.pow(k, i)).toFixed(2))} ${sizes[i]}`;
+};
+
+const truncateMessage = (text, maxLength = 25) => {
+  return text.length > maxLength ? `${text.substring(0, maxLength)}...` : text;
 };
 
 function ChatsPage() {
-  const { user, status, refreshUser } = useAuth();
+  const { user } = useAuth();
   const [contacts, setContacts] = useState([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedChat, setSelectedChat] = useState(null);
@@ -101,51 +81,56 @@ function ChatsPage() {
   const [isNewConversationModalOpen, setIsNewConversationModalOpen] = useState(false);
   const [randomIcon, setRandomIcon] = useState(null);
 
+  // Fetch contacts on mount
   useEffect(() => {
-    const getContacts = async () => {
-      const request = await fetch('/api/v1/user/contacts', {
-        method: "GET",
-        credentials: "include"
-      });
+    const fetchContacts = async () => {
+      try {
+        const response = await fetch('/api/v1/user/contacts', {
+          method: "GET",
+          credentials: "include"
+        });
 
-      if(request.ok){
-        const response = await request.json();
-        setContacts(response.contacts)
+        if (response.ok) {
+          const data = await response.json();
+          setContacts(data.contacts || []);
+        }
+      } catch (error) {
+        console.error('Failed to fetch contacts:', error);
       }
-    }
+    };
 
-    getContacts()
-  }, [])
+    fetchContacts();
+  }, []);
 
+  // Set random welcome icon on mount
   useEffect(() => {
     const randomIndex = Math.floor(Math.random() * monoIcons.length);
     setRandomIcon(monoIcons[randomIndex]);
-  }, [])
-
-  const filteredChats = useMemo(
-    () => {
-      if (!searchQuery.trim()) return contacts;
-      
-      const query = searchQuery.toLowerCase();
-      return contacts.filter((chat) => {
-        if (chat.type === "pv") {
-          return chat.contact_info?.username?.toLowerCase().includes(query);
-        } else {
-          return chat.group_name?.toLowerCase().includes(query);
-        }
-      });
-    },
-    [searchQuery, contacts]
-  );
-
-  const formatFileSize = useCallback((bytes) => {
-    if (bytes === 0) return '0 Bytes';
-    const k = 1024;
-    const sizes = ['Bytes', 'KB', 'MB', 'GB'];
-    const i = Math.floor(Math.log(bytes) / Math.log(k));
-    return `${parseFloat((bytes / Math.pow(k, i)).toFixed(2))} ${sizes[i]}`;
   }, []);
 
+  // Cleanup file preview URL
+  useEffect(() => {
+    return () => {
+      if (filePreview) {
+        URL.revokeObjectURL(filePreview);
+      }
+    };
+  }, [filePreview]);
+
+  // Filter chats based on search query
+  const filteredChats = useMemo(() => {
+    if (!searchQuery.trim()) return contacts;
+    
+    const query = searchQuery.toLowerCase();
+    return contacts.filter((chat) => {
+      if (chat.type === "pv") {
+        return chat.contact_info?.username?.toLowerCase().includes(query);
+      }
+      return chat.group_name?.toLowerCase().includes(query);
+    });
+  }, [searchQuery, contacts]);
+
+  // Reset file upload state
   const resetFileUploadState = useCallback(() => {
     setSelectedFile(null);
     setFilePreview(null);
@@ -153,10 +138,26 @@ function ChatsPage() {
     setUploadProgress(0);
   }, []);
 
-  const handleCancelUpload = useCallback(() => {
-    resetFileUploadState();
-  }, [resetFileUploadState]);
+  // Refresh contacts list
+  const refreshContacts = useCallback(async () => {
+    try {
+      const response = await fetch('/api/v1/user/contacts', {
+        method: "GET",
+        credentials: "include"
+      });
 
+      if (response.ok) {
+        const data = await response.json();
+        setContacts(data.contacts || []);
+        return data.contacts || [];
+      }
+    } catch (error) {
+      console.error('Failed to refresh contacts:', error);
+    }
+    return [];
+  }, []);
+
+  // Handle new conversation modal
   const handleNewConversation = useCallback(() => {
     setIsNewConversationModalOpen(true);
   }, []);
@@ -165,9 +166,9 @@ function ChatsPage() {
     setIsNewConversationModalOpen(false);
   }, []);
 
+  // Handle user selection from new conversation modal
   const handleSelectUser = useCallback(async (selectedUser) => {
     try {
-      // Create a new conversation with the selected user
       const response = await fetch('/api/v1/chat/create', {
         method: 'POST',
         credentials: 'include',
@@ -176,41 +177,31 @@ function ChatsPage() {
         },
         body: JSON.stringify({
           userId: selectedUser._id || selectedUser.id,
-          type: 'pv', // Private conversation
+          type: 'pv',
         }),
       });
 
-      if (response.ok) {
-        const data = await response.json();
-        // Refresh contacts list
-        const contactsResponse = await fetch('/api/v1/user/contacts', {
-          method: "GET",
-          credentials: "include"
-        });
-        
-        if (contactsResponse.ok) {
-          const contactsData = await contactsResponse.json();
-          setContacts(contactsData.contacts);
-          
-          // Select the newly created conversation
-          const newChat = contactsData.contacts.find(
-            (chat) => chat.type === 'pv' && 
-            (chat.contact_info?._id === selectedUser._id || chat.contact_info?.id === selectedUser.id)
-          );
-          if (newChat) {
-            setSelectedChat(newChat);
-          }
-        }
-      } else {
-        console.error('Failed to create conversation');
-        alert('Failed to create conversation. Please try again.');
+      if (!response.ok) {
+        throw new Error('Failed to create conversation');
+      }
+
+      // Refresh contacts and select the new chat
+      const updatedContacts = await refreshContacts();
+      const newChat = updatedContacts.find(
+        (chat) => chat.type === 'pv' && 
+        (chat.contact_info?._id === selectedUser._id || chat.contact_info?.id === selectedUser.id)
+      );
+      
+      if (newChat) {
+        setSelectedChat(newChat);
       }
     } catch (error) {
       console.error('Error creating conversation:', error);
-      alert('Something went wrong. Please try again.');
+      alert('Failed to create conversation. Please try again.');
     }
-  }, []);
+  }, [refreshContacts]);
 
+  // Handle file upload
   const handleFileChange = useCallback(
     async (event) => {
       const file = event.target.files?.[0];
@@ -221,8 +212,7 @@ function ChatsPage() {
         return;
       }
 
-      const maxSize = 5 * 1024 * 1024;
-      if (file.size > maxSize) {
+      if (file.size > MAX_FILE_SIZE) {
         alert('File size must be less than 5MB');
         event.target.value = '';
         return;
@@ -236,6 +226,7 @@ function ChatsPage() {
 
       const reader = new FileReader();
       reader.onloadend = async () => {
+        // Simulate upload progress
         const interval = setInterval(() => {
           setUploadProgress((prev) => {
             if (prev >= 100) {
@@ -268,9 +259,10 @@ function ChatsPage() {
             }
           }
         } catch (error) {
-          console.error('Upload failed', error);
+          console.error('Upload failed:', error);
           alert('Something went wrong uploading your file.');
         } finally {
+          clearInterval(interval);
           resetFileUploadState();
         }
       };
@@ -279,14 +271,6 @@ function ChatsPage() {
     },
     [resetFileUploadState, selectedChat]
   );
-
-  useEffect(() => {
-    return () => {
-      if (filePreview) {
-        URL.revokeObjectURL(filePreview);
-      }
-    };
-  }, [filePreview]);
 
   return (
     <div className={styles.chatsPageContainer}>
@@ -314,57 +298,59 @@ function ChatsPage() {
               <p>Start a conversation...</p>
             </div>
           ) : (
-            filteredChats.map((chat) => (
-              <div
-                key={chat._id}
-                className={`${styles.chatItem} ${selectedChat?.id === chat.id ? styles.active : ''}`}
-                onClick={() => setSelectedChat(chat)}
-              >
-                <ProfileAvatar size="md" src={chat.type === "pv" ? chat.contact_info.profile_pic : chat.group_avatar} />
-                <div className={styles.chatInfo}>
-                  <div className={styles.chatInfoHeader}>
-                    <h3>{chat.type === "pv" ? chat.contact_info.username : chat.group_name}</h3>
-                    <p className={styles.lastMessage}>
-                      {chat.type === "group" && chat.last_message.sender !== user.username && 
-                        <b>{chat.last_message.sender}: </b>
-                      }
-                      {chat.type === "group" && chat.last_message.sender === user.username && 
-                        <span className={styles.youText}>You: </span>
-                      }
-                      {chat.last_message.content.length > 25 ? chat.last_message.content.substring(0, 25) + "..." : chat.last_message.content}
-                    </p>
-                  </div>
-                  <div className={styles.chatInfoFooter}>
-                    <span className={styles.timestamp}>{convertISOtoLocal(chat.last_message.when)}</span>
-                    {chat.type === "pv" &&
-                      chat.last_message.sender === user.username &&
-                      chat.last_message.seen === true && (
-                        <span className={styles.seenIcon}>
-                          <img src={seenIcon} style={{ width: 16, height: 16 }} />
-                        </span>
-                    )}
+            filteredChats.map((chat) => {
+              const isPrivateChat = chat.type === "pv";
+              const isMyMessage = chat.last_message.sender === user?.username;
+              const avatarSrc = isPrivateChat 
+                ? chat.contact_info?.profile_pic 
+                : chat.group_avatar;
+              const displayName = isPrivateChat 
+                ? chat.contact_info?.username 
+                : chat.group_name;
 
-                    {chat.type === "pv" &&
-                      chat.last_message.sender === user.username &&
-                      chat.last_message.seen === false && (
+              return (
+                <div
+                  key={chat._id}
+                  className={`${styles.chatItem} ${selectedChat?.id === chat.id ? styles.active : ''}`}
+                  onClick={() => setSelectedChat(chat)}
+                >
+                  <ProfileAvatar size="md" src={avatarSrc} />
+                  <div className={styles.chatInfo}>
+                    <div className={styles.chatInfoHeader}>
+                      <h3>{displayName}</h3>
+                      <p className={styles.lastMessage}>
+                        {!isPrivateChat && !isMyMessage && (
+                          <b>{chat.last_message.sender}: </b>
+                        )}
+                        {!isPrivateChat && isMyMessage && (
+                          <span className={styles.youText}>You: </span>
+                        )}
+                        {truncateMessage(chat.last_message.content)}
+                      </p>
+                    </div>
+                    <div className={styles.chatInfoFooter}>
+                      <span className={styles.timestamp}>
+                        {convertISOtoLocal(chat.last_message.when)}
+                      </span>
+                      {isPrivateChat && isMyMessage && (
                         <span className={styles.seenIcon}>
-                          <img src={sentIcon} style={{ width: 16, height: 16 }} />
+                          <img 
+                            src={chat.last_message.seen ? seenIcon : sentIcon} 
+                            alt={chat.last_message.seen ? "Seen" : "Sent"}
+                            style={{ width: 16, height: 16 }} 
+                          />
                         </span>
-                    )}
-
-                    {chat.type === "pv" &&
-                      chat.last_message.sender !== user.username &&
-                      !chat.last_message.seen === false && (
+                      )}
+                      {isPrivateChat && !isMyMessage && !chat.last_message.seen && (
                         <span className={styles.notificationBadge}>
-                          <p>{1}</p>
+                          <p>1</p>
                         </span>
-                    )}
-
-                    
+                      )}
+                    </div>
                   </div>
                 </div>
-              </div>
-            ))
+              );
+            })
           )}
         </div>
         <button
@@ -381,19 +367,26 @@ function ChatsPage() {
           <>
             <div className={styles.chatHeader}>
               <div className={styles.UserStatus}>
-                <ProfileAvatar size="md" alt={selectedChat.contact_info.username} src={selectedChat.contact_info.avatar} />
+                <ProfileAvatar 
+                  size="md" 
+                  alt={selectedChat.type === "pv" ? selectedChat.contact_info?.username : selectedChat.group_name}
+                  src={selectedChat.type === "pv" ? selectedChat.contact_info?.profile_pic : selectedChat.group_avatar}
+                />
                 <div>
-                  <h2>{selectedChat.contact_info.username}</h2>
+                  <h2>
+                    {selectedChat.type === "pv" 
+                      ? selectedChat.contact_info?.username 
+                      : selectedChat.group_name}
+                  </h2>
                   <p className={styles.onlineStatus}>Online</p>
                 </div>
               </div>
-
               <FontAwesomeIcon icon={faEllipsisVertical} size={24} />
             </div>
 
             <div className={styles.messagesContainer}>
               <div className={styles.messagesWrapper}>
-                {selectedChat.messages.map((message) => (
+                {selectedChat.messages?.map((message) => (
                   <div
                     key={message.id}
                     className={`${styles.message} ${message.sender === 'me' ? styles.sent : styles.received}`}
@@ -419,7 +412,7 @@ function ChatsPage() {
                     <span className={styles.selectedFileName}>{selectedFile.name}</span>
                     <span className={styles.fileSize}>{formatFileSize(selectedFile.size)}</span>
                   </div>
-                  <Button className={styles.cancelUpload} onClick={handleCancelUpload}>
+                  <Button className={styles.cancelUpload} onClick={resetFileUploadState}>
                     <FontAwesomeIcon icon={faTimes} />
                   </Button>
                 </div>
@@ -433,7 +426,7 @@ function ChatsPage() {
 
             <div className={styles.inputBar}>
               <label className={styles.fileUploadIcon} htmlFor="file-upload">
-                <FontAwesomeIcon icon={faFile} className={styles.fileUploadIcon} />
+                <FontAwesomeIcon icon={faFile} />
               </label>
               <input
                 id="file-upload"
