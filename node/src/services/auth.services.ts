@@ -2,7 +2,8 @@ import { getUsersCollection } from "../models/users.model";
 import { makeBcryptHash, checkBcrypt, whiteListUserInfo } from "../utils/operations";
 import { checkEmailIsValid } from "../utils/validate";
 import { ProtectedUserInfo, RawUserInfo, InsertUserInfo } from "../types/user.types";
-import {ErrorResponse } from "../types/response.types";
+import { ErrorResponse } from "../types/response.types";
+import { getDeadSessionsCollection } from "../models/dead_sessions.model";
 
 export async function checkUserExistsByEmail(email: string): Promise<[true | false | null, null |ErrorResponse]>  {
     try {
@@ -107,6 +108,28 @@ export async function createUser(email: string, password: string): Promise<[Prot
     } catch (error) {
         console.log(error);
         const err:ErrorResponse = {message: "A system error occurred", state: "failed", type: "system_error"};
+        return [null, err];
+    }
+};
+
+export async function revokeToken(token: string):  Promise<[Boolean | null, ErrorResponse | null]> {
+    try {
+        const dead_sessionsCL = await getDeadSessionsCollection();
+        const insertedToken = await dead_sessionsCL.insertOne({
+            token: token
+        });
+    
+        if(insertedToken.acknowledged === true){
+            return [true, null];
+    
+        }else{
+            const err: ErrorResponse = {message: "Couldn't insert token", state: "failed", type: "system_error"};
+            return [null, err];
+        }
+
+    } catch (error) {
+        console.log(error);
+        const err: ErrorResponse = {message: "A system error occurred", state: "failed", type: "system_error"};
         return [null, err];
     }
 };
