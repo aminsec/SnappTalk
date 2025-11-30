@@ -31,7 +31,27 @@ export async function getUserInfoById(id: string): Promise<[ProtectedUserInfo | 
         if(user){
             //White listing user data
             const userData: ProtectedUserInfo = whiteListUserInfo(user);
-            console.log(userData)
+            return [userData, null];
+
+        }else{
+            const err: ErrorResponse = {message: "User not found", state: "failed", type: "not_found"};
+            return [null, err];
+        }
+
+    } catch (error) {
+        console.log(error);
+        const err: ErrorResponse = {message: "A system error occurred", state: "failed", type: "system_error"};
+        return [null, err];
+    }
+};
+
+export async function getUserInfoByUsername(username: string): Promise<[ProtectedUserInfo | null, ErrorResponse | null]> {
+    try {
+        const usersCollection  = await getUsersCollection();
+        const user: RawUserInfo = await usersCollection.findOne({username: username});
+        if(user){
+            //White listing user data
+            const userData: ProtectedUserInfo = whiteListUserInfo(user);
             return [userData, null];
 
         }else{
