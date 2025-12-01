@@ -31,6 +31,37 @@
     max-width: 400px;
     height: 100vh;
     overflow-y: auto;
+    position: relative;
+}
+
+.newConversationButton {
+    position: absolute;
+    bottom: 20px;
+    right: 20px;
+    width: 56px;
+    height: 56px;
+    border-radius: 50%;
+    background-color: var(--btn-color);
+    color: white;
+    border: none;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 24px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+    transition: var(--transition);
+    z-index: 10;
+}
+
+.newConversationButton:hover {
+    background-color: var(--btn-hover);
+    transform: scale(1.05);
+    box-shadow: 0 6px 16px rgba(0, 0, 0, 0.4);
+}
+
+.newConversationButton:active {
+    transform: scale(0.95);
 }
 
 .searchContainer {
@@ -46,6 +77,24 @@
     flex-direction: column;
 }
 
+.emptyState {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 40px 20px;
+    text-align: center;
+}
+
+.emptyState p {
+    color: var(--text-muted);
+    font-size: 16px;
+    font-weight: 500;
+    letter-spacing: 0.5px;
+    opacity: 0.7;
+    transition: opacity 0.3s ease;
+}
+
 .chatItem {
     display: flex;
     align-items: center;
@@ -53,15 +102,23 @@
     padding: 12px;
     border-radius: 8px;
     cursor: pointer;
-    transition: background-color 0.2s ease;
+    /* Solid background using app theme colors */
+    background-color: var(--input-bg);
+    transition: background-color 0.2s ease, transform 0.1s ease;
 }
 
 .chatItem:hover {
     background-color: var(--item-hover);
 }
 
-.chatItem.active {
+/* Selected contact in the list */
+.active {
     background-color: var(--item-hover);
+}
+
+.chatItemActive {
+    background-color: var(--item-active);
+    transform: translateX(2px);
 }
 
 /* ChatMenu Items Style */
@@ -250,11 +307,45 @@
     display: flex;
     align-items: center;
     justify-content: center;
+    padding: 40px 20px;
 }
 
 .noChatSelected h2 {
     color: var(--text-muted);
     font-size: 18px;
+}
+
+.emptyChatMessage {
+    text-align: center;
+    max-width: 400px;
+    padding: 20px;
+}
+
+.emptyChatTitle {
+    color: var(--text-main);
+    font-size: 24px;
+    font-weight: 600;
+    margin-bottom: 12px;
+    letter-spacing: -0.5px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+}
+
+.welcomeIcon {
+    width: 48px;
+    height: 48px;
+    object-fit: contain;    
+    filter: invert(100%) sepia(0%) saturate(1552%) hue-rotate(333deg) brightness(112%) contrast(101%);
+    margin: 0px, 0px, 0px, 0px;
+}
+
+.emptyChatSubtitle {
+    color: var(--text-muted);
+    font-size: 16px;
+    line-height: 1.5;
+    opacity: 0.8;
 }
 
 .uploadProgress {
@@ -378,3 +469,12 @@
         width: 100%;
     }
 }
+
+.youText {
+    display: inline;
+    font-weight: bold;
+    margin-right: 4px;
+    display: inline;
+
+}
+  

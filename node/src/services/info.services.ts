@@ -24,13 +24,34 @@ export async function getRawUserInfo(userid: string): Promise<[RawUserInfo | nul
     }
 };
 
-export async function getUserInfoById(id:string): Promise<[ProtectedUserInfo | null, ErrorResponse | null]> {
+export async function getUserInfoById(id: string): Promise<[ProtectedUserInfo | null, ErrorResponse | null]> {
     try {
         const usersCollection  = await getUsersCollection();
         const user: RawUserInfo = await usersCollection.findOne({_id: new ObjectId(id)});
         if(user){
             //White listing user data
-            const userData: ProtectedUserInfo = whiteListUserInfo(user)
+            const userData: ProtectedUserInfo = whiteListUserInfo(user);
+            return [userData, null];
+
+        }else{
+            const err: ErrorResponse = {message: "User not found", state: "failed", type: "not_found"};
+            return [null, err];
+        }
+
+    } catch (error) {
+        console.log(error);
+        const err: ErrorResponse = {message: "A system error occurred", state: "failed", type: "system_error"};
+        return [null, err];
+    }
+};
+
+export async function getUserInfoByUsername(username: string): Promise<[ProtectedUserInfo | null, ErrorResponse | null]> {
+    try {
+        const usersCollection  = await getUsersCollection();
+        const user: RawUserInfo = await usersCollection.findOne({username: username});
+        if(user){
+            //White listing user data
+            const userData: ProtectedUserInfo = whiteListUserInfo(user);
             return [userData, null];
 
         }else{
@@ -156,7 +177,7 @@ export async function updateProfilePicAddress(userid: string, newProfilePicAddre
         const usersCollection  = await getUsersCollection();
         const result = await usersCollection.updateOne(
             {_id: new ObjectId(userid)},
-            {$set: {profilePic: "/statics/images/" + newProfilePicAddress}}
+            {$set: {profile_pic: "/statics/images/" + newProfilePicAddress}}
         );
 
         if(result.acknowledged === true){

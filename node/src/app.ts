@@ -2,8 +2,9 @@ import express, { Request, Response } from "express";
 import bodyParser from "body-parser";
 import cookieParser from "cookie-parser";
 import authRoutes from "./routes/auth/auth.routes";
+import membersRoutes from "./routes/members/info.routes";
 import accountRoutes from "./routes/user/info.routes";
-import accountContactsRoutes from "./routes/user/contacts.routes";
+import accountContactsRoutes from "./routes/user/conversations.routes";
 import validateJWT from "./middlewares/jwt";
 import helmet from "helmet";
 import { rateLimit } from 'express-rate-limit'
@@ -22,10 +23,14 @@ app.get('/', (req: Request, res: Response) => {
   res.send('Hello World!');
 });
 
+//Configs
 app.use(limiter);
 app.use(helmet());
 app.use(bodyParser.json({ limit: "5mb" })); // Increasing body size limit
 app.use(cookieParser()); // Parsing cookies
+
+//Routes
+app.use("/members", membersRoutes);
 app.use("/auth", authRoutes);
 app.use("/user", validateJWT);
 app.use("/user", accountRoutes);

@@ -8,5 +8,6 @@ export interface Conversation {
     members: string[],
     contact_info?: any,
     last_message_id: ObjectId,
-    createdAt: string
+    last_message?: Object,
+    created_at: string
 };

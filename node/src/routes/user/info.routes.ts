@@ -2,6 +2,7 @@ import express from "express";
 import * as accountInfoController  from "../../controllers/user/info.controller";
 import { check } from 'express-validator';
 import { checkThereIsAnyError } from "../../middlewares/errors";
+import { globalReg } from "../../utils/regex";
 const router = express.Router();
 
 router.get("/info", accountInfoController.showUserInfo);
@@ -10,7 +11,7 @@ router.put("/info", [
     .isString().withMessage("Username must be a string.")
     .notEmpty().withMessage("Username is required.")
     .isLength({ min: 5, max: 24 }).withMessage("Username must be 4–24 characters.")
-    .matches(/^[a-zA-Z0-9_]+$/).withMessage("Only a-z, 0-9, and '_' are allowed."),
+    .matches(globalReg.username).withMessage("Only a-z, 0-9, and '_' are allowed."),
   
   check("email")
     .isString().withMessage("Email must be a string.")
@@ -32,7 +33,7 @@ router.put("/info/password", [
   check("new_password")
   .isString().withMessage("New password must be a string.")
   .notEmpty().withMessage("New password is required.")
-  .matches(/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]).{6,}$/).withMessage("Password is weak. It must contain at least one uppercase letter, one lowercase letter, one digit, and one special character.")
+  .matches(globalReg.password).withMessage("Password is weak. It must contain at least one uppercase letter, one lowercase letter, one digit, and one special character.")
   .isLength({ min: 6, max: 24 }).withMessage("New password must be 6–24 characters."),
 
   checkThereIsAnyError
