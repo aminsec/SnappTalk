@@ -94,6 +94,21 @@
   margin-bottom: 20px;
 }
 
+.searchBar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.inlineSpinner {
+  width: 18px;
+  height: 18px;
+  border: 2px solid var(--input-border);
+  border-top-color: var(--btn-color);
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+
 .errorMessage {
   background-color: rgba(255, 92, 92, 0.1);
   border: 1px solid var(--error-color);
@@ -102,26 +117,6 @@
   border-radius: 8px;
   font-size: 14px;
   margin-bottom: 20px;
-}
-
-.loadingContainer {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 16px;
-  padding: 40px 20px;
-  color: var(--text-muted);
-}
-
-.loadingSpinner {
-  width: 40px;
-  height: 40px;
-  border: 3px solid var(--input-border);
-  border-top-color: var(--btn-color);
-  border-radius: 50%;
-  animation: spin 0.8s linear infinite;
 }
 
 @keyframes spin {

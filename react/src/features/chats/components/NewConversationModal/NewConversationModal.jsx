@@ -13,41 +13,21 @@ function NewConversationModal({ isOpen, onClose, onSelectUser, existingContacts 
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState(null);
 
-  useEffect(() => {
-    if (isOpen) {
-      fetchAvailableUsers();
-    } else {
-      // Reset state when modal closes
-      setSearchQuery('');
-      setUsers([]);
-      setError(null);
-    }
-  }, [isOpen]);
-
-  const fetchAvailableUsers = async () => {
+  const fetchAvailableUsers = useCallback(async (query = '') => {
     setIsLoading(true);
     setError(null);
-    
+
     try {
-      // Fetch all users (excluding current user)
-      // Note: You need to create this endpoint: GET /api/v1/user/users
-      // It should return: { users: Array<ProtectedUserInfo> }
-      let response = await fetch('/api/v1/user/users', {
+      const searchTerm = encodeURIComponent(query.trim() || '*');
+      const response = await fetch(`/api/v1/members/${searchTerm}/search`, {
         method: 'GET',
         credentials: 'include',
       });
 
-      // Handle 404 - endpoint doesn't exist yet
-      if (response.status === 404) {
-        setError('Feature not available yet. The users endpoint needs to be implemented.');
-        setIsLoading(false);
-        return;
-      }
-
       if (response.ok) {
         const data = await response.json();
-        let allUsers = data.users || data || [];
-        
+        let allUsers = data.members_info || data || [];
+        console.log(allUsers)
         // Get IDs of users we already have conversations with
         const existingContactIds = new Set();
         existingContacts.forEach(contact => {
@@ -66,7 +46,7 @@ function NewConversationModal({ isOpen, onClose, onSelectUser, existingContacts 
 
         setUsers(availableUsers);
       } else {
-        setError('Failed to load users');
+        setError('');
       }
     } catch (err) {
       console.error('Error fetching users:', err);
@@ -74,7 +54,18 @@ function NewConversationModal({ isOpen, onClose, onSelectUser, existingContacts 
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [existingContacts, user]);
+
+  useEffect(() => {
+    if (isOpen) {
+      fetchAvailableUsers(searchQuery);
+    } else {
+      // Reset state when modal closes
+      setSearchQuery('');
+      setUsers([]);
+      setError(null);
+    }
+  }, [isOpen, searchQuery, fetchAvailableUsers]);
 
   const filteredUsers = useMemo(() => {
     if (!searchQuery.trim()) return users;
@@ -118,16 +109,25 @@ function NewConversationModal({ isOpen, onClose, onSelectUser, existingContacts 
 
         <div className={styles.modalBody}>
           <div className={styles.searchContainer}>
-            <Input
-              type="text"
-              placeholder="Search by username or email..."
-              icon={faSearch}
-              size="md"
-              fullWidth
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              autoFocus
-            />
+            <div className={styles.searchBar}>
+              <Input
+                type="text"
+                placeholder="Search by username..."
+                icon={faSearch}
+                size="md"
+                fullWidth
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                autoFocus
+              />
+              {isLoading && (
+                <div
+                  className={styles.inlineSpinner}
+                  role="status"
+                  aria-label="Loading users"
+                />
+              )}
+            </div>
           </div>
 
           {error && (
@@ -136,43 +136,38 @@ function NewConversationModal({ isOpen, onClose, onSelectUser, existingContacts 
             </div>
           )}
 
-          {isLoading ? (
-            <div className={styles.loadingContainer}>
-              <div className={styles.loadingSpinner}></div>
-              <p>Loading users...</p>
-            </div>
-          ) : (
-            <div className={styles.usersList}>
-              {filteredUsers.length === 0 ? (
-                <div className={styles.emptyState}>
-                  <p>
-                    {searchQuery.trim()
-                      ? 'No users found matching your search.'
-                      : 'No users available.'}
-                  </p>
-                </div>
-              ) : (
-                filteredUsers.map((userItem) => (
-                  <div
-                    key={userItem._id || userItem.id}
-                    className={styles.userItem}
-                    onClick={() => handleUserSelect(userItem)}
-                  >
-                    <ProfileAvatar
-                      size="md"
-                      src={userItem.profile_pic || defaultAvatar}
-                    />
-                    <div className={styles.userInfo}>
-                      <h3 className={styles.username}>{userItem.username}</h3>
-                      {userItem.bio && (
-                        <p className={styles.userBio}>{userItem.bio}</p>
-                      )}
-                    </div>
+          <div className={styles.usersList}>
+            {filteredUsers.length === 0 ? (
+              <div className={styles.emptyState}>
+                <p>
+                  {isLoading
+                    ? 'Searching users...'
+                    : searchQuery.trim()
+                    ? 'No users found matching your search.'
+                    : 'No users available.'}
+                </p>
+              </div>
+            ) : (
+              filteredUsers.map((userItem) => (
+                <div
+                  key={userItem._id || userItem.id}
+                  className={styles.userItem}
+                  onClick={() => handleUserSelect(userItem)}
+                >
+                  <ProfileAvatar
+                    size="md"
+                    src={userItem.profile_pic || defaultAvatar}
+                  />
+                  <div className={styles.userInfo}>
+                    <h3 className={styles.username}>{userItem.username}</h3>
+                    {userItem.bio && (
+                      <p className={styles.userBio}>{userItem.bio}</p>
+                    )}
                   </div>
-                ))
-              )}
-            </div>
-          )}
+                </div>
+              ))
+            )}
+          </div>
         </div>
       </div>
     </div>

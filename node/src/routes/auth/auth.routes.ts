@@ -4,6 +4,7 @@ import { check } from "express-validator";
 import { checkThereIsAnyError } from "../../middlewares/errors";
 import validateJWT from "../../middlewares/jwt";
 import { handleLogout } from "../../controllers/auth/logout.controller";
+import { globalReg } from "../../utils/regex";
 const router = express.Router();
 
 router.post("/", [
@@ -11,7 +12,7 @@ router.post("/", [
     check("password")
     .isString().withMessage("Invalid password value")
     .notEmpty().withMessage("Password is required")
-    .matches(/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]).{6,}$/).withMessage("Incorrect or weak password"),
+    .matches(globalReg.password).withMessage("Incorrect or weak password"),
     checkThereIsAnyError
 ], handleAuth);
 
