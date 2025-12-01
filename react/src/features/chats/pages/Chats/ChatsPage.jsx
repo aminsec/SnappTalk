@@ -173,8 +173,10 @@ function ChatsPage() {
   }, []);
 
   // Handle user selection from new conversation modal
+  // NOTE: This only updates frontend state.
+  //       No request is sent to create a new conversation here.
   const handleSelectUser = useCallback(
-    async (selectedUser) => {
+    (selectedUser) => {
       const selectedUserId = (selectedUser._id || selectedUser.id)?.toString();
       if (!selectedUserId) return;
 
@@ -213,45 +215,8 @@ function ChatsPage() {
       setContacts((prevContacts) => [optimisticChat, ...prevContacts]);
       setSelectedChat(optimisticChat);
       setIsNewConversationModalOpen(false);
-
-      // 3) Keep backend call so the real conversation is created server-side.
-      //    When `refreshContacts` completes, the canonical conversations list from the backend will replace the optimistic one.
-      try {
-        const response = await fetch('/api/v1/chat/create', {
-          method: 'POST',
-          credentials: 'include',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            userId: selectedUser._id || selectedUser.id,
-            type: 'pv',
-          }),
-        });
-
-        if (!response.ok) {
-          throw new Error('Failed to create conversation');
-        }
-
-        // Refresh contacts and select the new chat from the server response
-        const updatedContacts = await refreshContacts();
-        const newChat = updatedContacts.find(
-          (chat) =>
-            chat.type === 'pv' &&
-            (chat.contact_info?._id === selectedUser._id ||
-              chat.contact_info?.id === selectedUser.id)
-        );
-
-        if (newChat) {
-          setSelectedChat(newChat);
-        }
-      } catch (error) {
-        console.error('Error creating conversation:', error);
-        // We already added the optimistic contact; just inform the user that the server-side creation failed.
-        alert('Failed to create conversation on the server. The contact is shown locally only.');
-      }
     },
-    [contacts, refreshContacts, user]
+    [contacts, user]
   );
 
   // Handle file upload
