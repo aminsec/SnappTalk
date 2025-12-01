@@ -85,17 +85,17 @@ function ChatsPage() {
   useEffect(() => {
     const fetchContacts = async () => {
       try {
-        const response = await fetch('/api/v1/user/contacts', {
+        const response = await fetch('/api/v1/user/conversations', {
           method: "GET",
           credentials: "include"
         });
 
         if (response.ok) {
           const data = await response.json();
-          setContacts(data.contacts || []);
+          setContacts(data.conversations || []);
         }
       } catch (error) {
-        console.error('Failed to fetch contacts:', error);
+        console.error('Failed to fetch conversations:', error);
       }
     };
 
@@ -138,21 +138,21 @@ function ChatsPage() {
     setUploadProgress(0);
   }, []);
 
-  // Refresh contacts list
+  // Refresh conversations list
   const refreshContacts = useCallback(async () => {
     try {
-      const response = await fetch('/api/v1/user/contacts', {
+      const response = await fetch('/api/v1/user/conversations', {
         method: "GET",
         credentials: "include"
       });
 
       if (response.ok) {
         const data = await response.json();
-        setContacts(data.contacts || []);
-        return data.contacts || [];
+        setContacts(data.conversations || []);
+        return data.conversations || [];
       }
     } catch (error) {
-      console.error('Failed to refresh contacts:', error);
+      console.error('Failed to refresh conversations:', error);
     }
     return [];
   }, []);

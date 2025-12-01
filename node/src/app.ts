@@ -4,7 +4,7 @@ import cookieParser from "cookie-parser";
 import authRoutes from "./routes/auth/auth.routes";
 import membersRoutes from "./routes/members/info.routes";
 import accountRoutes from "./routes/user/info.routes";
-import accountContactsRoutes from "./routes/user/contacts.routes";
+import accountContactsRoutes from "./routes/user/conversations.routes";
 import validateJWT from "./middlewares/jwt";
 import helmet from "helmet";
 import { rateLimit } from 'express-rate-limit'
