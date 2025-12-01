@@ -102,15 +102,23 @@
     padding: 12px;
     border-radius: 8px;
     cursor: pointer;
-    transition: background-color 0.2s ease;
+    /* Solid background using app theme colors */
+    background-color: var(--input-bg);
+    transition: background-color 0.2s ease, transform 0.1s ease;
 }
 
 .chatItem:hover {
     background-color: var(--item-hover);
 }
 
-.chatItem.active {
+/* Selected contact in the list */
+.active {
     background-color: var(--item-hover);
+}
+
+.chatItemActive {
+    background-color: var(--item-active);
+    transform: translateX(2px);
 }
 
 /* ChatMenu Items Style */

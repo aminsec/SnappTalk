@@ -6,7 +6,7 @@ import {
   faPaperPlane,
   faEllipsisVertical,
   faTimes,
-  faPlus,
+  faAddressBook,
 } from '@fortawesome/free-solid-svg-icons';
 import { faFile, faFaceSmile } from '@fortawesome/free-regular-svg-icons';
 import { Sidebar, Input, Button, ProfileAvatar } from '@/shared/components';
@@ -48,11 +48,17 @@ const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
 
 // Helper functions
 const convertISOtoLocal = (isoDate) => {
-  const date = new Date(isoDate);
-  return date.toLocaleTimeString("en-US", {
-    hour: "2-digit",
-    minute: "2-digit",
-  });
+  try {
+    if(isoDate !== Date) return "";
+    const date = new Date(isoDate);
+    return date.toLocaleTimeString("en-US", {
+      hour: "2-digit",
+      minute: "2-digit",
+    });
+  } catch (error) {
+    return "";
+  }
+
 };
 
 const formatFileSize = (bytes) => {
@@ -167,39 +173,86 @@ function ChatsPage() {
   }, []);
 
   // Handle user selection from new conversation modal
-  const handleSelectUser = useCallback(async (selectedUser) => {
-    try {
-      const response = await fetch('/api/v1/chat/create', {
-        method: 'POST',
-        credentials: 'include',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          userId: selectedUser._id || selectedUser.id,
-          type: 'pv',
-        }),
+  const handleSelectUser = useCallback(
+    async (selectedUser) => {
+      const selectedUserId = (selectedUser._id || selectedUser.id)?.toString();
+      if (!selectedUserId) return;
+
+      // 1) If a conversation with this user already exists, just open it and close the modal
+      const existingChat = contacts.find((chat) => {
+        if (chat.type !== 'pv') return false;
+        const contactId = (chat.contact_info?._id || chat.contact_info?.id)?.toString();
+        return contactId && contactId === selectedUserId;
       });
 
-      if (!response.ok) {
-        throw new Error('Failed to create conversation');
+      if (existingChat) {
+        setSelectedChat(existingChat);
+        setIsNewConversationModalOpen(false);
+        return;
       }
 
-      // Refresh contacts and select the new chat
-      const updatedContacts = await refreshContacts();
-      const newChat = updatedContacts.find(
-        (chat) => chat.type === 'pv' && 
-        (chat.contact_info?._id === selectedUser._id || chat.contact_info?.id === selectedUser.id)
-      );
-      
-      if (newChat) {
-        setSelectedChat(newChat);
+      // 2) Otherwise, optimistically add the selected user to the contacts list
+      const tempId = `temp-${Date.now()}`;
+
+      const optimisticChat = {
+        id: tempId,
+        _id: tempId,
+        type: 'pv',
+        contact_info: {
+          ...(selectedUser || {}),
+        },
+        last_message: {
+          content: '',
+          type: 'text',
+          sender: user?.username || '',
+          when: "",
+          seen: null,
+        },
+      };
+
+      setContacts((prevContacts) => [optimisticChat, ...prevContacts]);
+      setSelectedChat(optimisticChat);
+      setIsNewConversationModalOpen(false);
+
+      // 3) Keep backend call so the real conversation is created server-side.
+      //    When `refreshContacts` completes, the canonical conversations list from the backend will replace the optimistic one.
+      try {
+        const response = await fetch('/api/v1/chat/create', {
+          method: 'POST',
+          credentials: 'include',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            userId: selectedUser._id || selectedUser.id,
+            type: 'pv',
+          }),
+        });
+
+        if (!response.ok) {
+          throw new Error('Failed to create conversation');
+        }
+
+        // Refresh contacts and select the new chat from the server response
+        const updatedContacts = await refreshContacts();
+        const newChat = updatedContacts.find(
+          (chat) =>
+            chat.type === 'pv' &&
+            (chat.contact_info?._id === selectedUser._id ||
+              chat.contact_info?.id === selectedUser.id)
+        );
+
+        if (newChat) {
+          setSelectedChat(newChat);
+        }
+      } catch (error) {
+        console.error('Error creating conversation:', error);
+        // We already added the optimistic contact; just inform the user that the server-side creation failed.
+        alert('Failed to create conversation on the server. The contact is shown locally only.');
       }
-    } catch (error) {
-      console.error('Error creating conversation:', error);
-      alert('Failed to create conversation. Please try again.');
-    }
-  }, [refreshContacts]);
+    },
+    [contacts, refreshContacts, user]
+  );
 
   // Handle file upload
   const handleFileChange = useCallback(
@@ -301,6 +354,8 @@ function ChatsPage() {
             filteredChats.map((chat) => {
               const isPrivateChat = chat.type === "pv";
               const isMyMessage = chat.last_message.sender === user?.username;
+              const selectedId = selectedChat?._id || selectedChat?.id;
+              const chatId = chat._id || chat.id;
               const avatarSrc = isPrivateChat 
                 ? chat.contact_info?.profile_pic 
                 : chat.group_avatar;
@@ -311,7 +366,7 @@ function ChatsPage() {
               return (
                 <div
                   key={chat._id}
-                  className={`${styles.chatItem} ${selectedChat?.id === chat.id ? styles.active : ''}`}
+                  className={`${styles.chatItem} ${selectedId && chatId && selectedId === chatId ? styles.active : ''}`}
                   onClick={() => setSelectedChat(chat)}
                 >
                   <ProfileAvatar size="md" src={avatarSrc} />
@@ -334,11 +389,13 @@ function ChatsPage() {
                       </span>
                       {isPrivateChat && isMyMessage && (
                         <span className={styles.seenIcon}>
+                          {chat.last_message.seen !== null && (
                           <img 
-                            src={chat.last_message.seen ? seenIcon : sentIcon} 
-                            alt={chat.last_message.seen ? "Seen" : "Sent"}
-                            style={{ width: 16, height: 16 }} 
-                          />
+                              src={chat.last_message.seen ? seenIcon : sentIcon} 
+                              alt={chat.last_message.seen ? "Seen" : "Sent"}
+                              style={{ width: 16, height: 16 }} 
+                            />
+                          )}
                         </span>
                       )}
                       {isPrivateChat && !isMyMessage && !chat.last_message.seen && (
@@ -358,7 +415,7 @@ function ChatsPage() {
           className={styles.newConversationButton}
           aria-label="New Conversation"
         >
-          <FontAwesomeIcon icon={faPlus} />
+          <FontAwesomeIcon icon={faAddressBook} />
         </button>
       </aside>
 
@@ -470,7 +527,7 @@ function ChatsPage() {
                 {randomIcon && <img src={randomIcon} alt="Welcome" className={styles.welcomeIcon} />}
                 Welcome back
               </p>
-              <p className={styles.emptyChatSubtitle}>Pick a conversation to start texting</p>
+              <p className={styles.emptyChatSubtitle}>Pick a conversation to start talking</p>
             </div>
           </div>
         )}
