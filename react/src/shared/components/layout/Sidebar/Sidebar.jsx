@@ -13,6 +13,7 @@ function Sidebar() {
   const navigate = useNavigate();
   const { user, refreshUser } = useAuth();
   const [isLoggingOut, setIsLoggingOut] = useState(false);
+  const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
 
   const handleLogout = useCallback(async () => {
     if (isLoggingOut) {
@@ -31,8 +32,27 @@ function Sidebar() {
       await refreshUser();
       navigate('/login', { replace: true });
       setIsLoggingOut(false);
+      setShowLogoutConfirm(false);
     }
   }, [isLoggingOut, navigate, refreshUser]);
+
+  const handleConfirmLogout = useCallback(() => {
+    if (!isLoggingOut) {
+      handleLogout();
+    }
+  }, [handleLogout, isLoggingOut]);
+
+  const handleOpenConfirm = useCallback(() => {
+    if (!isLoggingOut) {
+      setShowLogoutConfirm(true);
+    }
+  }, [isLoggingOut]);
+
+  const handleCancelLogout = useCallback(() => {
+    if (!isLoggingOut) {
+      setShowLogoutConfirm(false);
+    }
+  }, [isLoggingOut]);
 
   return (
     <aside className={styles.sidebar}>
@@ -57,12 +77,39 @@ function Sidebar() {
         <button
           type="button"
           className={styles.logoutButton}
-          onClick={handleLogout}
+          onClick={handleOpenConfirm}
           disabled={isLoggingOut}
         >
           {isLoggingOut ? 'Logging out…' : 'Logout'}
         </button>
       </div>
+
+      {showLogoutConfirm && (
+        <div className={styles.confirmOverlay} role="dialog" aria-modal="true">
+          <div className={styles.confirmBox}>
+            <p className={styles.confirmTitle}>Are you sure you want to logout?</p>
+            <p className={styles.confirmText}>You will need to sign in again to continue.</p>
+            <div className={styles.confirmActions}>
+              <button
+                type="button"
+                className={styles.cancelButton}
+                onClick={handleCancelLogout}
+                disabled={isLoggingOut}
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                className={styles.confirmButton}
+                onClick={handleConfirmLogout}
+                disabled={isLoggingOut}
+              >
+                {isLoggingOut ? 'Logging out…' : 'Logout'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </aside>
   );
 }
