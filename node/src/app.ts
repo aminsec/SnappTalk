@@ -4,7 +4,8 @@ import cookieParser from "cookie-parser";
 import authRoutes from "./routes/auth/auth.routes";
 import membersRoutes from "./routes/members/info.routes";
 import accountRoutes from "./routes/user/info.routes";
-import accountContactsRoutes from "./routes/user/conversations.routes";
+import accountConversationsRoutes from "./routes/user/conversations.routes";
+import accountMessagesRoutes from "./routes/user/messages.routes";
 import validateJWT from "./middlewares/jwt";
 import helmet from "helmet";
 import { rateLimit } from 'express-rate-limit'
@@ -34,6 +35,7 @@ app.use("/members", membersRoutes);
 app.use("/auth", authRoutes);
 app.use("/user", validateJWT);
 app.use("/user", accountRoutes);
-app.use("/user", accountContactsRoutes);
+app.use("/user/conversations", accountConversationsRoutes);
+app.use("/user/messages", accountMessagesRoutes);
 
 export default app;

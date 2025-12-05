@@ -1,5 +1,8 @@
 import { ObjectId } from "mongodb";
 import { getMessagesCollection } from "../models/messages.model";
+import { ErrorResponse } from "../types/response.types";
+import { Message } from "../types/messages.types";
+import { skip } from "node:test";
 
 export async function getMessageById(messageId: ObjectId) {
     const messagesCollection = await getMessagesCollection();
@@ -8,4 +11,26 @@ export async function getMessageById(messageId: ObjectId) {
     });
 
     return message;
+};
+
+export async function getConversationMessagesByLimitedDate(conversationId: ObjectId, deletedConversationDate: string, limit: number, offset: number): Promise<[Message[] | null, ErrorResponse | null]> {
+    try {
+        const messagesCollection = await getMessagesCollection();
+        const messages = await messagesCollection.find({
+            conversation_id: conversationId,
+            created_at: {
+                $gt: deletedConversationDate ? new Date(deletedConversationDate) : new Date(0)
+            }
+
+        }, {
+            limit: limit,
+            skip: offset
+        }).sort({ created_at: -1 }).toArray();
+
+        return [messages, null];
+    } catch (error) {
+        console.log(error);
+        const err: ErrorResponse = {message: "A system error occurred", state: "failed", type: "system_error"};
+        return [null, err];
+    }
 };

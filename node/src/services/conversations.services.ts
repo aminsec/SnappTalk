@@ -4,7 +4,7 @@ import { getConversationsCollection } from "../models/conversatations.model";
 import { ProtectedUserInfo } from "../types/user.types";
 import { getUserInfoById } from "./info.services";
 import { ObjectId } from "mongodb";
-import { whiteListContacts } from "../utils/operations";
+import { whiteListConversations } from "../utils/operations";
 import { getMessageById } from "./messages.services";
 
 export async function getUserConversations(userInfo: ProtectedUserInfo): Promise<[Conversation[] | null, ErrorResponse | null]> {
@@ -43,7 +43,7 @@ export async function getUserConversations(userInfo: ProtectedUserInfo): Promise
             };
         }
 
-        const validConversations: Conversation[] = whiteListContacts(conversations);
+        const validConversations: Conversation[] = whiteListConversations(conversations);
         return [validConversations, null];
 
     } catch (error) {
