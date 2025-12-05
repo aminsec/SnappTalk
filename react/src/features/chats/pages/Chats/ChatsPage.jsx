@@ -3,7 +3,6 @@ import EmojiPicker from 'emoji-picker-react';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import {
   faSearch,
-  faPaperPlane,
   faEllipsisVertical,
   faTimes,
   faAddressBook,
@@ -13,6 +12,7 @@ import { Sidebar, Input, Button, ProfileAvatar } from '@/shared/components';
 import { useAuth } from '@/shared/state/useAuth';
 import sentIcon from "@/shared/assets/icons/sent.svg";
 import seenIcon from "@/shared/assets/icons/seen.svg";
+import sendIcon from "@/shared/assets/icons/sendIcon.svg";
 import bitcoinIcon from '@/shared/assets/images/mono/acn.svg';
 import coconutCocktailIcon from '@/shared/assets/images/mono/bank.svg';
 import colosseumIcon from '@/shared/assets/images/mono/bookshelf.svg';
@@ -854,9 +854,9 @@ function ChatsPage() {
                   }}
                 />
               </button>
-              <Button type="button">
-                <FontAwesomeIcon icon={faPaperPlane} />
-              </Button>
+              <button type="button" className={styles.sendButton}>
+                <img src={sendIcon} alt="Send" className={styles.sendIcon} />
+              </button>
             </div>
           </>
         ) : (
