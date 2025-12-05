@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState, useRef } from 'react';
 import EmojiPicker from 'emoji-picker-react';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import {
@@ -45,12 +45,14 @@ const monoIcons = [
 ];
 
 const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
+const MESSAGES_LIMIT = 10; // Max number of messages per request
 
 // Helper functions
 const convertISOtoLocal = (isoDate) => {
   try {
-    if(isoDate !== Date) return "";
+    if (!isoDate) return "";
     const date = new Date(isoDate);
+    if (isNaN(date.getTime())) return "";
     return date.toLocaleTimeString("en-US", {
       hour: "2-digit",
       minute: "2-digit",
@@ -58,7 +60,6 @@ const convertISOtoLocal = (isoDate) => {
   } catch (error) {
     return "";
   }
-
 };
 
 const formatFileSize = (bytes) => {
@@ -86,6 +87,14 @@ function ChatsPage() {
   const [isEmojiPickerOpen, setIsEmojiPickerOpen] = useState(false);
   const [isNewConversationModalOpen, setIsNewConversationModalOpen] = useState(false);
   const [randomIcon, setRandomIcon] = useState(null);
+  
+  // Messages state
+  const [messages, setMessages] = useState([]);
+  const [isLoadingMessages, setIsLoadingMessages] = useState(false);
+  const [hasMoreMessages, setHasMoreMessages] = useState(true);
+  const [messagesOffset, setMessagesOffset] = useState(0);
+  const messagesContainerRef = useRef(null);
+  const isLoadingMoreRef = useRef(false);
 
   // Fetch contacts on mount
   useEffect(() => {
@@ -122,6 +131,107 @@ function ChatsPage() {
       }
     };
   }, [filePreview]);
+
+  // Store previous scroll height for position preservation
+  const previousScrollHeightRef = useRef(0);
+
+  // Fetch messages function
+  const fetchMessages = useCallback(async (conversationId, offset = 0, append = false) => {
+    if (!conversationId || isLoadingMoreRef.current) return;
+
+    setIsLoadingMessages(true);
+    isLoadingMoreRef.current = true;
+
+    // Store scroll position before loading older messages
+    const container = messagesContainerRef.current;
+    if (container && append) {
+      previousScrollHeightRef.current = container.scrollHeight;
+    }
+
+    try {
+      const limit = MESSAGES_LIMIT;
+      const url = `/api/v1/user/messages/${conversationId}?limit=${limit}&offset=${offset}`;
+      
+      const response = await fetch(url, {
+        method: 'GET',
+        credentials: 'include',
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        const fetchedMessages = data.messages || [];
+        
+        if (append) {
+          // Prepend older messages to the beginning
+          setMessages((prevMessages) => [...fetchedMessages, ...prevMessages]);
+        } else {
+          // Replace messages (initial load)
+          setMessages(fetchedMessages);
+        }
+
+        // Check if there are more messages to load
+        setHasMoreMessages(fetchedMessages.length === limit);
+        setMessagesOffset(offset + fetchedMessages.length);
+      } else {
+        console.error('Failed to fetch messages:', response.status);
+        setHasMoreMessages(false);
+      }
+    } catch (error) {
+      console.error('Error fetching messages:', error);
+      setHasMoreMessages(false);
+    } finally {
+      setIsLoadingMessages(false);
+      isLoadingMoreRef.current = false;
+    }
+  }, []);
+
+  // Fetch messages when selectedChat changes
+  useEffect(() => {
+    if (!selectedChat) {
+      setMessages([]);
+      setMessagesOffset(0);
+      setHasMoreMessages(true);
+      return;
+    }
+
+    const conversationId = selectedChat._id || selectedChat.id;
+    if (!conversationId) return;
+
+    // Reset state and fetch initial messages
+    setMessages([]);
+    setMessagesOffset(0);
+    setHasMoreMessages(true);
+    fetchMessages(conversationId, 0, false);
+  }, [selectedChat, fetchMessages]);
+
+  // Handle scroll for lazy loading
+  const handleScroll = useCallback((e) => {
+    const container = e.target;
+    // Check if scrolled to top (with 100px threshold)
+    if (container.scrollTop <= 100 && hasMoreMessages && !isLoadingMessages && !isLoadingMoreRef.current) {
+      const conversationId = selectedChat?._id || selectedChat?.id;
+      if (conversationId) {
+        fetchMessages(conversationId, messagesOffset, true);
+      }
+    }
+  }, [selectedChat, hasMoreMessages, isLoadingMessages, messagesOffset, fetchMessages]);
+
+  // Handle scroll position after messages update
+  useEffect(() => {
+    const container = messagesContainerRef.current;
+    if (!container) return;
+
+    if (messagesOffset <= MESSAGES_LIMIT && messages.length > 0) {
+      // Initial load - scroll to bottom
+      container.scrollTop = container.scrollHeight;
+    } else if (previousScrollHeightRef.current > 0) {
+      // Loading older messages - preserve scroll position
+      const newScrollHeight = container.scrollHeight;
+      const scrollDifference = newScrollHeight - previousScrollHeightRef.current;
+      container.scrollTop = container.scrollTop + scrollDifference;
+      previousScrollHeightRef.current = 0; // Reset
+    }
+  }, [messages.length, messagesOffset]);
 
   // Filter chats based on search query
   const filteredChats = useMemo(() => {
@@ -406,17 +516,126 @@ function ChatsPage() {
               <FontAwesomeIcon icon={faEllipsisVertical} size={24} />
             </div>
 
-            <div className={styles.messagesContainer}>
+            <div 
+              className={styles.messagesContainer}
+              ref={messagesContainerRef}
+              onScroll={handleScroll}
+            >
+              {isLoadingMessages && messages.length === 0 && (
+                <div className={styles.loadingMessages}>
+                  <p>Loading messages...</p>
+                </div>
+              )}
+              {!isLoadingMessages && messages.length === 0 && (
+                <div className={styles.emptyMessages}>
+                  <p>No messages yet. Start the conversation!</p>
+                </div>
+              )}
+              {isLoadingMessages && messages.length > 0 && (
+                <div className={styles.loadingMore}>
+                  <p>Loading older messages...</p>
+                </div>
+              )}
               <div className={styles.messagesWrapper}>
-                {selectedChat.messages?.map((message) => (
-                  <div
-                    key={message.id}
-                    className={`${styles.message} ${message.sender === 'me' ? styles.sent : styles.received}`}
-                  >
-                    <p>{message.text}</p>
-                    <span className={styles.timestamp}>{message.timestamp}</span>
-                  </div>
-                ))}
+                {messages.map((message, index) => {
+                  // Message detection: message.sender is an ObjectId that should match user.id
+                  const userId = user?.id; // User object uses 'id' not '_id'
+                  const username = user?.username;
+                  
+                  // Convert both to strings for comparison (message.sender can be ObjectId or string)
+                  const messageSenderId = message.sender?.toString() || message.sender;
+                  const currentUserId = userId?.toString() || userId;
+                  
+                  // Primary check: compare sender ObjectId with user.id
+                  const isMyMessage = messageSenderId === currentUserId ||
+                    // Fallback checks for different API response formats
+                    message.sender === currentUserId ||
+                    message.sender_id?.toString() === currentUserId ||
+                    message.sender_id === currentUserId ||
+                    message.user_id?.toString() === currentUserId ||
+                    message.user_id === currentUserId ||
+                    message.from_user_id?.toString() === currentUserId ||
+                    message.from_user_id === currentUserId ||
+                    // Username fallback (less reliable but included for compatibility)
+                    message.sender === username ||
+                    message.sender_name === username;
+                  
+                  // Debug logging for first message (remove in production)
+                  if (index === 0 && messages.length > 0) {
+                    console.log('Message detection debug:', {
+                      messageSenderId,
+                      currentUserId,
+                      username,
+                      isMyMessage,
+                      message: {
+                        sender: message.sender,
+                        sender_id: message.sender_id,
+                        user_id: message.user_id,
+                      },
+                      user: {
+                        id: user?.id,
+                        username: user?.username,
+                      }
+                    });
+                  }
+                  
+                  const messageId = message._id || message.id || `msg-${index}`;
+                  const messageContent = message.content || message.text || '';
+                  const messageTime = message.when || message.timestamp || message.created_at;
+                  const isPrivateChat = selectedChat?.type === 'pv';
+                  // Check seen status - API may provide 'seen' boolean or 'seen_by' object
+                  // For sent messages, check if recipient has seen it
+                  let messageSeen = null;
+                  if (message.seen !== undefined && message.seen !== null) {
+                    messageSeen = message.seen;
+                  } else if (message.seen_by && typeof message.seen_by === 'object') {
+                    // If seen_by is an object, check if it has any entries (someone has seen it)
+                    const seenByKeys = Object.keys(message.seen_by);
+                    messageSeen = seenByKeys.length > 0;
+                  }
+                  
+                  return (
+                    <div
+                      key={messageId}
+                      className={`${styles.message} ${isMyMessage ? styles.sent : styles.received}`}
+                      data-message-type={isMyMessage ? 'sent' : 'received'}
+                    >
+                      {message.type === 'file' && message.file_url && (
+                        <img 
+                          src={message.file_url} 
+                          alt="File attachment" 
+                          className={styles.messageImage}
+                          onError={(e) => {
+                            e.target.style.display = 'none';
+                          }}
+                        />
+                      )}
+                      {messageContent && <p>{messageContent}</p>}
+                      <div className={styles.messageFooter}>
+                        <span className={styles.timestamp}>
+                          {convertISOtoLocal(messageTime)}
+                        </span>
+                        {isMyMessage && isPrivateChat && (
+                          <span className={styles.seenIcon}>
+                            {messageSeen !== null && messageSeen !== undefined ? (
+                              <img 
+                                src={messageSeen ? seenIcon : sentIcon} 
+                                alt={messageSeen ? "Seen" : "Sent"}
+                                className={styles.seenIconImage}
+                              />
+                            ) : (
+                              <img 
+                                src={sentIcon} 
+                                alt="Sent"
+                                className={styles.seenIconImage}
+                              />
+                            )}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
               </div>
             </div>
 
