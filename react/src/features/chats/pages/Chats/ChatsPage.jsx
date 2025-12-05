@@ -100,6 +100,7 @@ function ChatsPage() {
   const [messagesOffset, setMessagesOffset] = useState(0);
   const messagesContainerRef = useRef(null);
   const isLoadingMoreRef = useRef(false);
+  const isInitialLoadRef = useRef(true);
   
   // Cache for sender info in group chats (senderId -> {username, profile_pic})
   const [senderInfoCache, setSenderInfoCache] = useState({});
@@ -160,7 +161,9 @@ function ChatsPage() {
   // Store previous scroll height for position preservation
   const previousScrollHeightRef = useRef(0);
 
-  // Fetch messages function
+  // Fetch messages function - implements lazy loading
+  // Initial load: offset=0, limit=10 → fetches last 10 messages (newest)
+  // Scroll up: offset=10,20,30... → fetches next 10 older messages each time
   const fetchMessages = useCallback(async (conversationId, offset = 0, append = false) => {
     if (!conversationId || isLoadingMoreRef.current) return;
 
@@ -186,12 +189,8 @@ function ChatsPage() {
         const data = await response.json();
         const fetchedMessages = data.messages || [];
         
-        // Debug: Log the actual message structure from backend
-        if (fetchedMessages.length > 0) {
-          console.log('Messages from backend:', fetchedMessages[0]);
-          console.log('All message fields:', Object.keys(fetchedMessages[0]));
-        }
-        
+        // Backend returns messages sorted newest first (created_at: -1)
+        // We need to reverse them to show oldest first for display
         // Sort messages by date (created_at) - ascending order (oldest first)
         const sortMessagesByDate = (messages) => {
           return [...messages].sort((a, b) => {
@@ -204,18 +203,48 @@ function ChatsPage() {
         const sortedFetchedMessages = sortMessagesByDate(fetchedMessages);
         
         if (append) {
-          // Prepend older messages to the beginning, then sort all messages
-          const combinedMessages = [...sortedFetchedMessages, ...messages];
-          const sortedCombined = sortMessagesByDate(combinedMessages);
-          setMessages(sortedCombined);
+          // Prepend older messages to the beginning
+          // Use functional update to access current messages state
+          setMessages((prevMessages) => {
+            // Create a map to deduplicate messages by ID
+            const messagesMap = new Map();
+            
+            // Add existing messages to map
+            prevMessages.forEach((msg) => {
+              const msgId = msg._id || msg.id;
+              if (msgId) messagesMap.set(msgId.toString(), msg);
+            });
+            
+            // Add new older messages to map (will overwrite duplicates if any)
+            sortedFetchedMessages.forEach((msg) => {
+              const msgId = msg._id || msg.id;
+              if (msgId) messagesMap.set(msgId.toString(), msg);
+            });
+            
+            // Convert back to array and sort chronologically
+            const combinedMessages = Array.from(messagesMap.values());
+            const sortedCombined = sortMessagesByDate(combinedMessages);
+            return sortedCombined;
+          });
         } else {
-          // Replace messages (initial load) - already sorted
+          // Initial load: replace messages with the last 10 messages (newest)
+          // Already sorted oldest->newest
           setMessages(sortedFetchedMessages);
+          isInitialLoadRef.current = true;
         }
 
         // Check if there are more messages to load
+        // If we got exactly limit (10) messages, there might be more
+        // If we got fewer than limit, we've reached the end (no more messages)
         setHasMoreMessages(fetchedMessages.length === limit);
+        // Update offset for next fetch (increment by number of messages fetched)
+        // This ensures we skip already-loaded messages on next fetch
         setMessagesOffset(offset + fetchedMessages.length);
+        
+        // Mark that we're no longer on initial load after first fetch
+        if (append) {
+          isInitialLoadRef.current = false;
+        }
       } else {
         console.error('Failed to fetch messages:', response.status);
         setHasMoreMessages(false);
@@ -236,17 +265,19 @@ function ChatsPage() {
       setMessagesOffset(0);
       setHasMoreMessages(true);
       setSenderInfoCache({}); // Clear cache when chat changes
+      isInitialLoadRef.current = true;
       return;
     }
 
     const conversationId = selectedChat._id || selectedChat.id;
     if (!conversationId) return;
 
-    // Reset state and fetch initial messages
+    // Reset state and fetch initial messages (last 10 messages)
     setMessages([]);
     setMessagesOffset(0);
     setHasMoreMessages(true);
     setSenderInfoCache({}); // Clear cache
+    isInitialLoadRef.current = true;
     fetchMessages(conversationId, 0, false);
   }, [selectedChat, fetchMessages]);
 
@@ -307,13 +338,20 @@ function ChatsPage() {
     });
   }, [messages, selectedChat, senderInfoCache, user?.id]);
 
-  // Handle scroll for lazy loading
+  // Handle scroll for lazy loading older messages
   const handleScroll = useCallback((e) => {
     const container = e.target;
-    // Check if scrolled to top (with 100px threshold)
-    if (container.scrollTop <= 100 && hasMoreMessages && !isLoadingMessages && !isLoadingMoreRef.current) {
+    // Check if scrolled near the top (within 50px threshold) to load older messages
+    // This triggers when user scrolls up and reaches the top of the message list
+    if (
+      container.scrollTop <= 50 && 
+      hasMoreMessages && 
+      !isLoadingMessages && 
+      !isLoadingMoreRef.current
+    ) {
       const conversationId = selectedChat?._id || selectedChat?.id;
       if (conversationId) {
+        // Load next batch of older messages
         fetchMessages(conversationId, messagesOffset, true);
       }
     }
@@ -324,9 +362,10 @@ function ChatsPage() {
     const container = messagesContainerRef.current;
     if (!container) return;
 
-    if (messagesOffset <= MESSAGES_LIMIT && messages.length > 0) {
-      // Initial load - scroll to bottom
+    if (isInitialLoadRef.current && messages.length > 0) {
+      // Initial load - scroll to bottom to show newest messages
       container.scrollTop = container.scrollHeight;
+      isInitialLoadRef.current = false;
     } else if (previousScrollHeightRef.current > 0) {
       // Loading older messages - preserve scroll position
       const newScrollHeight = container.scrollHeight;
