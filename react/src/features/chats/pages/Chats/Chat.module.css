@@ -236,10 +236,81 @@
 .messagesWrapper {
     display: flex;
     flex-direction: column;
-    gap: 12px;
+    gap: 4px;
     min-height: min-content;
     width: 100%;
     align-items: stretch;
+}
+
+.messageWrapper {
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+    margin-bottom: 8px;
+}
+
+.messageWrapperSent {
+    align-items: flex-end;
+}
+
+.messageWrapperReceived {
+    align-items: flex-start;
+    gap: 2px;
+}
+
+/* Group chat layout: avatar on left, message on right */
+.messageWrapperGroup {
+    flex-direction: row;
+    align-items: flex-end;
+    gap: 10px;
+}
+
+.messageAvatar {
+    flex-shrink: 0;
+    width: 36px;
+    height: 36px;
+    margin-bottom: 0;
+    cursor: pointer;
+    transition: opacity 0.2s ease;
+    display: flex;
+    align-items: flex-end;
+    justify-content: center;
+}
+
+.messageAvatar:hover {
+    opacity: 0.8;
+}
+
+.messageAvatar img {
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    object-fit: cover;
+    display: block;
+}
+
+/* Username inside message bubble */
+.messageSenderName {
+    margin-bottom: 3px;
+    padding-bottom: 2px;
+    line-height: 1;
+}
+
+.senderUsername {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text-link);
+    line-height: 1.2;
+    letter-spacing: -0.1px;
+    transition: color 0.2s ease;
+    user-select: none;
+    cursor: pointer;
+    display: inline-block;
+}
+
+.senderUsername:hover {
+    color: var(--btn-color);
+    text-decoration: underline;
 }
 
 .loadingMessages,
@@ -337,6 +408,11 @@
     color: var(--text-muted);
     font-size: 11px;
     opacity: 0.8;
+}
+
+/* Adjust message width when avatar is present (group chats) */
+.messageWrapperGroup .message {
+    max-width: calc(70% - 44px);
 }
 
 .timestamp {

@@ -95,6 +95,9 @@ function ChatsPage() {
   const [messagesOffset, setMessagesOffset] = useState(0);
   const messagesContainerRef = useRef(null);
   const isLoadingMoreRef = useRef(false);
+  
+  // Cache for sender info in group chats (senderId -> {username, profile_pic})
+  const [senderInfoCache, setSenderInfoCache] = useState({});
 
   // Fetch contacts on mount
   useEffect(() => {
@@ -161,12 +164,31 @@ function ChatsPage() {
         const data = await response.json();
         const fetchedMessages = data.messages || [];
         
+        // Debug: Log the actual message structure from backend
+        if (fetchedMessages.length > 0) {
+          console.log('Messages from backend:', fetchedMessages[0]);
+          console.log('All message fields:', Object.keys(fetchedMessages[0]));
+        }
+        
+        // Sort messages by date (created_at) - ascending order (oldest first)
+        const sortMessagesByDate = (messages) => {
+          return [...messages].sort((a, b) => {
+            const dateA = new Date(a.created_at || a.when || a.timestamp || 0);
+            const dateB = new Date(b.created_at || b.when || b.timestamp || 0);
+            return dateA.getTime() - dateB.getTime();
+          });
+        };
+        
+        const sortedFetchedMessages = sortMessagesByDate(fetchedMessages);
+        
         if (append) {
-          // Prepend older messages to the beginning
-          setMessages((prevMessages) => [...fetchedMessages, ...prevMessages]);
+          // Prepend older messages to the beginning, then sort all messages
+          const combinedMessages = [...sortedFetchedMessages, ...messages];
+          const sortedCombined = sortMessagesByDate(combinedMessages);
+          setMessages(sortedCombined);
         } else {
-          // Replace messages (initial load)
-          setMessages(fetchedMessages);
+          // Replace messages (initial load) - already sorted
+          setMessages(sortedFetchedMessages);
         }
 
         // Check if there are more messages to load
@@ -191,6 +213,7 @@ function ChatsPage() {
       setMessages([]);
       setMessagesOffset(0);
       setHasMoreMessages(true);
+      setSenderInfoCache({}); // Clear cache when chat changes
       return;
     }
 
@@ -201,8 +224,66 @@ function ChatsPage() {
     setMessages([]);
     setMessagesOffset(0);
     setHasMoreMessages(true);
+    setSenderInfoCache({}); // Clear cache
     fetchMessages(conversationId, 0, false);
   }, [selectedChat, fetchMessages]);
+
+  // Fetch sender info for group messages
+  useEffect(() => {
+    const isGroupChat = selectedChat?.type === 'group';
+    if (!isGroupChat || messages.length === 0) return;
+
+    const currentUserId = user?.id?.toString() || user?.id;
+    
+    // Get unique sender IDs from received messages
+    const uniqueSenderIds = [...new Set(
+      messages
+        .filter((msg) => {
+          const messageSenderId = msg.sender?.toString() || msg.sender;
+          return messageSenderId && messageSenderId !== currentUserId; // Only received messages
+        })
+        .map((msg) => msg.sender?.toString() || msg.sender)
+        .filter(Boolean)
+    )];
+
+    // Fetch sender info for each unique sender that's not in cache
+    // Backend endpoint /api/v1/members/<userid>/info accepts user ID directly
+    uniqueSenderIds.forEach((senderId) => {
+      const senderIdStr = senderId.toString();
+      // Skip if already in cache
+      if (senderInfoCache[senderIdStr]) {
+        return;
+      }
+
+      // Fetch member info using sender ID directly
+      fetch(`/api/v1/members/${senderIdStr}/info`, {
+        method: 'GET',
+        credentials: 'include',
+      })
+        .then((response) => {
+          if (response.ok) {
+            return response.json();
+          }
+          throw new Error('Failed to fetch member info');
+        })
+        .then((data) => {
+          // Backend returns: { state: "success", member_info: { username, profile_pic, ... } }
+          const memberInfo = data.member_info || {};
+          const senderInfo = {
+            username: memberInfo.username || 'Unknown',
+            profile_pic: memberInfo.profile_pic || null,
+          };
+          
+          setSenderInfoCache((prev) => ({
+            ...prev,
+            [senderIdStr]: senderInfo,
+          }));
+        })
+        .catch((error) => {
+          console.error('Failed to fetch member info for sender ID', senderIdStr, error);
+        });
+    });
+  }, [messages, selectedChat, senderInfoCache, user?.id]);
 
   // Handle scroll for lazy loading
   const handleScroll = useCallback((e) => {
@@ -272,6 +353,46 @@ function ChatsPage() {
     }
     return [];
   }, []);
+
+  // Fetch sender info for group messages
+  const fetchSenderInfo = useCallback(async (senderId) => {
+    if (!senderId) return null;
+    
+    const senderIdStr = senderId.toString();
+    
+    // Check cache first
+    if (senderInfoCache[senderIdStr]) {
+      return senderInfoCache[senderIdStr];
+    }
+
+    try {
+      // Try to fetch user info - adjust endpoint if needed
+      const response = await fetch(`/api/v1/user/info/${senderIdStr}`, {
+        method: 'GET',
+        credentials: 'include',
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        const senderInfo = {
+          username: data.userInfo?.username || 'Unknown',
+          profile_pic: data.userInfo?.profile_pic || null,
+        };
+        
+        // Update cache
+        setSenderInfoCache((prev) => ({
+          ...prev,
+          [senderIdStr]: senderInfo,
+        }));
+        
+        return senderInfo;
+      }
+    } catch (error) {
+      console.error('Failed to fetch sender info:', error);
+    }
+
+    return null;
+  }, [senderInfoCache]);
 
   // Handle new conversation modal
   const handleNewConversation = useCallback(() => {
@@ -560,16 +681,21 @@ function ChatsPage() {
                     message.sender === username ||
                     message.sender_name === username;
                   
-                  // Debug logging for first message (remove in production)
+                  // Debug logging for first message - inspect actual message structure
                   if (index === 0 && messages.length > 0) {
+                    console.log('Full message object:', message);
                     console.log('Message detection debug:', {
                       messageSenderId,
                       currentUserId,
                       username,
                       isMyMessage,
+                      messageKeys: Object.keys(message),
                       message: {
                         sender: message.sender,
                         sender_id: message.sender_id,
+                        sender_username: message.sender_username,
+                        sender_name: message.sender_name,
+                        sender_info: message.sender_info,
                         user_id: message.user_id,
                       },
                       user: {
@@ -583,6 +709,12 @@ function ChatsPage() {
                   const messageContent = message.content || message.text || '';
                   const messageTime = message.when || message.timestamp || message.created_at;
                   const isPrivateChat = selectedChat?.type === 'pv';
+                  const isGroupChat = selectedChat?.type === 'group';
+                  
+                  // Get sender info for group messages (received only)
+                  const senderIdStr = messageSenderId;
+                  const senderInfo = !isMyMessage && isGroupChat ? senderInfoCache[senderIdStr] : null;
+                  
                   // Check seen status - API may provide 'seen' boolean or 'seen_by' object
                   // For sent messages, check if recipient has seen it
                   let messageSeen = null;
@@ -597,41 +729,64 @@ function ChatsPage() {
                   return (
                     <div
                       key={messageId}
-                      className={`${styles.message} ${isMyMessage ? styles.sent : styles.received}`}
-                      data-message-type={isMyMessage ? 'sent' : 'received'}
+                      className={`${styles.messageWrapper} ${isMyMessage ? styles.messageWrapperSent : styles.messageWrapperReceived} ${!isMyMessage && isGroupChat ? styles.messageWrapperGroup : ''}`}
                     >
-                      {message.type === 'file' && message.file_url && (
-                        <img 
-                          src={message.file_url} 
-                          alt="File attachment" 
-                          className={styles.messageImage}
-                          onError={(e) => {
-                            e.target.style.display = 'none';
-                          }}
-                        />
+                      {/* Avatar for received messages in groups - positioned on the left */}
+                      {!isMyMessage && isGroupChat && senderInfo && (
+                        <div className={styles.messageAvatar}>
+                          <ProfileAvatar 
+                            src={senderInfo.profile_pic} 
+                            size={36}
+                            alt={senderInfo.username}
+                            borderWidth={0}
+                          />
+                        </div>
                       )}
-                      {messageContent && <p>{messageContent}</p>}
-                      <div className={styles.messageFooter}>
-                        <span className={styles.timestamp}>
-                          {convertISOtoLocal(messageTime)}
-                        </span>
-                        {isMyMessage && isPrivateChat && (
-                          <span className={styles.seenIcon}>
-                            {messageSeen !== null && messageSeen !== undefined ? (
-                              <img 
-                                src={messageSeen ? seenIcon : sentIcon} 
-                                alt={messageSeen ? "Seen" : "Sent"}
-                                className={styles.seenIconImage}
-                              />
-                            ) : (
-                              <img 
-                                src={sentIcon} 
-                                alt="Sent"
-                                className={styles.seenIconImage}
-                              />
-                            )}
-                          </span>
+                      
+                      <div
+                        className={`${styles.message} ${isMyMessage ? styles.sent : styles.received}`}
+                        data-message-type={isMyMessage ? 'sent' : 'received'}
+                      >
+                        {/* Username inside message bubble for group chats */}
+                        {!isMyMessage && isGroupChat && senderInfo && (
+                          <div className={styles.messageSenderName}>
+                            <span className={styles.senderUsername}>{senderInfo.username}</span>
+                          </div>
                         )}
+                        
+                        {message.type === 'file' && message.file_url && (
+                          <img 
+                            src={message.file_url} 
+                            alt="File attachment" 
+                            className={styles.messageImage}
+                            onError={(e) => {
+                              e.target.style.display = 'none';
+                            }}
+                          />
+                        )}
+                        {messageContent && <p>{messageContent}</p>}
+                        <div className={styles.messageFooter}>
+                          <span className={styles.timestamp}>
+                            {convertISOtoLocal(messageTime)}
+                          </span>
+                          {isMyMessage && isPrivateChat && (
+                            <span className={styles.seenIcon}>
+                              {messageSeen !== null && messageSeen !== undefined ? (
+                                <img 
+                                  src={messageSeen ? seenIcon : sentIcon} 
+                                  alt={messageSeen ? "Seen" : "Sent"}
+                                  className={styles.seenIconImage}
+                                />
+                              ) : (
+                                <img 
+                                  src={sentIcon} 
+                                  alt="Sent"
+                                  className={styles.seenIconImage}
+                                />
+                              )}
+                            </span>
+                          )}
+                        </div>
                       </div>
                     </div>
                   );
