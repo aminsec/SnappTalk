@@ -6,6 +6,9 @@ import {
   faEllipsisVertical,
   faTimes,
   faAddressBook,
+  faPlus,
+  faFile as faFileSolid,
+  faLocationDot,
 } from '@fortawesome/free-solid-svg-icons';
 import { faFile, faFaceSmile } from '@fortawesome/free-regular-svg-icons';
 import { Sidebar, Input, Button, ProfileAvatar } from '@/shared/components';
@@ -86,7 +89,9 @@ function ChatsPage() {
   const [filePreview, setFilePreview] = useState(null);
   const [isEmojiPickerOpen, setIsEmojiPickerOpen] = useState(false);
   const [isNewConversationModalOpen, setIsNewConversationModalOpen] = useState(false);
+  const [isOptionsMenuOpen, setIsOptionsMenuOpen] = useState(false);
   const [randomIcon, setRandomIcon] = useState(null);
+  const optionsMenuRef = useRef(null);
   
   // Messages state
   const [messages, setMessages] = useState([]);
@@ -134,6 +139,23 @@ function ChatsPage() {
       }
     };
   }, [filePreview]);
+
+  // Handle click outside options menu
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (optionsMenuRef.current && !optionsMenuRef.current.contains(event.target)) {
+        setIsOptionsMenuOpen(false);
+      }
+    };
+
+    if (isOptionsMenuOpen) {
+      document.addEventListener('mousedown', handleClickOutside);
+    }
+
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [isOptionsMenuOpen]);
 
   // Store previous scroll height for position preservation
   const previousScrollHeightRef = useRef(0);
@@ -449,6 +471,42 @@ function ChatsPage() {
     },
     [contacts, user]
   );
+
+  // Handle options menu toggle
+  const handleOptionsMenuToggle = useCallback(() => {
+    setIsOptionsMenuOpen((prev) => !prev);
+  }, []);
+
+  // Handle upload file option click
+  const handleUploadFileClick = useCallback(() => {
+    const fileInput = document.getElementById('file-upload');
+    if (fileInput) {
+      fileInput.click();
+      setIsOptionsMenuOpen(false);
+    }
+  }, []);
+
+  // Handle send location option click
+  const handleSendLocationClick = useCallback(() => {
+    setIsOptionsMenuOpen(false);
+    // TODO: Implement location sharing functionality
+    if (navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition(
+        (position) => {
+          const { latitude, longitude } = position.coords;
+          // TODO: Send location to backend when endpoint is ready
+          console.log('Location:', latitude, longitude);
+          // For now, you can add the location to the message input or send it directly
+        },
+        (error) => {
+          console.error('Error getting location:', error);
+          alert('Unable to get your location. Please check your browser permissions.');
+        }
+      );
+    } else {
+      alert('Geolocation is not supported by your browser.');
+    }
+  }, []);
 
   // Handle file upload
   const handleFileChange = useCallback(
@@ -821,9 +879,36 @@ function ChatsPage() {
             )}
 
             <div className={styles.inputBar}>
-              <label className={styles.fileUploadIcon} htmlFor="file-upload">
-                <FontAwesomeIcon icon={faFile} />
-              </label>
+              <div className={styles.optionsMenuContainer} ref={optionsMenuRef}>
+                <button
+                  type="button"
+                  className={styles.optionsButton}
+                  onClick={handleOptionsMenuToggle}
+                  aria-label="More options"
+                >
+                  <FontAwesomeIcon icon={faPlus} />
+                </button>
+                {isOptionsMenuOpen && (
+                  <div className={styles.optionsMenu}>
+                    <button
+                      type="button"
+                      className={styles.optionsMenuItem}
+                      onClick={handleSendLocationClick}
+                    >
+                      <FontAwesomeIcon icon={faLocationDot} />
+                      <span>Send Location</span>
+                    </button>
+                    <button
+                      type="button"
+                      className={styles.optionsMenuItem}
+                      onClick={handleUploadFileClick}
+                    >
+                      <FontAwesomeIcon icon={faFileSolid} />
+                      <span>Upload File</span>
+                    </button>
+                  </div>
+                )}
+              </div>
               <input
                 id="file-upload"
                 type="file"
