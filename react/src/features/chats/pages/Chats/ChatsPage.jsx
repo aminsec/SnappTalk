@@ -1,4 +1,5 @@
-import { useCallback, useEffect, useMemo, useState, useRef } from 'react';
+import React, { useState, useEffect, useRef, useLayoutEffect } from 'react';
+import { useCallback, useMemo } from 'react';
 import EmojiPicker from 'emoji-picker-react';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import {
@@ -92,6 +93,7 @@ function ChatsPage() {
   const [isOptionsMenuOpen, setIsOptionsMenuOpen] = useState(false);
   const [randomIcon, setRandomIcon] = useState(null);
   const optionsMenuRef = useRef(null);
+  const messagesEndRef = useRef(null);
   
   // Messages state
   const [messages, setMessages] = useState([]);
@@ -617,6 +619,13 @@ function ChatsPage() {
     },
     [resetFileUploadState, selectedChat]
   );
+
+  // ensure jump to bottom when messages change (runs before paint to avoid flicker)
+  useLayoutEffect(() => {
+    if (!messagesEndRef.current) return;
+    // If you want smooth scrolling, set behavior: 'smooth'
+    messagesEndRef.current.scrollIntoView({ behavior: 'auto', block: 'end' });
+  }, [messages, selectedChat]);
 
   return (
     <div className={styles.chatsPageContainer}>
