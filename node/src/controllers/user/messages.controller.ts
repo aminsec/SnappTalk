@@ -14,8 +14,7 @@ export async function showUserConversationMessages(req: Request, resp: Response)
     const { userInfo } = req;
 
     //Checking if user has access to the conversation
-    const [conversation, err]: [Conversation | null, ErrorResponse | null] =
-        await checkUserHasAccessToConversation(new ObjectId(conversationId), userInfo.id);
+    const [conversation, err]: [Conversation | null, ErrorResponse | null] = await checkUserHasAccessToConversation(new ObjectId(conversationId), userInfo.id);
     
     //If user had not access to conversation, a not found error will be shown
     if(err){
@@ -32,4 +31,4 @@ export async function showUserConversationMessages(req: Request, resp: Response)
 
     const responseData = {state: "success", messages: messages};
     sendResponse(responseData, {}, 200, resp);
-}
+};

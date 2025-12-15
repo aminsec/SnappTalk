@@ -95,6 +95,17 @@ function ChatsPage() {
   const optionsMenuRef = useRef(null);
   const messagesEndRef = useRef(null);
   
+  const scrollToBottom = useCallback(() => {
+    const el = messagesEndRef.current;
+    const container = messagesContainerRef.current;
+    if (el) {
+      el.scrollIntoView({ behavior: 'auto', block: 'end' });
+    }
+    if (container) {
+      container.scrollTop = container.scrollHeight;
+    }
+  }, []);
+  
   // Messages state
   const [messages, setMessages] = useState([]);
   const [isLoadingMessages, setIsLoadingMessages] = useState(false);
@@ -620,12 +631,27 @@ function ChatsPage() {
     [resetFileUploadState, selectedChat]
   );
 
-  // ensure jump to bottom when messages change (runs before paint to avoid flicker)
+  // Scroll to bottom only on initial load or when switching chats
   useLayoutEffect(() => {
     if (!messagesEndRef.current) return;
-    // If you want smooth scrolling, set behavior: 'smooth'
-    messagesEndRef.current.scrollIntoView({ behavior: 'auto', block: 'end' });
+    if (isInitialLoadRef.current) {
+      messagesEndRef.current.scrollIntoView({ behavior: 'auto', block: 'end' });
+    }
   }, [messages, selectedChat]);
+
+  // Extra robust bottom scroll to handle layout shifts (images/fonts)
+  useEffect(() => {
+    if (!isInitialLoadRef.current) return;
+    const run = () => scrollToBottom();
+    run();
+    requestAnimationFrame(run);
+    const t1 = setTimeout(run, 0);
+    const t2 = setTimeout(run, 100);
+    return () => {
+      clearTimeout(t1);
+      clearTimeout(t2);
+    };
+  }, [messages.length, selectedChat, scrollToBottom]);
 
   return (
     <div className={styles.chatsPageContainer}>
@@ -667,7 +693,7 @@ function ChatsPage() {
 
               return (
                 <div
-                  key={chat._id}
+                  key={chat._id || chat.id}
                   className={`${styles.chatItem} ${selectedId && chatId && selectedId === chatId ? styles.active : ''}`}
                   onClick={() => setSelectedChat(chat)}
                 >
@@ -865,6 +891,11 @@ function ChatsPage() {
                             src={message.file_url} 
                             alt="File attachment" 
                             className={styles.messageImage}
+                            onLoad={() => {
+                              if (isInitialLoadRef.current) {
+                                scrollToBottom();
+                              }
+                            }}
                             onError={(e) => {
                               e.target.style.display = 'none';
                             }}
@@ -897,6 +928,7 @@ function ChatsPage() {
                     </div>
                   );
                 })}
+                <div ref={messagesEndRef} />
               </div>
             </div>
 

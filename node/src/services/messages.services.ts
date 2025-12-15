@@ -2,7 +2,6 @@ import { ObjectId } from "mongodb";
 import { getMessagesCollection } from "../models/messages.model";
 import { ErrorResponse } from "../types/response.types";
 import { Message } from "../types/messages.types";
-import { skip } from "node:test";
 
 export async function getMessageById(messageId: ObjectId) {
     const messagesCollection = await getMessagesCollection();
@@ -19,7 +18,7 @@ export async function getConversationMessagesByLimitedDate(conversationId: Objec
         const messages = await messagesCollection.find({
             conversation_id: conversationId,
             created_at: {
-                $gt: deletedConversationDate ? new Date(deletedConversationDate) : new Date(0)
+                $gt: new Date(deletedConversationDate)
             }
 
         }, {
