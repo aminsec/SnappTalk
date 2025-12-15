@@ -152,6 +152,7 @@ node_modules
 
 *.sublime*
 
+.qodo/
 psd
 thumb
 sketch
