@@ -114,6 +114,10 @@ function ChatsPage() {
   const messagesContainerRef = useRef(null);
   const isLoadingMoreRef = useRef(false);
   const isInitialLoadRef = useRef(true);
+  const lastScrollTimeRef = useRef(0);
+  const previousTopRef = useRef(0);
+  const previousScrollTopRef = useRef(0);
+  const nearTopTimeoutRef = useRef(null);
   
   // Cache for sender info in group chats (senderId -> {username, profile_pic})
   const [senderInfoCache, setSenderInfoCache] = useState({});
@@ -187,6 +191,7 @@ function ChatsPage() {
     const container = messagesContainerRef.current;
     if (container && append) {
       previousScrollHeightRef.current = container.scrollHeight;
+      previousScrollTopRef.current = container.scrollTop;
     }
 
     try {
@@ -353,21 +358,55 @@ function ChatsPage() {
 
   // Handle scroll for lazy loading older messages
   const handleScroll = useCallback((e) => {
-    const container = e.target;
-    // Check if scrolled near the top (within 50px threshold) to load older messages
-    // This triggers when user scrolls up and reaches the top of the message list
-    if (
-      container.scrollTop <= 50 && 
-      hasMoreMessages && 
-      !isLoadingMessages && 
-      !isLoadingMoreRef.current
-    ) {
+    const container = e.currentTarget;
+
+    // if at absolute top, trigger immediately (no throttle) to avoid missing the final event
+    const atAbsoluteTop = container.scrollTop <= 2;
+    if (atAbsoluteTop && hasMoreMessages && !isLoadingMoreRef.current) {
       const conversationId = selectedChat?._id || selectedChat?.id;
       if (conversationId) {
-        // Load next batch of older messages
+        fetchMessages(conversationId, messagesOffset, true);
+      }
+      previousTopRef.current = container.scrollTop;
+      return;
+    }
+
+    // throttle for other scroll events
+    const now = Date.now();
+    if (now - lastScrollTimeRef.current < 120) {
+      // schedule a trailing near-top check to catch the final inertial stop
+      clearTimeout(nearTopTimeoutRef.current);
+      nearTopTimeoutRef.current = setTimeout(() => {
+        if (!messagesContainerRef.current) return;
+        if (isLoadingMoreRef.current || isLoadingMessages) return;
+        if (!hasMoreMessages) return;
+        if (messagesContainerRef.current.scrollTop <= 10) {
+          const convId = selectedChat?._id || selectedChat?.id;
+          if (convId) {
+            fetchMessages(convId, messagesOffset, true);
+          }
+        }
+      }, 80);
+      return;
+    }
+    lastScrollTimeRef.current = now;
+
+    // gate concurrent loads
+    if (isLoadingMoreRef.current || isLoadingMessages) {
+      previousTopRef.current = container.scrollTop;
+      return;
+    }
+
+    const nearTop = container.scrollTop <= 10;
+
+    if (nearTop && hasMoreMessages) {
+      const conversationId = selectedChat?._id || selectedChat?.id;
+      if (conversationId) {
         fetchMessages(conversationId, messagesOffset, true);
       }
     }
+
+    previousTopRef.current = container.scrollTop;
   }, [selectedChat, hasMoreMessages, isLoadingMessages, messagesOffset, fetchMessages]);
 
   // Handle scroll position after messages update
@@ -380,11 +419,13 @@ function ChatsPage() {
       container.scrollTop = container.scrollHeight;
       isInitialLoadRef.current = false;
     } else if (previousScrollHeightRef.current > 0) {
-      // Loading older messages - preserve scroll position
+      // Loading older messages - preserve scroll position precisely
       const newScrollHeight = container.scrollHeight;
       const scrollDifference = newScrollHeight - previousScrollHeightRef.current;
-      container.scrollTop = container.scrollTop + scrollDifference;
+      const prevTop = previousScrollTopRef.current || 0;
+      container.scrollTop = prevTop + scrollDifference;
       previousScrollHeightRef.current = 0; // Reset
+      previousScrollTopRef.current = 0;
     }
   }, [messages.length, messagesOffset]);
 
@@ -652,6 +693,15 @@ function ChatsPage() {
       clearTimeout(t2);
     };
   }, [messages.length, selectedChat, scrollToBottom]);
+
+  // Cleanup trailing near-top timeout on chat change/unmount
+  useEffect(() => {
+    return () => {
+      if (nearTopTimeoutRef.current) {
+        clearTimeout(nearTopTimeoutRef.current);
+      }
+    };
+  }, [selectedChat]);
 
   return (
     <div className={styles.chatsPageContainer}>
