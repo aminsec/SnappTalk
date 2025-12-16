@@ -5,11 +5,11 @@ import { globalReg } from "../../utils/regex";
 import { checkThereIsAnyError } from "../../middlewares/errors";
 const router = express.Router();
 
-router.get("/:username/info", [
-    check("username")
+router.get("/:userid/info", [
+    check("userid")
     .isString().withMessage("Invalid input type")
-    .notEmpty().withMessage("username is required.")
-    .matches(globalReg.username).withMessage("Invalid username"),
+    .notEmpty().withMessage("userid is required.")
+    .matches(globalReg.userid).withMessage("Invalid userid"),
     checkThereIsAnyError
 ],membersInfoController.showMemberInfo);
 

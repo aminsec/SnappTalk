@@ -1,18 +1,22 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useState, useEffect, useRef, useLayoutEffect } from 'react';
+import { useCallback, useMemo } from 'react';
 import EmojiPicker from 'emoji-picker-react';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import {
   faSearch,
-  faPaperPlane,
   faEllipsisVertical,
   faTimes,
   faAddressBook,
+  faPlus,
+  faFile as faFileSolid,
+  faLocationDot,
 } from '@fortawesome/free-solid-svg-icons';
 import { faFile, faFaceSmile } from '@fortawesome/free-regular-svg-icons';
 import { Sidebar, Input, Button, ProfileAvatar } from '@/shared/components';
 import { useAuth } from '@/shared/state/useAuth';
 import sentIcon from "@/shared/assets/icons/sent.svg";
 import seenIcon from "@/shared/assets/icons/seen.svg";
+import sendIcon from "@/shared/assets/icons/sendIcon.svg";
 import bitcoinIcon from '@/shared/assets/images/mono/acn.svg';
 import coconutCocktailIcon from '@/shared/assets/images/mono/bank.svg';
 import colosseumIcon from '@/shared/assets/images/mono/bookshelf.svg';
@@ -45,12 +49,14 @@ const monoIcons = [
 ];
 
 const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
+const MESSAGES_LIMIT = 10; // Max number of messages per request
 
 // Helper functions
 const convertISOtoLocal = (isoDate) => {
   try {
-    if(isoDate !== Date) return "";
+    if (!isoDate) return "";
     const date = new Date(isoDate);
+    if (isNaN(date.getTime())) return "";
     return date.toLocaleTimeString("en-US", {
       hour: "2-digit",
       minute: "2-digit",
@@ -58,7 +64,6 @@ const convertISOtoLocal = (isoDate) => {
   } catch (error) {
     return "";
   }
-
 };
 
 const formatFileSize = (bytes) => {
@@ -85,7 +90,37 @@ function ChatsPage() {
   const [filePreview, setFilePreview] = useState(null);
   const [isEmojiPickerOpen, setIsEmojiPickerOpen] = useState(false);
   const [isNewConversationModalOpen, setIsNewConversationModalOpen] = useState(false);
+  const [isOptionsMenuOpen, setIsOptionsMenuOpen] = useState(false);
   const [randomIcon, setRandomIcon] = useState(null);
+  const optionsMenuRef = useRef(null);
+  const messagesEndRef = useRef(null);
+  
+  const scrollToBottom = useCallback(() => {
+    const el = messagesEndRef.current;
+    const container = messagesContainerRef.current;
+    if (el) {
+      el.scrollIntoView({ behavior: 'auto', block: 'end' });
+    }
+    if (container) {
+      container.scrollTop = container.scrollHeight;
+    }
+  }, []);
+  
+  // Messages state
+  const [messages, setMessages] = useState([]);
+  const [isLoadingMessages, setIsLoadingMessages] = useState(false);
+  const [hasMoreMessages, setHasMoreMessages] = useState(true);
+  const [messagesOffset, setMessagesOffset] = useState(0);
+  const messagesContainerRef = useRef(null);
+  const isLoadingMoreRef = useRef(false);
+  const isInitialLoadRef = useRef(true);
+  const lastScrollTimeRef = useRef(0);
+  const previousTopRef = useRef(0);
+  const previousScrollTopRef = useRef(0);
+  const nearTopTimeoutRef = useRef(null);
+  
+  // Cache for sender info in group chats (senderId -> {username, profile_pic})
+  const [senderInfoCache, setSenderInfoCache] = useState({});
 
   // Fetch contacts on mount
   useEffect(() => {
@@ -122,6 +157,277 @@ function ChatsPage() {
       }
     };
   }, [filePreview]);
+
+  // Handle click outside options menu
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (optionsMenuRef.current && !optionsMenuRef.current.contains(event.target)) {
+        setIsOptionsMenuOpen(false);
+      }
+    };
+
+    if (isOptionsMenuOpen) {
+      document.addEventListener('mousedown', handleClickOutside);
+    }
+
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [isOptionsMenuOpen]);
+
+  // Store previous scroll height for position preservation
+  const previousScrollHeightRef = useRef(0);
+
+  // Fetch messages function - implements lazy loading
+  // Initial load: offset=0, limit=10 → fetches last 10 messages (newest)
+  // Scroll up: offset=10,20,30... → fetches next 10 older messages each time
+  const fetchMessages = useCallback(async (conversationId, offset = 0, append = false) => {
+    if (!conversationId || isLoadingMoreRef.current) return;
+
+    setIsLoadingMessages(true);
+    isLoadingMoreRef.current = true;
+
+    // Store scroll position before loading older messages
+    const container = messagesContainerRef.current;
+    if (container && append) {
+      previousScrollHeightRef.current = container.scrollHeight;
+      previousScrollTopRef.current = container.scrollTop;
+    }
+
+    try {
+      const limit = MESSAGES_LIMIT;
+      const url = `/api/v1/user/messages/${conversationId}?limit=${limit}&offset=${offset}`;
+      
+      const response = await fetch(url, {
+        method: 'GET',
+        credentials: 'include',
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        const fetchedMessages = data.messages || [];
+        
+        // Backend returns messages sorted newest first (created_at: -1)
+        // We need to reverse them to show oldest first for display
+        // Sort messages by date (created_at) - ascending order (oldest first)
+        const sortMessagesByDate = (messages) => {
+          return [...messages].sort((a, b) => {
+            const dateA = new Date(a.created_at || a.when || a.timestamp || 0);
+            const dateB = new Date(b.created_at || b.when || b.timestamp || 0);
+            return dateA.getTime() - dateB.getTime();
+          });
+        };
+        
+        const sortedFetchedMessages = sortMessagesByDate(fetchedMessages);
+        
+        if (append) {
+          // Prepend older messages to the beginning
+          // Use functional update to access current messages state
+          setMessages((prevMessages) => {
+            // Create a map to deduplicate messages by ID
+            const messagesMap = new Map();
+            
+            // Add existing messages to map
+            prevMessages.forEach((msg) => {
+              const msgId = msg._id || msg.id;
+              if (msgId) messagesMap.set(msgId.toString(), msg);
+            });
+            
+            // Add new older messages to map (will overwrite duplicates if any)
+            sortedFetchedMessages.forEach((msg) => {
+              const msgId = msg._id || msg.id;
+              if (msgId) messagesMap.set(msgId.toString(), msg);
+            });
+            
+            // Convert back to array and sort chronologically
+            const combinedMessages = Array.from(messagesMap.values());
+            const sortedCombined = sortMessagesByDate(combinedMessages);
+            return sortedCombined;
+          });
+        } else {
+          // Initial load: replace messages with the last 10 messages (newest)
+          // Already sorted oldest->newest
+          setMessages(sortedFetchedMessages);
+          isInitialLoadRef.current = true;
+        }
+
+        // Check if there are more messages to load
+        // If we got exactly limit (10) messages, there might be more
+        // If we got fewer than limit, we've reached the end (no more messages)
+        setHasMoreMessages(fetchedMessages.length === limit);
+        // Update offset for next fetch (increment by number of messages fetched)
+        // This ensures we skip already-loaded messages on next fetch
+        setMessagesOffset(offset + fetchedMessages.length);
+        
+        // Mark that we're no longer on initial load after first fetch
+        if (append) {
+          isInitialLoadRef.current = false;
+        }
+      } else {
+        console.error('Failed to fetch messages:', response.status);
+        setHasMoreMessages(false);
+      }
+    } catch (error) {
+      console.error('Error fetching messages:', error);
+      setHasMoreMessages(false);
+    } finally {
+      setIsLoadingMessages(false);
+      isLoadingMoreRef.current = false;
+    }
+  }, []);
+
+  // Fetch messages when selectedChat changes
+  useEffect(() => {
+    if (!selectedChat) {
+      setMessages([]);
+      setMessagesOffset(0);
+      setHasMoreMessages(true);
+      setSenderInfoCache({}); // Clear cache when chat changes
+      isInitialLoadRef.current = true;
+      return;
+    }
+
+    const conversationId = selectedChat._id || selectedChat.id;
+    if (!conversationId) return;
+
+    // Reset state and fetch initial messages (last 10 messages)
+    setMessages([]);
+    setMessagesOffset(0);
+    setHasMoreMessages(true);
+    setSenderInfoCache({}); // Clear cache
+    isInitialLoadRef.current = true;
+    fetchMessages(conversationId, 0, false);
+  }, [selectedChat, fetchMessages]);
+
+  // Fetch sender info for group messages
+  useEffect(() => {
+    const isGroupChat = selectedChat?.type === 'group';
+    if (!isGroupChat || messages.length === 0) return;
+
+    const currentUserId = user?.id?.toString() || user?.id;
+    
+    // Get unique sender IDs from received messages
+    const uniqueSenderIds = [...new Set(
+      messages
+        .filter((msg) => {
+          const messageSenderId = msg.sender?.toString() || msg.sender;
+          return messageSenderId && messageSenderId !== currentUserId; // Only received messages
+        })
+        .map((msg) => msg.sender?.toString() || msg.sender)
+        .filter(Boolean)
+    )];
+
+    // Fetch sender info for each unique sender that's not in cache
+    // Backend endpoint /api/v1/members/<userid>/info accepts user ID directly
+    uniqueSenderIds.forEach((senderId) => {
+      const senderIdStr = senderId.toString();
+      // Skip if already in cache
+      if (senderInfoCache[senderIdStr]) {
+        return;
+      }
+
+      // Fetch member info using sender ID directly
+      fetch(`/api/v1/members/${senderIdStr}/info`, {
+        method: 'GET',
+        credentials: 'include',
+      })
+        .then((response) => {
+          if (response.ok) {
+            return response.json();
+          }
+          throw new Error('Failed to fetch member info');
+        })
+        .then((data) => {
+          // Backend returns: { state: "success", member_info: { username, profile_pic, ... } }
+          const memberInfo = data.member_info || {};
+          const senderInfo = {
+            username: memberInfo.username || 'Unknown',
+            profile_pic: memberInfo.profile_pic || null,
+          };
+          
+          setSenderInfoCache((prev) => ({
+            ...prev,
+            [senderIdStr]: senderInfo,
+          }));
+        })
+        .catch((error) => {
+          console.error('Failed to fetch member info for sender ID', senderIdStr, error);
+        });
+    });
+  }, [messages, selectedChat, senderInfoCache, user?.id]);
+
+  // Handle scroll for lazy loading older messages
+  const handleScroll = useCallback((e) => {
+    const container = e.currentTarget;
+
+    // if at absolute top, trigger immediately (no throttle) to avoid missing the final event
+    const atAbsoluteTop = container.scrollTop <= 2;
+    if (atAbsoluteTop && hasMoreMessages && !isLoadingMoreRef.current) {
+      const conversationId = selectedChat?._id || selectedChat?.id;
+      if (conversationId) {
+        fetchMessages(conversationId, messagesOffset, true);
+      }
+      previousTopRef.current = container.scrollTop;
+      return;
+    }
+
+    // throttle for other scroll events
+    const now = Date.now();
+    if (now - lastScrollTimeRef.current < 120) {
+      // schedule a trailing near-top check to catch the final inertial stop
+      clearTimeout(nearTopTimeoutRef.current);
+      nearTopTimeoutRef.current = setTimeout(() => {
+        if (!messagesContainerRef.current) return;
+        if (isLoadingMoreRef.current || isLoadingMessages) return;
+        if (!hasMoreMessages) return;
+        if (messagesContainerRef.current.scrollTop <= 10) {
+          const convId = selectedChat?._id || selectedChat?.id;
+          if (convId) {
+            fetchMessages(convId, messagesOffset, true);
+          }
+        }
+      }, 80);
+      return;
+    }
+    lastScrollTimeRef.current = now;
+
+    // gate concurrent loads
+    if (isLoadingMoreRef.current || isLoadingMessages) {
+      previousTopRef.current = container.scrollTop;
+      return;
+    }
+
+    const nearTop = container.scrollTop <= 10;
+
+    if (nearTop && hasMoreMessages) {
+      const conversationId = selectedChat?._id || selectedChat?.id;
+      if (conversationId) {
+        fetchMessages(conversationId, messagesOffset, true);
+      }
+    }
+
+    previousTopRef.current = container.scrollTop;
+  }, [selectedChat, hasMoreMessages, isLoadingMessages, messagesOffset, fetchMessages]);
+
+  // Handle scroll position after messages update
+  useEffect(() => {
+    const container = messagesContainerRef.current;
+    if (!container) return;
+
+    if (isInitialLoadRef.current && messages.length > 0) {
+      // Initial load - scroll to bottom to show newest messages
+      container.scrollTop = container.scrollHeight;
+      isInitialLoadRef.current = false;
+    } else if (previousScrollHeightRef.current > 0) {
+      // Loading older messages - preserve scroll position precisely
+      const newScrollHeight = container.scrollHeight;
+      const scrollDifference = newScrollHeight - previousScrollHeightRef.current;
+      const prevTop = previousScrollTopRef.current || 0;
+      container.scrollTop = prevTop + scrollDifference;
+      previousScrollHeightRef.current = 0; // Reset
+      previousScrollTopRef.current = 0;
+    }
+  }, [messages.length, messagesOffset]);
 
   // Filter chats based on search query
   const filteredChats = useMemo(() => {
@@ -162,6 +468,46 @@ function ChatsPage() {
     }
     return [];
   }, []);
+
+  // Fetch sender info for group messages
+  const fetchSenderInfo = useCallback(async (senderId) => {
+    if (!senderId) return null;
+    
+    const senderIdStr = senderId.toString();
+    
+    // Check cache first
+    if (senderInfoCache[senderIdStr]) {
+      return senderInfoCache[senderIdStr];
+    }
+
+    try {
+      // Try to fetch user info - adjust endpoint if needed
+      const response = await fetch(`/api/v1/user/info/${senderIdStr}`, {
+        method: 'GET',
+        credentials: 'include',
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        const senderInfo = {
+          username: data.userInfo?.username || 'Unknown',
+          profile_pic: data.userInfo?.profile_pic || null,
+        };
+        
+        // Update cache
+        setSenderInfoCache((prev) => ({
+          ...prev,
+          [senderIdStr]: senderInfo,
+        }));
+        
+        return senderInfo;
+      }
+    } catch (error) {
+      console.error('Failed to fetch sender info:', error);
+    }
+
+    return null;
+  }, [senderInfoCache]);
 
   // Handle new conversation modal
   const handleNewConversation = useCallback(() => {
@@ -218,6 +564,42 @@ function ChatsPage() {
     },
     [contacts, user]
   );
+
+  // Handle options menu toggle
+  const handleOptionsMenuToggle = useCallback(() => {
+    setIsOptionsMenuOpen((prev) => !prev);
+  }, []);
+
+  // Handle upload file option click
+  const handleUploadFileClick = useCallback(() => {
+    const fileInput = document.getElementById('file-upload');
+    if (fileInput) {
+      fileInput.click();
+      setIsOptionsMenuOpen(false);
+    }
+  }, []);
+
+  // Handle send location option click
+  const handleSendLocationClick = useCallback(() => {
+    setIsOptionsMenuOpen(false);
+    // TODO: Implement location sharing functionality
+    if (navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition(
+        (position) => {
+          const { latitude, longitude } = position.coords;
+          // TODO: Send location to backend when endpoint is ready
+          console.log('Location:', latitude, longitude);
+          // For now, you can add the location to the message input or send it directly
+        },
+        (error) => {
+          console.error('Error getting location:', error);
+          alert('Unable to get your location. Please check your browser permissions.');
+        }
+      );
+    } else {
+      alert('Geolocation is not supported by your browser.');
+    }
+  }, []);
 
   // Handle file upload
   const handleFileChange = useCallback(
@@ -290,6 +672,37 @@ function ChatsPage() {
     [resetFileUploadState, selectedChat]
   );
 
+  // Scroll to bottom only on initial load or when switching chats
+  useLayoutEffect(() => {
+    if (!messagesEndRef.current) return;
+    if (isInitialLoadRef.current) {
+      messagesEndRef.current.scrollIntoView({ behavior: 'auto', block: 'end' });
+    }
+  }, [messages, selectedChat]);
+
+  // Extra robust bottom scroll to handle layout shifts (images/fonts)
+  useEffect(() => {
+    if (!isInitialLoadRef.current) return;
+    const run = () => scrollToBottom();
+    run();
+    requestAnimationFrame(run);
+    const t1 = setTimeout(run, 0);
+    const t2 = setTimeout(run, 100);
+    return () => {
+      clearTimeout(t1);
+      clearTimeout(t2);
+    };
+  }, [messages.length, selectedChat, scrollToBottom]);
+
+  // Cleanup trailing near-top timeout on chat change/unmount
+  useEffect(() => {
+    return () => {
+      if (nearTopTimeoutRef.current) {
+        clearTimeout(nearTopTimeoutRef.current);
+      }
+    };
+  }, [selectedChat]);
+
   return (
     <div className={styles.chatsPageContainer}>
       <Sidebar className={styles.sidebar} />
@@ -330,7 +743,7 @@ function ChatsPage() {
 
               return (
                 <div
-                  key={chat._id}
+                  key={chat._id || chat.id}
                   className={`${styles.chatItem} ${selectedId && chatId && selectedId === chatId ? styles.active : ''}`}
                   onClick={() => setSelectedChat(chat)}
                 >
@@ -406,17 +819,166 @@ function ChatsPage() {
               <FontAwesomeIcon icon={faEllipsisVertical} size={24} />
             </div>
 
-            <div className={styles.messagesContainer}>
+            <div 
+              className={styles.messagesContainer}
+              ref={messagesContainerRef}
+              onScroll={handleScroll}
+            >
+              {isLoadingMessages && messages.length === 0 && (
+                <div className={styles.loadingMessages}>
+                  <p>Loading messages...</p>
+                </div>
+              )}
+              {!isLoadingMessages && messages.length === 0 && (
+                <div className={styles.emptyMessages}>
+                  <p>No messages yet. Start the conversation!</p>
+                </div>
+              )}
+              {isLoadingMessages && messages.length > 0 && (
+                <div className={styles.loadingMore}>
+                  <p>Loading older messages...</p>
+                </div>
+              )}
               <div className={styles.messagesWrapper}>
-                {selectedChat.messages?.map((message) => (
-                  <div
-                    key={message.id}
-                    className={`${styles.message} ${message.sender === 'me' ? styles.sent : styles.received}`}
-                  >
-                    <p>{message.text}</p>
-                    <span className={styles.timestamp}>{message.timestamp}</span>
-                  </div>
-                ))}
+                {messages.map((message, index) => {
+                  // Message detection: message.sender is an ObjectId that should match user.id
+                  const userId = user?.id; // User object uses 'id' not '_id'
+                  const username = user?.username;
+                  
+                  // Convert both to strings for comparison (message.sender can be ObjectId or string)
+                  const messageSenderId = message.sender?.toString() || message.sender;
+                  const currentUserId = userId?.toString() || userId;
+                  
+                  // Primary check: compare sender ObjectId with user.id
+                  const isMyMessage = messageSenderId === currentUserId ||
+                    // Fallback checks for different API response formats
+                    message.sender === currentUserId ||
+                    message.sender_id?.toString() === currentUserId ||
+                    message.sender_id === currentUserId ||
+                    message.user_id?.toString() === currentUserId ||
+                    message.user_id === currentUserId ||
+                    message.from_user_id?.toString() === currentUserId ||
+                    message.from_user_id === currentUserId ||
+                    // Username fallback (less reliable but included for compatibility)
+                    message.sender === username ||
+                    message.sender_name === username;
+                  
+                  // Debug logging for first message - inspect actual message structure
+                  if (index === 0 && messages.length > 0) {
+                    console.log('Full message object:', message);
+                    console.log('Message detection debug:', {
+                      messageSenderId,
+                      currentUserId,
+                      username,
+                      isMyMessage,
+                      messageKeys: Object.keys(message),
+                      message: {
+                        sender: message.sender,
+                        sender_id: message.sender_id,
+                        sender_username: message.sender_username,
+                        sender_name: message.sender_name,
+                        sender_info: message.sender_info,
+                        user_id: message.user_id,
+                      },
+                      user: {
+                        id: user?.id,
+                        username: user?.username,
+                      }
+                    });
+                  }
+                  
+                  const messageId = message._id || message.id || `msg-${index}`;
+                  const messageContent = message.content || message.text || '';
+                  const messageTime = message.when || message.timestamp || message.created_at;
+                  const isPrivateChat = selectedChat?.type === 'pv';
+                  const isGroupChat = selectedChat?.type === 'group';
+                  
+                  // Get sender info for group messages (received only)
+                  const senderIdStr = messageSenderId;
+                  const senderInfo = !isMyMessage && isGroupChat ? senderInfoCache[senderIdStr] : null;
+                  
+                  // Check seen status - API may provide 'seen' boolean or 'seen_by' object
+                  // For sent messages, check if recipient has seen it
+                  let messageSeen = null;
+                  if (message.seen !== undefined && message.seen !== null) {
+                    messageSeen = message.seen;
+                  } else if (message.seen_by && typeof message.seen_by === 'object') {
+                    // If seen_by is an object, check if it has any entries (someone has seen it)
+                    const seenByKeys = Object.keys(message.seen_by);
+                    messageSeen = seenByKeys.length > 0;
+                  }
+                  
+                  return (
+                    <div
+                      key={messageId}
+                      className={`${styles.messageWrapper} ${isMyMessage ? styles.messageWrapperSent : styles.messageWrapperReceived} ${!isMyMessage && isGroupChat ? styles.messageWrapperGroup : ''}`}
+                    >
+                      {/* Avatar for received messages in groups - positioned on the left */}
+                      {!isMyMessage && isGroupChat && senderInfo && (
+                        <div className={styles.messageAvatar}>
+                          <ProfileAvatar 
+                            src={senderInfo.profile_pic} 
+                            size={36}
+                            alt={senderInfo.username}
+                            borderWidth={0}
+                          />
+                        </div>
+                      )}
+                      
+                      <div
+                        className={`${styles.message} ${isMyMessage ? styles.sent : styles.received}`}
+                        data-message-type={isMyMessage ? 'sent' : 'received'}
+                      >
+                        {/* Username inside message bubble for group chats */}
+                        {!isMyMessage && isGroupChat && senderInfo && (
+                          <div className={styles.messageSenderName}>
+                            <span className={styles.senderUsername}>{senderInfo.username}</span>
+                          </div>
+                        )}
+                        
+                        {message.type === 'file' && message.file_url && (
+                          <img 
+                            src={message.file_url} 
+                            alt="File attachment" 
+                            className={styles.messageImage}
+                            onLoad={() => {
+                              if (isInitialLoadRef.current) {
+                                scrollToBottom();
+                              }
+                            }}
+                            onError={(e) => {
+                              e.target.style.display = 'none';
+                            }}
+                          />
+                        )}
+                        {messageContent && <p>{messageContent}</p>}
+                        <div className={styles.messageFooter}>
+                          <span className={styles.timestamp}>
+                            {convertISOtoLocal(messageTime)}
+                          </span>
+                          {isMyMessage && isPrivateChat && (
+                            <span className={styles.seenIcon}>
+                              {messageSeen !== null && messageSeen !== undefined ? (
+                                <img 
+                                  src={messageSeen ? seenIcon : sentIcon} 
+                                  alt={messageSeen ? "Seen" : "Sent"}
+                                  className={styles.seenIconImage}
+                                />
+                              ) : (
+                                <img 
+                                  src={sentIcon} 
+                                  alt="Sent"
+                                  className={styles.seenIconImage}
+                                />
+                              )}
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+                <div ref={messagesEndRef} />
               </div>
             </div>
 
@@ -447,9 +1009,36 @@ function ChatsPage() {
             )}
 
             <div className={styles.inputBar}>
-              <label className={styles.fileUploadIcon} htmlFor="file-upload">
-                <FontAwesomeIcon icon={faFile} />
-              </label>
+              <div className={styles.optionsMenuContainer} ref={optionsMenuRef}>
+                <button
+                  type="button"
+                  className={styles.optionsButton}
+                  onClick={handleOptionsMenuToggle}
+                  aria-label="More options"
+                >
+                  <FontAwesomeIcon icon={faPlus} />
+                </button>
+                {isOptionsMenuOpen && (
+                  <div className={styles.optionsMenu}>
+                    <button
+                      type="button"
+                      className={styles.optionsMenuItem}
+                      onClick={handleSendLocationClick}
+                    >
+                      <FontAwesomeIcon icon={faLocationDot} />
+                      <span>Send Location</span>
+                    </button>
+                    <button
+                      type="button"
+                      className={styles.optionsMenuItem}
+                      onClick={handleUploadFileClick}
+                    >
+                      <FontAwesomeIcon icon={faFileSolid} />
+                      <span>Upload File</span>
+                    </button>
+                  </div>
+                )}
+              </div>
               <input
                 id="file-upload"
                 type="file"
@@ -480,9 +1069,9 @@ function ChatsPage() {
                   }}
                 />
               </button>
-              <Button type="button">
-                <FontAwesomeIcon icon={faPaperPlane} />
-              </Button>
+              <button type="button" className={styles.sendButton}>
+                <img src={sendIcon} alt="Send" className={styles.sendIcon} />
+              </button>
             </div>
           </>
         ) : (

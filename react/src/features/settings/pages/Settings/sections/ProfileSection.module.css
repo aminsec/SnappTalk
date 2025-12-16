@@ -6,12 +6,43 @@
   flex-direction: column;
   gap: 25px;
   align-items: center;
+  position: relative; /* ensure absolute children position correctly */
 }
 
-.editBtn {
-  position: absolute;
-  top: 1.5%;
-  right: 2%;
+/* Completely different button style: left-accent "chip" that expands on hover */
+.editBtn{
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  height:32px;
+  min-width:110px;
+  padding:0 12px;
+  margin:12px auto 0;
+  border-radius:999px;
+  font-size:0.82rem;
+  font-weight:700;
+  color:var(--text-muted, #cbd5e1);
+  background:transparent;
+  border:1px solid rgba(255,255,255,0.04);
+  transition: background 150ms ease, color 150ms ease, transform 120ms ease;
+}
+.editBtn:hover, .editBtn:focus{
+  transform: translateY(-2px);
+  background: linear-gradient(90deg, rgba(37,99,235,0.12), rgba(37,99,235,0.06));
+  color:#fff;
+  border-color: rgba(37,99,235,0.85);
+  outline:none;
+}
+.editBtn:focus-visible{
+  box-shadow: 0 0 0 6px rgba(37,99,235,0.06);
+}
+
+/* responsive: keep height but expand to full width on narrow viewports */
+@media (max-width: 640px) {
+  .editBtn {
+    width: calc(100% - 32px);
+    min-width: 0;
+  }
 }
 
 .header {

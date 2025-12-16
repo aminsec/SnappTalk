@@ -79,11 +79,7 @@ export default function ProfileSection() {
 
   return (
     <div className={styles.profileContainer}>
-      {!editMode && (
-        <Button size="sm" onClick={() => setEditMode(true)} className={styles.editBtn}>
-          Edit
-        </Button>
-      )}
+      {/* edit button removed from the header; moved below the Bio */}
 
       <div className={styles.avatarRow}>
         {editMode ? (
@@ -161,6 +157,16 @@ export default function ProfileSection() {
             <div className={styles.infoRow}>
               <span>Bio:</span> <p>{user?.bio || 'No bio yet.'}</p>
             </div>
+
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => setEditMode(true)}
+              className={styles.editBtn}
+              aria-label="Edit profile"
+            >
+              Edit profile
+            </Button>
           </>
         )}
       </div>

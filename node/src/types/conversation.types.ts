@@ -9,5 +9,6 @@ export interface Conversation {
     contact_info?: any,
     last_message_id: ObjectId,
     last_message?: Object,
+    deleted_for: Record<string, string>,
     created_at: string
 };

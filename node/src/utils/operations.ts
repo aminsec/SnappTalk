@@ -45,22 +45,22 @@ export function whiteListUserInfo(userData: RawUserInfo): ProtectedUserInfo{
     return validatedUserData;
 };
 
-export function whiteListContacts(contacts: Conversation[]): Conversation[]{
-    const validContacts = [];
+export function whiteListConversations(conversations: Conversation[]): Conversation[]{
+    const validConversations = [];
 
-    for(var contact of contacts){
-        const validContact: any = {};
-        validContact._id = contact._id;
-        validContact.type = contact.type;
-        validContact.group_name = contact.group_name;
-        validContact.group_avatar = contact.group_avatar;
-        validContact.contact_info = contact.contact_info;
-        validContact.created_at = contact.created_at;
-        validContact.last_message = contact.last_message;
-        validContacts.push(validContact);
+    for(var conv of conversations){
+        const validConversation: any = {};
+        validConversation._id = conv._id;
+        validConversation.type = conv.type;
+        validConversation.group_name = conv.group_name;
+        validConversation.group_avatar = conv.group_avatar;
+        validConversation.contact_info = conv.contact_info;
+        validConversation.created_at = conv.created_at;
+        validConversation.last_message = conv.last_message;
+        validConversations.push(validConversation);
     }
 
-    return validContacts;
+    return validConversations;
 };
 
 export function getRandomString(): string {

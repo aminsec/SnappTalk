@@ -1,7 +1,7 @@
 import express from "express";
-import * as accountContactsController from "../../controllers/user/conversations.controller";
+import * as accountConversationsController from "../../controllers/user/conversations.controller";
 const router = express.Router();
 
-router.get("/conversations", accountContactsController.showUserConversations);
+router.get("/", accountConversationsController.showUserConversations);
 
 export default router;

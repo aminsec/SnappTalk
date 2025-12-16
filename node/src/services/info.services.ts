@@ -28,6 +28,7 @@ export async function getUserInfoById(id: string): Promise<[ProtectedUserInfo | 
     try {
         const usersCollection  = await getUsersCollection();
         const user: RawUserInfo = await usersCollection.findOne({_id: new ObjectId(id)});
+
         if(user){
             //White listing user data
             const userData: ProtectedUserInfo = whiteListUserInfo(user);
