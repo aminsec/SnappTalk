@@ -113,11 +113,21 @@ function ChatsPage() {
   const [messagesOffset, setMessagesOffset] = useState(0);
   const messagesContainerRef = useRef(null);
   const isLoadingMoreRef = useRef(false);
+  const messagesOffsetRef = useRef(0);
+  const hasMoreMessagesRef = useRef(true);
   const isInitialLoadRef = useRef(true);
   const lastScrollTimeRef = useRef(0);
   const previousTopRef = useRef(0);
   const previousScrollTopRef = useRef(0);
   const nearTopTimeoutRef = useRef(null);
+
+  useEffect(() => {
+    messagesOffsetRef.current = messagesOffset;
+  }, [messagesOffset]);
+
+  useEffect(() => {
+    hasMoreMessagesRef.current = hasMoreMessages;
+  }, [hasMoreMessages]);
   
   // Cache for sender info in group chats (senderId -> {username, profile_pic})
   const [senderInfoCache, setSenderInfoCache] = useState({});
@@ -276,6 +286,27 @@ function ChatsPage() {
     }
   }, []);
 
+  const loadOlderMessages = useCallback(() => {
+    if (!selectedChat) {
+      return;
+    }
+
+    if (isLoadingMoreRef.current || isLoadingMessages) {
+      return;
+    }
+
+    if (!hasMoreMessagesRef.current) {
+      return;
+    }
+
+    const conversationId = selectedChat?._id || selectedChat?.id;
+    if (!conversationId) {
+      return;
+    }
+
+    fetchMessages(conversationId, messagesOffsetRef.current, true);
+  }, [fetchMessages, isLoadingMessages, selectedChat]);
+
   // Fetch messages when selectedChat changes
   useEffect(() => {
     if (!selectedChat) {
@@ -362,11 +393,8 @@ function ChatsPage() {
 
     // if at absolute top, trigger immediately (no throttle) to avoid missing the final event
     const atAbsoluteTop = container.scrollTop <= 2;
-    if (atAbsoluteTop && hasMoreMessages && !isLoadingMoreRef.current) {
-      const conversationId = selectedChat?._id || selectedChat?.id;
-      if (conversationId) {
-        fetchMessages(conversationId, messagesOffset, true);
-      }
+    if (atAbsoluteTop) {
+      loadOlderMessages();
       previousTopRef.current = container.scrollTop;
       return;
     }
@@ -379,12 +407,9 @@ function ChatsPage() {
       nearTopTimeoutRef.current = setTimeout(() => {
         if (!messagesContainerRef.current) return;
         if (isLoadingMoreRef.current || isLoadingMessages) return;
-        if (!hasMoreMessages) return;
+        if (!hasMoreMessagesRef.current) return;
         if (messagesContainerRef.current.scrollTop <= 10) {
-          const convId = selectedChat?._id || selectedChat?.id;
-          if (convId) {
-            fetchMessages(convId, messagesOffset, true);
-          }
+          loadOlderMessages();
         }
       }, 80);
       return;
@@ -399,15 +424,12 @@ function ChatsPage() {
 
     const nearTop = container.scrollTop <= 10;
 
-    if (nearTop && hasMoreMessages) {
-      const conversationId = selectedChat?._id || selectedChat?.id;
-      if (conversationId) {
-        fetchMessages(conversationId, messagesOffset, true);
-      }
+    if (nearTop) {
+      loadOlderMessages();
     }
 
     previousTopRef.current = container.scrollTop;
-  }, [selectedChat, hasMoreMessages, isLoadingMessages, messagesOffset, fetchMessages]);
+  }, [isLoadingMessages, loadOlderMessages]);
 
   // Handle scroll position after messages update
   useEffect(() => {

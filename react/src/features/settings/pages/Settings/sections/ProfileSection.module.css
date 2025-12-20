@@ -9,38 +9,45 @@
   position: relative; /* ensure absolute children position correctly */
 }
 
-/* Completely different button style: left-accent "chip" that expands on hover */
-.editBtn{
-  display:inline-flex;
-  align-items:center;
-  justify-content:center;
-  height:32px;
-  min-width:110px;
-  padding:0 12px;
-  margin:12px auto 0;
-  border-radius:999px;
-  font-size:0.82rem;
-  font-weight:700;
-  color:var(--text-muted, #cbd5e1);
-  background:transparent;
-  border:1px solid rgba(255,255,255,0.04);
-  transition: background 150ms ease, color 150ms ease, transform 120ms ease;
-}
-.editBtn:hover, .editBtn:focus{
-  transform: translateY(-2px);
-  background: linear-gradient(90deg, rgba(37,99,235,0.12), rgba(37,99,235,0.06));
-  color:#fff;
-  border-color: rgba(37,99,235,0.85);
-  outline:none;
-}
-.editBtn:focus-visible{
-  box-shadow: 0 0 0 6px rgba(37,99,235,0.06);
+.editBtn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 38px;
+  min-width: 140px;
+  padding: 0 14px;
+  margin: 10px auto 0;
+  border-radius: 12px;
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--text-main);
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  transition: background-color 180ms ease, border-color 180ms ease, transform 120ms ease, box-shadow 180ms ease;
 }
 
-/* responsive: keep height but expand to full width on narrow viewports */
+.editBtn:hover {
+  background: rgba(45, 144, 228, 0.12);
+  border-color: rgba(45, 144, 228, 0.55);
+  transform: translateY(-1px);
+}
+
+.editBtn:active {
+  transform: scale(0.98);
+}
+
+.editBtn:focus {
+  outline: none;
+}
+
+.editBtn:focus-visible {
+  border-color: rgba(45, 144, 228, 0.85);
+  box-shadow: 0 0 0 4px rgba(45, 144, 228, 0.18);
+}
+
 @media (max-width: 640px) {
   .editBtn {
-    width: calc(100% - 32px);
+    width: 100%;
     min-width: 0;
   }
 }
