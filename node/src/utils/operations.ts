@@ -7,10 +7,10 @@ import * as jwt from "jsonwebtoken";
 import { Conversation } from '../types/conversation.types';
 const saltRounds = 10;
 
-//Function to send normall messages
+// Function to send normall messages
 export function sendResponse(data: Resp, headers: any = {}, code:number, resp: Response){
-    headers["Content-Type"] = "application/json"; //Setting content-type to json
-    resp.statusCode = code; //Setting status code
+    headers["Content-Type"] = "application/json"; // Setting content-type to json
+    resp.statusCode = code; // Setting status code
     resp.header(headers);
     resp.send(JSON.stringify(data)); 
     resp.end();
@@ -74,12 +74,12 @@ export function getRandomString(): string {
 };
 
 export async function uploadFile(content: string): Promise<[string | null, ErrorResponse | null]> {
-    //Decoding the base64 to save in buffer
+    // Decoding the base64 to save in buffer
     const file: Buffer = Buffer.from(content, "base64");
 
-    //Writing the binary into a file in /uploads folder
+    // Writing the binary into a file in /uploads folder
     try {
-        //Avoiding using file extention for security reasons
+        // Avoiding using file extention for security reasons
         const filename: string = getRandomString();
         const uploadPath = "/up/node/uploads/" + filename;
         fs.writeFile(uploadPath, file, err => {
@@ -99,7 +99,7 @@ export async function uploadFile(content: string): Promise<[string | null, Error
 
 export async function deleteFileFromUploads(filename: string): Promise<[Boolean | null, ErrorResponse | null]>  {
     try {
-        //Preventing deleting default image
+        // Preventing deleting default image
         if(filename === "default.png"){
             return [true, null];
         }
@@ -142,7 +142,7 @@ export function generateJWTToken(userInfo: ProtectedUserInfo): [string | null, E
     }
 };
 
-//Generates salt automatically
+// Generates salt automatically
 export async function makeBcryptHash(value: string) {
     return await bcrypt.hash(value, saltRounds);
 };
