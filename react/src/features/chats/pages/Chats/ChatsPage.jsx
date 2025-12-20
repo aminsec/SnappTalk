@@ -10,12 +10,18 @@ import {
   faPlus,
   faFile as faFileSolid,
   faLocationDot,
+  faTrash,
+  faPen,
+  faCheck,
+  faXmark,
+  faReply,
 } from '@fortawesome/free-solid-svg-icons';
 import { faFile, faFaceSmile } from '@fortawesome/free-regular-svg-icons';
 import { Sidebar, Input, Button, ProfileAvatar } from '@/shared/components';
 import { useAuth } from '@/shared/state/useAuth';
 import toast from 'react-hot-toast';
-import { socket } from '@/shared/utils/socket';
+import { useSocket } from '@/shared/state/useSocket';
+import { SOCKET_EVENTS } from '@/shared/state/socketEvents';
 import sentIcon from "@/shared/assets/icons/sent.svg";
 import seenIcon from "@/shared/assets/icons/seen.svg";
 import sendIcon from "@/shared/assets/icons/sendIcon.svg";
@@ -80,8 +86,12 @@ const truncateMessage = (text, maxLength = 25) => {
   return text.length > maxLength ? `${text.substring(0, maxLength)}...` : text;
 };
 
+const getConversationId = (conversation) => conversation?._id || conversation?.id;
+const getMessageId = (message) => message?._id || message?.id;
+
 function ChatsPage() {
   const { user } = useAuth();
+  const { socket, status: socketStatus } = useSocket();
   const [contacts, setContacts] = useState([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedChat, setSelectedChat] = useState(null);
@@ -93,12 +103,21 @@ function ChatsPage() {
   const [isEmojiPickerOpen, setIsEmojiPickerOpen] = useState(false);
   const [isNewConversationModalOpen, setIsNewConversationModalOpen] = useState(false);
   const [isOptionsMenuOpen, setIsOptionsMenuOpen] = useState(false);
+  const [isChatMenuOpen, setIsChatMenuOpen] = useState(false);
+  const [editingMessage, setEditingMessage] = useState(null);
+  const [replyingToMessage, setReplyingToMessage] = useState(null);
+  const [messageContextMenu, setMessageContextMenu] = useState(null);
   const [randomIcon, setRandomIcon] = useState(null);
   const optionsMenuRef = useRef(null);
+  const chatMenuRef = useRef(null);
   const messagesEndRef = useRef(null);
   const shouldAutoScrollRef = useRef(false);
   const isNearBottomRef = useRef(true);
   const animatedMessageIdsRef = useRef(new Set());
+
+  const [unreadCounts, setUnreadCounts] = useState({});
+
+  const isAtBottomRef = useRef(false);
   
   const scrollToBottom = useCallback(() => {
     const el = messagesEndRef.current;
@@ -122,13 +141,20 @@ function ChatsPage() {
       return;
     }
 
-    const conversationId = selectedChat._id || selectedChat.id;
+    const conversationId = getConversationId(selectedChat);
     if (!conversationId) {
       toast.error('Invalid conversation.');
       return;
     }
 
     const optimisticId = `optimistic-${Date.now()}`;
+    const replyTo = replyingToMessage
+      ? {
+          messageId: getMessageId(replyingToMessage),
+          content: replyingToMessage?.content || replyingToMessage?.text || '',
+          sender: replyingToMessage?.sender,
+        }
+      : null;
     const optimisticMessage = {
       _id: optimisticId,
       id: optimisticId,
@@ -139,6 +165,7 @@ function ChatsPage() {
       created_at: new Date().toISOString(),
       seen_by: {},
       edited: false,
+      reply_to: replyTo,
     };
 
     animatedMessageIdsRef.current.add(optimisticId);
@@ -148,21 +175,155 @@ function ChatsPage() {
     shouldAutoScrollRef.current = true;
 
     try {
-      if (!socket.connected) {
-        socket.connect();
+      if (!socket || !socket.connected) {
+        toast.error('Not connected.');
+        return;
       }
 
-      socket.emit('message', {
-        conversationId,
-        type: 'text',
-        content,
-        clientId: optimisticId,
-      });
+      socket.emit(
+        SOCKET_EVENTS.MESSAGE_SEND,
+        {
+          conversationId,
+          type: 'text',
+          content,
+          clientId: optimisticId,
+          replyTo,
+        },
+        (ack) => {
+          if (!ack?.ok) {
+            toast.error(ack?.error || 'Unable to send message.');
+            return;
+          }
+
+          const serverMessage = ack?.message;
+          const serverMessageId = getMessageId(serverMessage);
+          if (!serverMessage || !serverMessageId) {
+            return;
+          }
+
+          setMessages((prev) =>
+            prev.map((m) => {
+              const mid = getMessageId(m);
+              if (mid === optimisticId) {
+                return serverMessage;
+              }
+              return m;
+            })
+          );
+        }
+      );
     } catch (err) {
       console.error('Failed to emit socket message:', err);
       toast.error('Unable to send message right now.');
     }
-  }, [messageInput, scrollToBottom, selectedChat, user?.id]);
+    setReplyingToMessage(null);
+  }, [messageInput, replyingToMessage, scrollToBottom, selectedChat, socket, user?.id]);
+
+  const handleEditSubmit = useCallback(() => {
+    const content = messageInput.trim();
+    const msg = editingMessage;
+    if (!msg) return;
+    if (!content) {
+      toast.error('Message cannot be empty.');
+      return;
+    }
+
+    const messageId = getMessageId(msg);
+    const conversationId = getConversationId(selectedChat);
+    if (!socket || !socket.connected || !messageId || !conversationId) {
+      toast.error('Not connected.');
+      return;
+    }
+
+    // Optimistic UI update
+    setMessages((prev) =>
+      prev.map((m) => (getMessageId(m) === messageId ? { ...m, content, edited: true } : m))
+    );
+
+    socket.emit(
+      SOCKET_EVENTS.MESSAGE_EDIT,
+      {
+        conversationId,
+        messageId,
+        content,
+      },
+      (ack) => {
+        if (!ack?.ok) {
+          toast.error(ack?.error || 'Unable to edit message.');
+        }
+      }
+    );
+
+    setEditingMessage(null);
+    setMessageInput('');
+  }, [editingMessage, messageInput, selectedChat, socket]);
+
+  const handleEditCancel = useCallback(() => {
+    setEditingMessage(null);
+    setMessageInput('');
+  }, []);
+
+  const handleDeleteMessage = useCallback(
+    (message) => {
+      const messageId = getMessageId(message);
+      const conversationId = getConversationId(selectedChat);
+      if (!messageId || !conversationId) return;
+
+      // Optimistic remove
+      setMessages((prev) => prev.filter((m) => getMessageId(m) !== messageId));
+      setMessageContextMenu(null);
+
+      if (!socket || !socket.connected) {
+        toast.error('Not connected.');
+        return;
+      }
+
+      socket.emit(
+        SOCKET_EVENTS.MESSAGE_DELETE,
+        {
+          conversationId,
+          messageId,
+        },
+        (ack) => {
+          if (!ack?.ok) {
+            toast.error(ack?.error || 'Unable to delete message.');
+          }
+        }
+      );
+    },
+    [selectedChat, socket]
+  );
+
+  const handleReplyToMessage = useCallback((message) => {
+    setReplyingToMessage(message);
+    setMessageContextMenu(null);
+  }, []);
+
+  const handleDeleteConversation = useCallback(() => {
+    const conversationId = getConversationId(selectedChat);
+    if (!conversationId) return;
+
+    // Optimistic remove
+    setContacts((prev) => prev.filter((c) => getConversationId(c) !== conversationId));
+    setSelectedChat(null);
+    setMessages([]);
+    setIsChatMenuOpen(false);
+
+    if (!socket || !socket.connected) {
+      toast.error('Not connected.');
+      return;
+    }
+
+    socket.emit(
+      SOCKET_EVENTS.CONVERSATION_DELETE,
+      { conversationId },
+      (ack) => {
+        if (!ack?.ok) {
+          toast.error(ack?.error || 'Unable to delete conversation.');
+        }
+      }
+    );
+  }, [selectedChat, socket]);
   
   // Messages state
   const [messages, setMessages] = useState([]);
@@ -192,6 +353,7 @@ function ChatsPage() {
 
   const selectedChatRef = useRef(null);
   const userRef = useRef(null);
+  const activeConversationIdRef = useRef(null);
 
   useEffect(() => {
     selectedChatRef.current = selectedChat;
@@ -202,69 +364,46 @@ function ChatsPage() {
   }, [user]);
 
   useEffect(() => {
-    if (!user) {
-      if (socket.connected) {
-        socket.disconnect();
-      }
+    if (!socket || !socket.connected) {
       return;
     }
 
-    if (!socket.connected) {
-      socket.connect();
-    }
-
-    const handleConnect = () => {
-      console.log('Socket connected:', socket.id);
-    };
-
-    const handleDisconnect = (reason) => {
-      console.log('Socket disconnected:', reason);
-    };
-
-    const handleIncomingMessage = (data) => {
-      const payload = data ?? {};
-      const activeChat = selectedChatRef.current;
-      const activeConversationId = activeChat?._id || activeChat?.id;
-
-      const incomingConversationId = payload.conversationId || payload.conversation_id;
-      const message = payload.message || payload;
-      const messageConversationId = incomingConversationId || message?.conversation_id;
-
-      const messageId = message?._id || message?.id;
-      if (!messageId) {
+    const handleMessageNew = (payload) => {
+      const message = payload?.message;
+      const conversationId = payload?.conversationId || payload?.conversation_id || message?.conversation_id;
+      const messageId = getMessageId(message);
+      if (!message || !conversationId || !messageId) {
         return;
       }
 
       setContacts((prev) => {
         const next = [...prev];
-        const idx = next.findIndex((c) => (c._id || c.id) === messageConversationId);
+        const idx = next.findIndex((c) => getConversationId(c) === conversationId);
         if (idx === -1) return prev;
 
         const chat = next[idx];
-        const senderName = payload.senderUsername || payload.sender || chat?.last_message?.sender || '';
-        const when = message?.created_at || payload.when || new Date().toISOString();
 
         next[idx] = {
           ...chat,
           last_message: {
-            content: message?.content ?? payload.content ?? '',
-            type: message?.type ?? payload.type ?? 'text',
-            sender: senderName,
-            when,
+            content: message?.content ?? '',
+            type: message?.type ?? 'text',
+            sender: payload?.senderUsername || payload?.sender || chat?.last_message?.sender || '',
+            when: message?.created_at || new Date().toISOString(),
             seen: chat?.last_message?.seen ?? null,
           },
         };
 
-        // Move updated conversation to top
         const [moved] = next.splice(idx, 1);
         next.unshift(moved);
         return next;
       });
 
-      if (activeConversationId && messageConversationId && activeConversationId === messageConversationId) {
+      const activeConversationId = activeConversationIdRef.current;
+      if (activeConversationId && activeConversationId === conversationId) {
         animatedMessageIdsRef.current.add(messageId);
         setMessages((prev) => {
-          const exists = prev.some((m) => (m._id || m.id) === messageId);
+          const exists = prev.some((m) => getMessageId(m) === messageId);
           if (exists) return prev;
           return [...prev, message];
         });
@@ -272,20 +411,119 @@ function ChatsPage() {
           shouldAutoScrollRef.current = true;
         }
       } else {
-        toast.success('New message');
+        setUnreadCounts((prev) => ({
+          ...prev,
+          [conversationId]: (prev[conversationId] || 0) + 1,
+        }));
       }
     };
 
-    socket.on('connect', handleConnect);
-    socket.on('disconnect', handleDisconnect);
-    socket.on('message', handleIncomingMessage);
+    const handleMessageUpdated = (payload) => {
+      const message = payload?.message;
+      const conversationId = payload?.conversationId || payload?.conversation_id || message?.conversation_id;
+      const messageId = payload?.messageId || getMessageId(message);
+      if (!conversationId || !messageId) return;
+
+      setMessages((prev) => prev.map((m) => (getMessageId(m) === messageId ? { ...m, ...message } : m)));
+    };
+
+    const handleMessageDeleted = (payload) => {
+      const conversationId = payload?.conversationId || payload?.conversation_id;
+      const messageId = payload?.messageId;
+      if (!conversationId || !messageId) return;
+
+      setMessages((prev) => prev.filter((m) => getMessageId(m) !== messageId));
+    };
+
+    const handleSeenUpdate = (payload) => {
+      const conversationId = payload?.conversationId || payload?.conversation_id;
+      const messageId = payload?.messageId;
+      const seenBy = payload?.seenBy;
+      if (!conversationId || !messageId || !seenBy) return;
+
+      setMessages((prev) =>
+        prev.map((m) => {
+          if (getMessageId(m) !== messageId) return m;
+          return {
+            ...m,
+            seen_by: seenBy,
+          };
+        })
+      );
+    };
+
+    const handleConversationDeleted = (payload) => {
+      const conversationId = payload?.conversationId || payload?.conversation_id;
+      if (!conversationId) return;
+
+      setContacts((prev) => prev.filter((c) => getConversationId(c) !== conversationId));
+      setUnreadCounts((prev) => {
+        const next = { ...prev };
+        delete next[conversationId];
+        return next;
+      });
+
+      if (activeConversationIdRef.current === conversationId) {
+        setSelectedChat(null);
+        setMessages([]);
+      }
+    };
+
+    socket.on(SOCKET_EVENTS.MESSAGE_NEW, handleMessageNew);
+    socket.on(SOCKET_EVENTS.MESSAGE_UPDATED, handleMessageUpdated);
+    socket.on(SOCKET_EVENTS.MESSAGE_DELETED, handleMessageDeleted);
+    socket.on(SOCKET_EVENTS.MESSAGE_SEEN_UPDATE, handleSeenUpdate);
+    socket.on(SOCKET_EVENTS.CONVERSATION_DELETED, handleConversationDeleted);
 
     return () => {
-      socket.off('connect', handleConnect);
-      socket.off('disconnect', handleDisconnect);
-      socket.off('message', handleIncomingMessage);
+      socket.off(SOCKET_EVENTS.MESSAGE_NEW, handleMessageNew);
+      socket.off(SOCKET_EVENTS.MESSAGE_UPDATED, handleMessageUpdated);
+      socket.off(SOCKET_EVENTS.MESSAGE_DELETED, handleMessageDeleted);
+      socket.off(SOCKET_EVENTS.MESSAGE_SEEN_UPDATE, handleSeenUpdate);
+      socket.off(SOCKET_EVENTS.CONVERSATION_DELETED, handleConversationDeleted);
     };
-  }, [scrollToBottom, user]);
+  }, [socket]);
+
+  useEffect(() => {
+    const nextConversationId = getConversationId(selectedChat);
+    const prevConversationId = activeConversationIdRef.current;
+
+    if (socket && socket.connected && prevConversationId && prevConversationId !== nextConversationId) {
+      socket.emit(SOCKET_EVENTS.CONVERSATION_LEAVE, { conversationId: prevConversationId });
+    }
+
+    activeConversationIdRef.current = nextConversationId;
+
+    if (!socket || !socket.connected || !nextConversationId) {
+      return;
+    }
+
+    socket.emit(SOCKET_EVENTS.CONVERSATION_JOIN, { conversationId: nextConversationId });
+    setUnreadCounts((prev) => ({ ...prev, [nextConversationId]: 0 }));
+
+    // Mark conversation as seen when opened (backend should translate to message-level seen updates)
+    socket.emit(SOCKET_EVENTS.MESSAGE_SEEN, { conversationId: nextConversationId });
+  }, [selectedChat, socket, socketStatus]);
+
+  // Close menus when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (chatMenuRef.current && !chatMenuRef.current.contains(event.target)) {
+        setIsChatMenuOpen(false);
+      }
+      if (messageContextMenu && event.target?.closest && event.target.closest('[data-message-context-menu]') === null) {
+        setMessageContextMenu(null);
+      }
+    };
+
+    if (isChatMenuOpen || messageContextMenu) {
+      document.addEventListener('mousedown', handleClickOutside);
+    }
+
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [isChatMenuOpen, messageContextMenu]);
 
   useLayoutEffect(() => {
     if (!shouldAutoScrollRef.current) {
@@ -577,6 +815,15 @@ function ChatsPage() {
     // without pulling them down while reading older history.
     const distanceFromBottom = container.scrollHeight - container.scrollTop - container.clientHeight;
     isNearBottomRef.current = distanceFromBottom < 120;
+    isAtBottomRef.current = distanceFromBottom < 6;
+
+    // When user reaches bottom of active conversation, emit seen.
+    if (isAtBottomRef.current) {
+      const conversationId = activeConversationIdRef.current;
+      if (socket && socket.connected && conversationId) {
+        socket.emit(SOCKET_EVENTS.MESSAGE_SEEN, { conversationId });
+      }
+    }
 
     // if at absolute top, trigger immediately (no throttle) to avoid missing the final event
     const atAbsoluteTop = container.scrollTop <= 2;
@@ -616,7 +863,7 @@ function ChatsPage() {
     }
 
     previousTopRef.current = container.scrollTop;
-  }, [isLoadingMessages, loadOlderMessages]);
+  }, [isLoadingMessages, loadOlderMessages, socket]);
 
   // Handle scroll position after messages update
   useEffect(() => {
@@ -985,9 +1232,9 @@ function ChatsPage() {
                           )}
                         </span>
                       )}
-                      {isPrivateChat && !isMyMessage && !chat.last_message.seen && (
+                      {(unreadCounts[chatId] || 0) > 0 && (
                         <span className={styles.notificationBadge}>
-                          <p>1</p>
+                          <p>{unreadCounts[chatId]}</p>
                         </span>
                       )}
                     </div>
@@ -1025,7 +1272,28 @@ function ChatsPage() {
                   <p className={styles.onlineStatus}>Online</p>
                 </div>
               </div>
-              <FontAwesomeIcon icon={faEllipsisVertical} size={24} />
+              <div ref={chatMenuRef}>
+                <button
+                  type="button"
+                  className={styles.optionsButton}
+                  onClick={() => setIsChatMenuOpen((prev) => !prev)}
+                  aria-label="Conversation options"
+                >
+                  <FontAwesomeIcon icon={faEllipsisVertical} />
+                </button>
+                {isChatMenuOpen && (
+                  <div className={styles.optionsMenu}>
+                    <button
+                      type="button"
+                      className={styles.optionsMenuItem}
+                      onClick={handleDeleteConversation}
+                    >
+                      <FontAwesomeIcon icon={faTrash} />
+                      <span>Delete conversation</span>
+                    </button>
+                  </div>
+                )}
+              </div>
             </div>
 
             <div 
@@ -1101,6 +1369,7 @@ function ChatsPage() {
                   const messageTime = message.when || message.timestamp || message.created_at;
                   const isPrivateChat = selectedChat?.type === 'pv';
                   const isGroupChat = selectedChat?.type === 'group';
+                  const replyPreview = message.reply_to || message.replyTo || message.reply_to_message;
                   
                   // Get sender info for group messages (received only)
                   const senderIdStr = messageSenderId;
@@ -1129,6 +1398,15 @@ function ChatsPage() {
                       } ${
                         animatedMessageIdsRef.current.has(messageId) ? styles.messageEnter : ''
                       }`}
+                      onContextMenu={(e) => {
+                        e.preventDefault();
+                        setMessageContextMenu({
+                          x: e.clientX,
+                          y: e.clientY,
+                          message,
+                          isMyMessage,
+                        });
+                      }}
                     >
                       {/* Avatar for received messages in groups - positioned on the left */}
                       {!isMyMessage && isGroupChat && senderInfo && (
@@ -1146,6 +1424,16 @@ function ChatsPage() {
                         className={`${styles.message} ${isMyMessage ? styles.sent : styles.received}`}
                         data-message-type={isMyMessage ? 'sent' : 'received'}
                       >
+                        {replyPreview && (
+                          <div className={styles.replyPreview}>
+                            <div className={styles.replyPreviewLine} />
+                            <div className={styles.replyPreviewContent}>
+                              <p className={styles.replyPreviewText}>
+                                {truncateMessage(replyPreview?.content || '', 80)}
+                              </p>
+                            </div>
+                          </div>
+                        )}
                         {/* Username inside message bubble for group chats */}
                         {!isMyMessage && isGroupChat && senderInfo && (
                           <div className={styles.messageSenderName}>
@@ -1264,8 +1552,26 @@ function ChatsPage() {
                 accept="image/*"
                 title="Maximum file size is 5MB"
               />
+              {replyingToMessage && (
+                <div className={styles.replyBar}>
+                  <div className={styles.replyBarContent}>
+                    <p className={styles.replyBarTitle}>Replying to</p>
+                    <p className={styles.replyBarText}>
+                      {truncateMessage(replyingToMessage?.content || replyingToMessage?.text || '', 120)}
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    className={styles.replyBarClose}
+                    onClick={() => setReplyingToMessage(null)}
+                    aria-label="Cancel reply"
+                  >
+                    <FontAwesomeIcon icon={faXmark} />
+                  </button>
+                </div>
+              )}
               <Input
-                placeholder="Type a message..."
+                placeholder={editingMessage ? 'Edit message...' : 'Type a message...'}
                 value={messageInput}
                 fullWidth
                 onChange={(e) => setMessageInput(e.target.value)}
@@ -1273,10 +1579,38 @@ function ChatsPage() {
                 onKeyDown={(e) => {
                   if (e.key === 'Enter') {
                     e.preventDefault();
-                    handleSendMessage();
+                    if (editingMessage) {
+                      handleEditSubmit();
+                    } else {
+                      handleSendMessage();
+                    }
+                  }
+                  if (e.key === 'Escape' && editingMessage) {
+                    e.preventDefault();
+                    handleEditCancel();
                   }
                 }}
               />
+              {editingMessage && (
+                <>
+                  <button
+                    type="button"
+                    className={styles.sendButton}
+                    onClick={handleEditCancel}
+                    aria-label="Cancel edit"
+                  >
+                    <FontAwesomeIcon icon={faXmark} />
+                  </button>
+                  <button
+                    type="button"
+                    className={styles.sendButton}
+                    onClick={handleEditSubmit}
+                    aria-label="Save edit"
+                  >
+                    <FontAwesomeIcon icon={faCheck} />
+                  </button>
+                </>
+              )}
               <button
                 type="button"
                 className={styles.emojiButton}
@@ -1292,10 +1626,57 @@ function ChatsPage() {
                   }}
                 />
               </button>
-              <button type="button" className={styles.sendButton} onClick={handleSendMessage}>
-                <img src={sendIcon} alt="Send" className={styles.sendIcon} />
-              </button>
+              {!editingMessage && (
+                <button type="button" className={styles.sendButton} onClick={handleSendMessage}>
+                  <img src={sendIcon} alt="Send" className={styles.sendIcon} />
+                </button>
+              )}
             </div>
+
+            {messageContextMenu && (
+              <div
+                className={styles.messageContextMenu}
+                data-message-context-menu
+                style={{ left: messageContextMenu.x, top: messageContextMenu.y }}
+              >
+                <button
+                  type="button"
+                  className={styles.optionsMenuItem}
+                  onClick={() => handleReplyToMessage(messageContextMenu.message)}
+                >
+                  <FontAwesomeIcon icon={faReply} />
+                  <span>Reply</span>
+                </button>
+
+                {messageContextMenu.isMyMessage && (
+                  <button
+                    type="button"
+                    className={styles.optionsMenuItem}
+                    onClick={() => {
+                      const m = messageContextMenu.message;
+                      setEditingMessage(m);
+                      setMessageInput(m?.content || m?.text || '');
+                      setMessageContextMenu(null);
+                      setReplyingToMessage(null);
+                    }}
+                  >
+                    <FontAwesomeIcon icon={faPen} />
+                    <span>Edit</span>
+                  </button>
+                )}
+
+                {messageContextMenu.isMyMessage && (
+                  <button
+                    type="button"
+                    className={styles.optionsMenuItem}
+                    onClick={() => handleDeleteMessage(messageContextMenu.message)}
+                  >
+                    <FontAwesomeIcon icon={faTrash} />
+                    <span>Delete</span>
+                  </button>
+                )}
+              </div>
+            )}
           </>
         ) : (
           <div className={styles.noChatSelected}>

@@ -1,7 +1,7 @@
 import { connectToSnappTalkDB } from "./config/database";
 import http from "http";
 import app from "./app";
-import { initSocket } from "./socket/init";
+import { initSocket } from "./socket/config/init";
 
 const PORT = Number(process.env.APP_PORT) || 2020;
 const server = http.createServer(app);

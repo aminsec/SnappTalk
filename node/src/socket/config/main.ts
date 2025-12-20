@@ -7,7 +7,6 @@ export function handleSocketConnection(socket: Socket): void{
     // Listen for events from the client
     socket.on('message', (data) => {
       console.log('Message received:', data);
-
     });
   
     socket.on('disconnect', () => {
