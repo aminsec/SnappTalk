@@ -1,8 +1,7 @@
 import { Server } from 'socket.io';
-import handleSocketConnection from './main';
-import { validateJWT } from "../utils/validate";
-import { ProtectedUserInfo } from "../types/user.types";
+import { handleSocketConnection } from './main';
 import http from "http";
+import { authenticateSocket } from "./socket.middlewares";
 
 export function initSocket(server: http.Server){
 // Socket Setup
@@ -15,32 +14,8 @@ export function initSocket(server: http.Server){
 
   console.log("WebSocket server initialized");
 
-  //Authenticating every connection
-  io.use(async (socket, next) => {
-    const token = socket.handshake.auth.token;
-      
-    if (!token){
-      const socketErrorMessage = {error: "auth_error", message: "Invalid auth token"};
-      socket.emit("message", socketErrorMessage);
-      socket.disconnect();
-      return;
-    };
-
-    //This can be data of jwt token or false
-    const validationResponse: ProtectedUserInfo | Boolean = await validateJWT(token);
-
-    if(validationResponse === false){
-      const socketErrorMessage = {error: "auth_error", message: "Invalid auth token"};
-      socket.emit("message", socketErrorMessage);
-      socket.disconnect();
-      return;
-    }
-    
-    //Attaching userinfo to connection
-    // (socket as any).userInfo = validationResponse as ProtectedUserInfo;
-    socket.userInfo = validationResponse as ProtectedUserInfo;
-    next();
-  });
+  //Attaching middlewaress
+  io.use(authenticateSocket);
 
   io.on('connection', (socket) => { 
     handleSocketConnection(socket);
