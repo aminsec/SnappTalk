@@ -1,4 +1,4 @@
-//Entry point of every ws connection
+// Entry point of every ws connection
 import { Socket } from "socket.io";
 
 export function handleSocketConnection(socket: Socket): void{

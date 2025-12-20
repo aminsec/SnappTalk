@@ -14,7 +14,7 @@ export function initSocket(server: http.Server){
 
   console.log("WebSocket server initialized");
 
-  //Attaching middlewaress
+  // Attaching middlewares
   io.use(authenticateSocket);
 
   io.on('connection', (socket) => { 

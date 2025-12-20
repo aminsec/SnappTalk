@@ -10,7 +10,7 @@ import validateJWT from "./middlewares/jwt";
 import helmet from "helmet";
 import { rateLimit } from 'express-rate-limit'
 
-//Rate limit config 
+// Rate limit config 
 const limiter = rateLimit({
   windowMs: 10 * 60 * 1000, // 15 minutes
   max: 300, // Limit each IP to 100 requests per `windowMs`
@@ -24,13 +24,13 @@ app.get('/', (req: Request, res: Response) => {
   res.send('Hello World!');
 });
 
-//Configs
+// Configs
 app.use(limiter);
 app.use(helmet());
 app.use(bodyParser.json({ limit: "5mb" })); // Increasing body size limit
 app.use(cookieParser()); // Parsing cookies
 
-//Routes
+// Routes
 app.use("/members", membersRoutes);
 app.use("/auth", authRoutes);
 app.use("/user", validateJWT);

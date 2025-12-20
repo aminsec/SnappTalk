@@ -12,7 +12,7 @@ export async function  authenticateSocket(socket: Socket, next: Function) {
       return;
     };
 
-    //This can be data of jwt token or false
+    // This can be the decoded JWT data or false
     const validationResponse: ProtectedUserInfo | Boolean = await validateJWT(token);
 
     if(validationResponse === false){
@@ -22,8 +22,7 @@ export async function  authenticateSocket(socket: Socket, next: Function) {
       return;
     }
     
-    //Attaching userinfo to connection
-    // (socket as any).userInfo = validationResponse as ProtectedUserInfo;
+    // Attaching userinfo to connection
     socket.userInfo = validationResponse as ProtectedUserInfo;
     next();
 };
