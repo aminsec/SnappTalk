@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import toast, { Toaster } from 'react-hot-toast';
+import toast from 'react-hot-toast';
 import { faUser, faEnvelope } from '@fortawesome/free-regular-svg-icons';
 import { faLock } from '@fortawesome/free-solid-svg-icons';
 import { useNavigate } from 'react-router-dom';
@@ -173,7 +173,6 @@ function LoginPage() {
 
   return (
     <div className={styles.loginPage}>
-      <Toaster position="top-center" />
       <div className={`${styles.popUp} ${isAnimating ? 'form-fade' : ''}`}>
         <div className={styles.slider}>
           <img src={sliderImage} alt="Slider" className={styles.sliderImage} />

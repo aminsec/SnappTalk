@@ -14,6 +14,8 @@ import {
 import { faFile, faFaceSmile } from '@fortawesome/free-regular-svg-icons';
 import { Sidebar, Input, Button, ProfileAvatar } from '@/shared/components';
 import { useAuth } from '@/shared/state/useAuth';
+import toast from 'react-hot-toast';
+import { socket } from '@/shared/utils/socket';
 import sentIcon from "@/shared/assets/icons/sent.svg";
 import seenIcon from "@/shared/assets/icons/seen.svg";
 import sendIcon from "@/shared/assets/icons/sendIcon.svg";
@@ -94,6 +96,9 @@ function ChatsPage() {
   const [randomIcon, setRandomIcon] = useState(null);
   const optionsMenuRef = useRef(null);
   const messagesEndRef = useRef(null);
+  const shouldAutoScrollRef = useRef(false);
+  const isNearBottomRef = useRef(true);
+  const animatedMessageIdsRef = useRef(new Set());
   
   const scrollToBottom = useCallback(() => {
     const el = messagesEndRef.current;
@@ -105,6 +110,59 @@ function ChatsPage() {
       container.scrollTop = container.scrollHeight;
     }
   }, []);
+
+  const handleSendMessage = useCallback(() => {
+    const content = messageInput.trim();
+    if (!content) {
+      return;
+    }
+
+    if (!selectedChat) {
+      toast.error('Please select a chat first.');
+      return;
+    }
+
+    const conversationId = selectedChat._id || selectedChat.id;
+    if (!conversationId) {
+      toast.error('Invalid conversation.');
+      return;
+    }
+
+    const optimisticId = `optimistic-${Date.now()}`;
+    const optimisticMessage = {
+      _id: optimisticId,
+      id: optimisticId,
+      conversation_id: conversationId,
+      sender: user?.id,
+      type: 'text',
+      content,
+      created_at: new Date().toISOString(),
+      seen_by: {},
+      edited: false,
+    };
+
+    animatedMessageIdsRef.current.add(optimisticId);
+
+    setMessages((prev) => [...prev, optimisticMessage]);
+    setMessageInput('');
+    shouldAutoScrollRef.current = true;
+
+    try {
+      if (!socket.connected) {
+        socket.connect();
+      }
+
+      socket.emit('message', {
+        conversationId,
+        type: 'text',
+        content,
+        clientId: optimisticId,
+      });
+    } catch (err) {
+      console.error('Failed to emit socket message:', err);
+      toast.error('Unable to send message right now.');
+    }
+  }, [messageInput, scrollToBottom, selectedChat, user?.id]);
   
   // Messages state
   const [messages, setMessages] = useState([]);
@@ -131,6 +189,130 @@ function ChatsPage() {
   
   // Cache for sender info in group chats (senderId -> {username, profile_pic})
   const [senderInfoCache, setSenderInfoCache] = useState({});
+
+  const selectedChatRef = useRef(null);
+  const userRef = useRef(null);
+
+  useEffect(() => {
+    selectedChatRef.current = selectedChat;
+  }, [selectedChat]);
+
+  useEffect(() => {
+    userRef.current = user;
+  }, [user]);
+
+  useEffect(() => {
+    if (!user) {
+      if (socket.connected) {
+        socket.disconnect();
+      }
+      return;
+    }
+
+    if (!socket.connected) {
+      socket.connect();
+    }
+
+    const handleConnect = () => {
+      console.log('Socket connected:', socket.id);
+    };
+
+    const handleDisconnect = (reason) => {
+      console.log('Socket disconnected:', reason);
+    };
+
+    const handleIncomingMessage = (data) => {
+      const payload = data ?? {};
+      const activeChat = selectedChatRef.current;
+      const activeConversationId = activeChat?._id || activeChat?.id;
+
+      const incomingConversationId = payload.conversationId || payload.conversation_id;
+      const message = payload.message || payload;
+      const messageConversationId = incomingConversationId || message?.conversation_id;
+
+      const messageId = message?._id || message?.id;
+      if (!messageId) {
+        return;
+      }
+
+      setContacts((prev) => {
+        const next = [...prev];
+        const idx = next.findIndex((c) => (c._id || c.id) === messageConversationId);
+        if (idx === -1) return prev;
+
+        const chat = next[idx];
+        const senderName = payload.senderUsername || payload.sender || chat?.last_message?.sender || '';
+        const when = message?.created_at || payload.when || new Date().toISOString();
+
+        next[idx] = {
+          ...chat,
+          last_message: {
+            content: message?.content ?? payload.content ?? '',
+            type: message?.type ?? payload.type ?? 'text',
+            sender: senderName,
+            when,
+            seen: chat?.last_message?.seen ?? null,
+          },
+        };
+
+        // Move updated conversation to top
+        const [moved] = next.splice(idx, 1);
+        next.unshift(moved);
+        return next;
+      });
+
+      if (activeConversationId && messageConversationId && activeConversationId === messageConversationId) {
+        animatedMessageIdsRef.current.add(messageId);
+        setMessages((prev) => {
+          const exists = prev.some((m) => (m._id || m.id) === messageId);
+          if (exists) return prev;
+          return [...prev, message];
+        });
+        if (isNearBottomRef.current) {
+          shouldAutoScrollRef.current = true;
+        }
+      } else {
+        toast.success('New message');
+      }
+    };
+
+    socket.on('connect', handleConnect);
+    socket.on('disconnect', handleDisconnect);
+    socket.on('message', handleIncomingMessage);
+
+    return () => {
+      socket.off('connect', handleConnect);
+      socket.off('disconnect', handleDisconnect);
+      socket.off('message', handleIncomingMessage);
+    };
+  }, [scrollToBottom, user]);
+
+  useLayoutEffect(() => {
+    if (!shouldAutoScrollRef.current) {
+      return;
+    }
+
+    // Ensure DOM is painted with the new message before scrolling.
+    requestAnimationFrame(() => {
+      scrollToBottom();
+    });
+
+    shouldAutoScrollRef.current = false;
+  }, [messages.length, scrollToBottom, selectedChat]);
+
+  useEffect(() => {
+    if (animatedMessageIdsRef.current.size === 0) {
+      return undefined;
+    }
+
+    const timeout = setTimeout(() => {
+      animatedMessageIdsRef.current.clear();
+    }, 260);
+
+    return () => {
+      clearTimeout(timeout);
+    };
+  }, [messages.length]);
 
   // Fetch contacts on mount
   useEffect(() => {
@@ -390,6 +572,11 @@ function ChatsPage() {
   // Handle scroll for lazy loading older messages
   const handleScroll = useCallback((e) => {
     const container = e.currentTarget;
+
+    // Track whether user is near the bottom so we can auto-scroll on new messages
+    // without pulling them down while reading older history.
+    const distanceFromBottom = container.scrollHeight - container.scrollTop - container.clientHeight;
+    isNearBottomRef.current = distanceFromBottom < 120;
 
     // if at absolute top, trigger immediately (no throttle) to avoid missing the final event
     const atAbsoluteTop = container.scrollTop <= 2;
@@ -933,7 +1120,15 @@ function ChatsPage() {
                   return (
                     <div
                       key={messageId}
-                      className={`${styles.messageWrapper} ${isMyMessage ? styles.messageWrapperSent : styles.messageWrapperReceived} ${!isMyMessage && isGroupChat ? styles.messageWrapperGroup : ''}`}
+                      className={`${
+                        styles.messageWrapper
+                      } ${
+                        isMyMessage ? styles.messageWrapperSent : styles.messageWrapperReceived
+                      } ${
+                        !isMyMessage && isGroupChat ? styles.messageWrapperGroup : ''
+                      } ${
+                        animatedMessageIdsRef.current.has(messageId) ? styles.messageEnter : ''
+                      }`}
                     >
                       {/* Avatar for received messages in groups - positioned on the left */}
                       {!isMyMessage && isGroupChat && senderInfo && (
@@ -1075,6 +1270,12 @@ function ChatsPage() {
                 fullWidth
                 onChange={(e) => setMessageInput(e.target.value)}
                 className={styles.messageInput}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    e.preventDefault();
+                    handleSendMessage();
+                  }
+                }}
               />
               <button
                 type="button"
@@ -1091,7 +1292,7 @@ function ChatsPage() {
                   }}
                 />
               </button>
-              <button type="button" className={styles.sendButton}>
+              <button type="button" className={styles.sendButton} onClick={handleSendMessage}>
                 <img src={sendIcon} alt="Send" className={styles.sendIcon} />
               </button>
             </div>
