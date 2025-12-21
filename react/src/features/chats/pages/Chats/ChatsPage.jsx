@@ -147,6 +147,9 @@ function ChatsPage() {
       return;
     }
 
+    // Clear reply immediately to avoid UI sticking around if socket emits fail.
+    setReplyingToMessage(null);
+
     const optimisticId = `optimistic-${Date.now()}`;
     const replyTo = replyingToMessage
       ? {
@@ -216,7 +219,6 @@ function ChatsPage() {
       console.error('Failed to emit socket message:', err);
       toast.error('Unable to send message right now.');
     }
-    setReplyingToMessage(null);
   }, [messageInput, replyingToMessage, scrollToBottom, selectedChat, socket, user?.id]);
 
   const handleEditSubmit = useCallback(() => {
@@ -1552,45 +1554,48 @@ function ChatsPage() {
                 accept="image/*"
                 title="Maximum file size is 5MB"
               />
-              {replyingToMessage && (
-                <div className={styles.replyBar}>
-                  <div className={styles.replyBarContent}>
-                    <p className={styles.replyBarTitle}>Replying to</p>
-                    <p className={styles.replyBarText}>
-                      {truncateMessage(replyingToMessage?.content || replyingToMessage?.text || '', 120)}
-                    </p>
+              <div className={styles.composer}>
+                {replyingToMessage && (
+                  <div className={styles.replyBar}>
+                    <div className={styles.replyBarContent}>
+                      <p className={styles.replyBarTitle}>Replying to</p>
+                      <p className={styles.replyBarText}>
+                        {replyingToMessage?.content || replyingToMessage?.text || ''}
+                      </p>
+                    </div>
+                    <button
+                      type="button"
+                      className={styles.replyBarClose}
+                      onClick={() => setReplyingToMessage(null)}
+                      aria-label="Cancel reply"
+                    >
+                      <FontAwesomeIcon icon={faXmark} />
+                    </button>
                   </div>
-                  <button
-                    type="button"
-                    className={styles.replyBarClose}
-                    onClick={() => setReplyingToMessage(null)}
-                    aria-label="Cancel reply"
-                  >
-                    <FontAwesomeIcon icon={faXmark} />
-                  </button>
-                </div>
-              )}
-              <Input
-                placeholder={editingMessage ? 'Edit message...' : 'Type a message...'}
-                value={messageInput}
-                fullWidth
-                onChange={(e) => setMessageInput(e.target.value)}
-                className={styles.messageInput}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter') {
-                    e.preventDefault();
-                    if (editingMessage) {
-                      handleEditSubmit();
-                    } else {
-                      handleSendMessage();
+                )}
+
+                <textarea
+                  className={styles.messageTextarea}
+                  placeholder={editingMessage ? 'Edit message...' : 'Type a message...'}
+                  value={messageInput}
+                  onChange={(e) => setMessageInput(e.target.value)}
+                  rows={1}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' && !e.shiftKey) {
+                      e.preventDefault();
+                      if (editingMessage) {
+                        handleEditSubmit();
+                      } else {
+                        handleSendMessage();
+                      }
                     }
-                  }
-                  if (e.key === 'Escape' && editingMessage) {
-                    e.preventDefault();
-                    handleEditCancel();
-                  }
-                }}
-              />
+                    if (e.key === 'Escape' && editingMessage) {
+                      e.preventDefault();
+                      handleEditCancel();
+                    }
+                  }}
+                />
+              </div>
               {editingMessage && (
                 <>
                   <button

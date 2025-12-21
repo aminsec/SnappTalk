@@ -94,7 +94,6 @@ function LoginPage() {
 
       await refreshUser();
       navigate('/chats', { replace: true });
-      toast.success('Welcome back!');
     } catch (error) {
       const message = error?.message || 'Something went wrong while signing in.';
       toast.error(message);
