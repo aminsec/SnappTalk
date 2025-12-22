@@ -7,7 +7,7 @@ export function initSocket(server: http.Server){
 // Socket Setup
   const io = new Server(server, {
     cors: {
-      origin: 'http://snapptalk.io:3000/', // React app
+      origin: 'http://snapptalk.io:3000', // React app
       methods: ['GET', 'POST']
     }
   });
@@ -15,7 +15,7 @@ export function initSocket(server: http.Server){
   console.log("WebSocket server initialized");
 
   // Attaching middlewares
-  io.use(authenticateSocket);
+  // io.use(authenticateSocket);
 
   io.on('connection', (socket) => { 
     handleSocketConnection(socket);

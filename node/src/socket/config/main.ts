@@ -3,6 +3,7 @@ import { Socket } from "socket.io";
 
 export function handleSocketConnection(socket: Socket): void{
     console.log('New client connected:', socket.id);
+    // console.log(socket)
     
     // Listen for events from the client
     socket.on('message', (data) => {

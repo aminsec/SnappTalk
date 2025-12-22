@@ -1372,6 +1372,10 @@ function ChatsPage() {
                   const isPrivateChat = selectedChat?.type === 'pv';
                   const isGroupChat = selectedChat?.type === 'group';
                   const replyPreview = message.reply_to || message.replyTo || message.reply_to_message;
+                  const replyPreviewText = truncateMessage(
+                    replyPreview?.content || replyPreview?.text || '',
+                    80
+                  );
                   
                   // Get sender info for group messages (received only)
                   const senderIdStr = messageSenderId;
@@ -1409,6 +1413,7 @@ function ChatsPage() {
                           isMyMessage,
                         });
                       }}
+                      onDoubleClick={() => handleReplyToMessage(message)}
                     >
                       {/* Avatar for received messages in groups - positioned on the left */}
                       {!isMyMessage && isGroupChat && senderInfo && (
@@ -1431,7 +1436,7 @@ function ChatsPage() {
                             <div className={styles.replyPreviewLine} />
                             <div className={styles.replyPreviewContent}>
                               <p className={styles.replyPreviewText}>
-                                {truncateMessage(replyPreview?.content || '', 80)}
+                                {replyPreviewText}
                               </p>
                             </div>
                           </div>
@@ -1560,7 +1565,10 @@ function ChatsPage() {
                     <div className={styles.replyBarContent}>
                       <p className={styles.replyBarTitle}>Replying to</p>
                       <p className={styles.replyBarText}>
-                        {replyingToMessage?.content || replyingToMessage?.text || ''}
+                        {truncateMessage(
+                          replyingToMessage?.content || replyingToMessage?.text || '',
+                          60
+                        )}
                       </p>
                     </div>
                     <button
