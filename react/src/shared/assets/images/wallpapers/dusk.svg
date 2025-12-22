@@ -1,0 +1,27 @@
+<svg width="1600" height="1000" viewBox="0 0 1600 1000" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="sky" x1="0" y1="0" x2="1600" y2="1000" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#0A0E0F"/>
+      <stop offset="0.5" stop-color="#1B1C2D"/>
+      <stop offset="1" stop-color="#2B1826"/>
+    </linearGradient>
+    <radialGradient id="sunset" cx="0" cy="0" r="1" gradientUnits="userSpaceOnUse" gradientTransform="translate(1200 260) rotate(20) scale(420 220)">
+      <stop stop-color="#FF5C5C" stop-opacity="0.32"/>
+      <stop offset="1" stop-color="#FF5C5C" stop-opacity="0"/>
+    </radialGradient>
+    <linearGradient id="horizon" x1="0" y1="0" x2="1600" y2="0" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#2D90E4" stop-opacity="0.2"/>
+      <stop offset="0.6" stop-color="#FFCB00" stop-opacity="0.12"/>
+      <stop offset="1" stop-color="#FF5C5C" stop-opacity="0.18"/>
+    </linearGradient>
+  </defs>
+  <rect width="1600" height="1000" fill="url(#sky)"/>
+  <rect width="1600" height="1000" fill="url(#sunset)"/>
+  <path d="M0 520C240 500 440 560 660 620C880 680 1080 720 1280 680C1440 650 1540 600 1600 570V1000H0V520Z" fill="url(#horizon)"/>
+  <path d="M0 640C260 620 460 680 680 740C900 800 1120 840 1320 800C1460 770 1540 720 1600 690V1000H0V640Z" fill="#0D1216"/>
+  <circle cx="360" cy="240" r="2" fill="#FFFFFF" fill-opacity="0.4"/>
+  <circle cx="520" cy="190" r="1.5" fill="#FFFFFF" fill-opacity="0.35"/>
+  <circle cx="700" cy="260" r="2" fill="#FFFFFF" fill-opacity="0.3"/>
+  <circle cx="960" cy="180" r="1.8" fill="#FFFFFF" fill-opacity="0.35"/>
+  <circle cx="1120" cy="220" r="1.2" fill="#FFFFFF" fill-opacity="0.3"/>
+</svg>

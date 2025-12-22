@@ -1,0 +1,21 @@
+<svg width="1600" height="1000" viewBox="0 0 1600 1000" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="sandBase" x1="0" y1="0" x2="1600" y2="1000" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#0A0E0F"/>
+      <stop offset="0.5" stop-color="#122026"/>
+      <stop offset="1" stop-color="#0B1415"/>
+    </linearGradient>
+    <linearGradient id="ridge1" x1="0" y1="0" x2="1600" y2="0" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#2D90E4" stop-opacity="0.18"/>
+      <stop offset="1" stop-color="#00C897" stop-opacity="0.1"/>
+    </linearGradient>
+    <linearGradient id="ridge2" x1="0" y1="0" x2="1600" y2="0" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#00C897" stop-opacity="0.12"/>
+      <stop offset="1" stop-color="#2D90E4" stop-opacity="0.12"/>
+    </linearGradient>
+  </defs>
+  <rect width="1600" height="1000" fill="url(#sandBase)"/>
+  <path d="M0 520C220 480 420 520 640 600C880 690 1120 760 1360 720C1480 700 1560 660 1600 640V1000H0V520Z" fill="url(#ridge1)"/>
+  <path d="M0 640C260 600 480 660 700 740C940 820 1160 860 1360 820C1480 790 1560 740 1600 710V1000H0V640Z" fill="url(#ridge2)"/>
+  <path d="M0 760C260 740 520 780 760 840C1000 900 1240 920 1600 900V1000H0V760Z" fill="#0C1517"/>
+</svg>

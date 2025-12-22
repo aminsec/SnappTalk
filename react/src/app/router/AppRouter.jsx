@@ -5,6 +5,7 @@ import ChatsPage from '@/features/chats/pages/Chats/ChatsPage';
 import SettingsPage from '@/features/settings/pages/Settings/SettingsPage';
 import ProfileSection from '@/features/settings/pages/Settings/sections/ProfileSection';
 import GeneralSection from '@/features/settings/pages/Settings/sections/GeneralSection';
+import AppearanceSection from '@/features/settings/pages/Settings/sections/AppearanceSection';
 import NotFoundPage from '@/features/misc/pages/NotFound';
 import { RequireAuth, RequireGuest } from '@/shared/utils/protectRoutes';
 
@@ -16,6 +17,7 @@ const AppRouter = () => (
         <Route path="/settings/*" element={<SettingsPage />}>
           <Route path="profile" element={<ProfileSection />} />
           <Route path="general" element={<GeneralSection />} />
+          <Route path="appearance" element={<AppearanceSection />} />
         </Route>
       </Route>
 

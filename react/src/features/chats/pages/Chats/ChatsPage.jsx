@@ -37,6 +37,7 @@ import motorbikeHelmetIcon from '@/shared/assets/images/mono/pie-chart.svg';
 import newsIcon from '@/shared/assets/images/mono/planet.svg';
 import origamiIcon from '@/shared/assets/images/mono/plant.svg';
 import planetIcon from '@/shared/assets/images/mono/strategy.svg';
+import { wallpapers, WALLPAPER_STORAGE_KEY } from '@/shared/utils/wallpapers';
 import NewConversationModal from '../../components/NewConversationModal/NewConversationModal';
 import styles from './Chat.module.css';
 
@@ -124,6 +125,12 @@ function ChatsPage() {
   const [giphyGifs, setGiphyGifs] = useState([]);
   const [isGiphyLoading, setIsGiphyLoading] = useState(false);
   const [giphyError, setGiphyError] = useState('');
+  const [wallpaperId, setWallpaperId] = useState(() => {
+    if (typeof window === 'undefined') {
+      return 'aurora';
+    }
+    return localStorage.getItem(WALLPAPER_STORAGE_KEY) || 'aurora';
+  });
   const [editingMessage, setEditingMessage] = useState(null);
   const [replyingToMessage, setReplyingToMessage] = useState(null);
   const [messageContextMenu, setMessageContextMenu] = useState(null);
@@ -627,6 +634,17 @@ function ChatsPage() {
       document.removeEventListener('mousedown', handleClickOutside);
     };
   }, [isOptionsMenuOpen]);
+
+  useEffect(() => {
+    const handleStorage = (event) => {
+      if (event.key === WALLPAPER_STORAGE_KEY) {
+        setWallpaperId(event.newValue || 'aurora');
+      }
+    };
+
+    window.addEventListener('storage', handleStorage);
+    return () => window.removeEventListener('storage', handleStorage);
+  }, []);
 
   // Handle click outside media picker
   useEffect(() => {
@@ -1311,6 +1329,21 @@ function ChatsPage() {
   }, [selectedChat]);
 
   const activeMediaItems = mediaTab === 'stickers' ? stickerOptions : giphyGifs;
+  const resolvedWallpaper = useMemo(() => {
+    return wallpapers.find((wallpaper) => wallpaper.id === wallpaperId)
+      || wallpapers.find((wallpaper) => wallpaper.id === 'aurora');
+  }, [wallpaperId]);
+  const hasWallpaper = resolvedWallpaper?.src && wallpaperId !== 'none';
+  const wallpaperStyle = hasWallpaper
+    ? { backgroundImage: `url(${resolvedWallpaper.src})` }
+    : undefined;
+
+  useEffect(() => {
+    if (!wallpaperId || !wallpapers.some((wallpaper) => wallpaper.id === wallpaperId)) {
+      setWallpaperId('aurora');
+      localStorage.setItem(WALLPAPER_STORAGE_KEY, 'aurora');
+    }
+  }, [wallpaperId]);
 
   return (
     <div className={styles.chatsPageContainer}>
@@ -1406,7 +1439,10 @@ function ChatsPage() {
         </button>
       </aside>
 
-      <main className={styles.chatMain}>
+      <main
+        className={`${styles.chatMain} ${hasWallpaper ? styles.chatMainWallpaper : ''}`}
+        style={wallpaperStyle}
+      >
         {selectedChat ? (
           <>
             <div className={styles.chatHeader}>

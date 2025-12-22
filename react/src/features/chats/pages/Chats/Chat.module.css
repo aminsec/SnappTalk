@@ -213,6 +213,14 @@
     flex-direction: column;
     background-color: var(--bg-color);
     animation: panelFadeIn 0.35s ease-out;
+    position: relative;
+    isolation: isolate;
+}
+
+.chatMainWallpaper {
+    background-size: cover;
+    background-position: center;
+    background-repeat: no-repeat;
 }
 
 .chatHeader {
@@ -262,6 +270,9 @@
     flex-direction: column;
     gap: 12px;
     animation: messagesFade 0.3s ease-out;
+    background-color: transparent;
+    position: relative;
+    z-index: 1;
 }
 
 .messagesContainer::-webkit-scrollbar {
@@ -271,6 +282,13 @@
 .messagesContainer {
     -ms-overflow-style: none;
     scrollbar-width: none;
+}
+
+.chatHeader,
+.inputBar,
+.uploadProgress {
+    position: relative;
+    z-index: 1;
 }
 
 .messageEnter .message[data-message-type='sent'] {
@@ -310,6 +328,8 @@
     min-height: min-content;
     width: 100%;
     align-items: stretch;
+    position: relative;
+    z-index: 1;
 }
 
 .messageWrapper {
@@ -400,6 +420,8 @@
     padding: 20px;
     color: var(--text-muted);
     font-size: 14px;
+    position: relative;
+    z-index: 1;
 }
 
 .loadingMore {
