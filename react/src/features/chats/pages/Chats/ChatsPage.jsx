@@ -360,6 +360,7 @@ function ChatsPage() {
   const [isLoadingMessages, setIsLoadingMessages] = useState(false);
   const [hasMoreMessages, setHasMoreMessages] = useState(true);
   const [messagesOffset, setMessagesOffset] = useState(0);
+  const [messagesConversationId, setMessagesConversationId] = useState(null);
   const messagesContainerRef = useRef(null);
   const isLoadingMoreRef = useRef(false);
   const messagesOffsetRef = useRef(0);
@@ -368,6 +369,7 @@ function ChatsPage() {
   const lastScrollTimeRef = useRef(0);
   const previousTopRef = useRef(0);
   const previousScrollTopRef = useRef(0);
+  const pendingPrependRef = useRef(false);
   const nearTopTimeoutRef = useRef(null);
 
   useEffect(() => {
@@ -454,6 +456,10 @@ function ChatsPage() {
       const messageId = payload?.messageId || getMessageId(message);
       if (!conversationId || !messageId) return;
 
+      if (activeConversationIdRef.current !== conversationId) {
+        return;
+      }
+
       setMessages((prev) => prev.map((m) => (getMessageId(m) === messageId ? { ...m, ...message } : m)));
     };
 
@@ -461,6 +467,10 @@ function ChatsPage() {
       const conversationId = payload?.conversationId || payload?.conversation_id;
       const messageId = payload?.messageId;
       if (!conversationId || !messageId) return;
+
+      if (activeConversationIdRef.current !== conversationId) {
+        return;
+      }
 
       setMessages((prev) => prev.filter((m) => getMessageId(m) !== messageId));
     };
@@ -470,6 +480,10 @@ function ChatsPage() {
       const messageId = payload?.messageId;
       const seenBy = payload?.seenBy;
       if (!conversationId || !messageId || !seenBy) return;
+
+      if (activeConversationIdRef.current !== conversationId) {
+        return;
+      }
 
       setMessages((prev) =>
         prev.map((m) => {
@@ -748,6 +762,7 @@ function ChatsPage() {
     if (container && append) {
       previousScrollHeightRef.current = container.scrollHeight;
       previousScrollTopRef.current = container.scrollTop;
+      pendingPrependRef.current = true;
     }
 
     try {
@@ -776,30 +791,29 @@ function ChatsPage() {
         
         const sortedFetchedMessages = sortMessagesByDate(fetchedMessages);
         
+        const activeConversationId = getConversationId(selectedChatRef.current);
+        if (activeConversationId !== conversationId) {
+          return;
+        }
+
         if (append) {
           // Prepend older messages to the beginning
           // Use functional update to access current messages state
           setMessages((prevMessages) => {
-            // Create a map to deduplicate messages by ID
-            const messagesMap = new Map();
-            
-            // Add existing messages to map
-            prevMessages.forEach((msg) => {
-              const msgId = msg._id || msg.id;
-              if (msgId) messagesMap.set(msgId.toString(), msg);
+            const existingIds = new Set(
+              prevMessages.map((msg) => (msg._id || msg.id)?.toString()).filter(Boolean)
+            );
+            const newMessages = sortedFetchedMessages.filter((msg) => {
+              const msgId = (msg._id || msg.id)?.toString();
+              return msgId && !existingIds.has(msgId);
             });
-            
-            // Add new older messages to map (will overwrite duplicates if any)
-            sortedFetchedMessages.forEach((msg) => {
-              const msgId = msg._id || msg.id;
-              if (msgId) messagesMap.set(msgId.toString(), msg);
-            });
-            
-            // Convert back to array and sort chronologically
-            const combinedMessages = Array.from(messagesMap.values());
-            const sortedCombined = sortMessagesByDate(combinedMessages);
-            return sortedCombined;
+            return [...newMessages, ...prevMessages];
           });
+          if (sortedFetchedMessages.length === 0) {
+            pendingPrependRef.current = false;
+            previousScrollHeightRef.current = 0;
+            previousScrollTopRef.current = 0;
+          }
         } else {
           // Initial load: replace messages with the last 10 messages (newest)
           // Already sorted oldest->newest
@@ -807,6 +821,7 @@ function ChatsPage() {
           isInitialLoadRef.current = true;
         }
 
+        setMessagesConversationId(conversationId);
         // Check if there are more messages to load
         // If we got exactly limit (10) messages, there might be more
         // If we got fewer than limit, we've reached the end (no more messages)
@@ -826,6 +841,9 @@ function ChatsPage() {
     } catch (error) {
       console.error('Error fetching messages:', error);
       setHasMoreMessages(false);
+      pendingPrependRef.current = false;
+      previousScrollHeightRef.current = 0;
+      previousScrollTopRef.current = 0;
     } finally {
       setIsLoadingMessages(false);
       isLoadingMoreRef.current = false;
@@ -859,6 +877,7 @@ function ChatsPage() {
       setMessages([]);
       setMessagesOffset(0);
       setHasMoreMessages(true);
+      setMessagesConversationId(null);
       setSenderInfoCache({}); // Clear cache when chat changes
       isInitialLoadRef.current = true;
       return;
@@ -871,6 +890,7 @@ function ChatsPage() {
     setMessages([]);
     setMessagesOffset(0);
     setHasMoreMessages(true);
+    setMessagesConversationId(null);
     setSenderInfoCache({}); // Clear cache
     isInitialLoadRef.current = true;
     fetchMessages(conversationId, 0, false);
@@ -992,7 +1012,7 @@ function ChatsPage() {
   }, [isLoadingMessages, loadOlderMessages, socket]);
 
   // Handle scroll position after messages update
-  useEffect(() => {
+  useLayoutEffect(() => {
     const container = messagesContainerRef.current;
     if (!container) return;
 
@@ -1000,16 +1020,20 @@ function ChatsPage() {
       // Initial load - scroll to bottom to show newest messages
       container.scrollTop = container.scrollHeight;
       isInitialLoadRef.current = false;
-    } else if (previousScrollHeightRef.current > 0) {
+      return;
+    }
+
+    if (pendingPrependRef.current && previousScrollHeightRef.current > 0) {
       // Loading older messages - preserve scroll position precisely
       const newScrollHeight = container.scrollHeight;
       const scrollDifference = newScrollHeight - previousScrollHeightRef.current;
       const prevTop = previousScrollTopRef.current || 0;
       container.scrollTop = prevTop + scrollDifference;
+      pendingPrependRef.current = false;
       previousScrollHeightRef.current = 0; // Reset
       previousScrollTopRef.current = 0;
     }
-  }, [messages.length, messagesOffset]);
+  }, [messages.length]);
 
   // Filter chats based on search query
   const filteredChats = useMemo(() => {
@@ -1345,6 +1369,10 @@ function ChatsPage() {
     }
   }, [wallpaperId]);
 
+  const activeChatId = getConversationId(selectedChat);
+  const shouldRenderMessages = activeChatId && activeChatId === messagesConversationId;
+  const visibleMessages = shouldRenderMessages ? messages : [];
+
   return (
     <div className={styles.chatsPageContainer}>
       <Sidebar className={styles.sidebar} />
@@ -1490,23 +1518,33 @@ function ChatsPage() {
               ref={messagesContainerRef}
               onScroll={handleScroll}
             >
-              {isLoadingMessages && messages.length === 0 && (
+              {isLoadingMessages && visibleMessages.length === 0 && (
                 <div className={styles.loadingMessages}>
-                  <p>Loading messages...</p>
+                  <div className={styles.loadingCenter}>
+                    <div className={styles.loadingPulse}>
+                      <span />
+                      <span />
+                      <span />
+                    </div>
+                  </div>
                 </div>
               )}
-              {!isLoadingMessages && messages.length === 0 && (
+              {!isLoadingMessages && visibleMessages.length === 0 && (
                 <div className={styles.emptyMessages}>
                   <p>No messages yet. Start the conversation!</p>
                 </div>
               )}
-              {isLoadingMessages && messages.length > 0 && (
+              {isLoadingMessages && visibleMessages.length > 0 && (
                 <div className={styles.loadingMore}>
-                  <p>Loading older messages...</p>
+                  <div className={styles.loadingDots}>
+                    <span />
+                    <span />
+                    <span />
+                  </div>
                 </div>
               )}
               <div className={styles.messagesWrapper}>
-                {messages.map((message, index) => {
+                {visibleMessages.map((message, index) => {
                   // Message detection: message.sender is an ObjectId that should match user.id
                   const userId = user?.id; // User object uses 'id' not '_id'
                   const username = user?.username;
@@ -1569,6 +1607,17 @@ function ChatsPage() {
                   // Get sender info for group messages (received only)
                   const senderIdStr = messageSenderId;
                   const senderInfo = !isMyMessage && isGroupChat ? senderInfoCache[senderIdStr] : null;
+                  const shouldShowSenderMeta = !isMyMessage && isGroupChat;
+                  const senderName = shouldShowSenderMeta
+                    ? (senderInfo?.username
+                        || message.sender_username
+                        || message.sender_name
+                        || message.sender_info?.username
+                        || 'Member')
+                    : null;
+                  const senderAvatar = shouldShowSenderMeta
+                    ? (senderInfo?.profile_pic || message.sender_info?.profile_pic || null)
+                    : null;
                   
                   // Check seen status - API may provide 'seen' boolean or 'seen_by' object
                   // For sent messages, check if recipient has seen it
@@ -1605,12 +1654,12 @@ function ChatsPage() {
                       onDoubleClick={() => handleReplyToMessage(message)}
                     >
                       {/* Avatar for received messages in groups - positioned on the left */}
-                      {!isMyMessage && isGroupChat && senderInfo && (
+                      {shouldShowSenderMeta && (
                         <div className={styles.messageAvatar}>
                           <ProfileAvatar 
-                            src={senderInfo.profile_pic} 
+                            src={senderAvatar} 
                             size={36}
-                            alt={senderInfo.username}
+                            alt={senderName || 'Member'}
                             borderWidth={0}
                           />
                         </div>
@@ -1633,9 +1682,9 @@ function ChatsPage() {
                           </div>
                         )}
                         {/* Username inside message bubble for group chats */}
-                        {!isMyMessage && isGroupChat && senderInfo && (
+                        {shouldShowSenderMeta && (
                           <div className={styles.messageSenderName}>
-                            <span className={styles.senderUsername}>{senderInfo.username}</span>
+                            <span className={styles.senderUsername}>{senderName}</span>
                           </div>
                         )}
                         

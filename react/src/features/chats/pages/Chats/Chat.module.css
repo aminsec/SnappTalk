@@ -429,6 +429,64 @@
     font-size: 12px;
 }
 
+.loadingMessages,
+.emptyMessages {
+    flex: 1;
+    min-height: 60vh;
+    width: 100%;
+}
+
+.loadingCenter {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+}
+
+.loadingPulse {
+    display: inline-flex;
+    gap: 10px;
+    align-items: center;
+}
+
+.loadingPulse span {
+    width: 10px;
+    height: 10px;
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.6);
+    animation: dotPulse 1s ease-in-out infinite;
+}
+
+.loadingPulse span:nth-child(2) {
+    animation-delay: 0.15s;
+}
+
+.loadingPulse span:nth-child(3) {
+    animation-delay: 0.3s;
+}
+
+.loadingDots {
+    display: inline-flex;
+    gap: 6px;
+    align-items: center;
+}
+
+.loadingDots span {
+    width: 6px;
+    height: 6px;
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.4);
+    animation: dotPulse 1s ease-in-out infinite;
+}
+
+.loadingDots span:nth-child(2) {
+    animation-delay: 0.15s;
+}
+
+.loadingDots span:nth-child(3) {
+    animation-delay: 0.3s;
+}
+
 .message {
     max-width: 70%;
     padding: 12px 16px;
