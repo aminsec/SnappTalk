@@ -56,6 +56,15 @@ const monoIcons = [
   planetIcon,
 ];
 
+const GIPHY_API_KEY = '4vT03C5NJwyvvo3NF8iWEXBN1Y6FwV3G';
+const GIPHY_LIMIT = 18;
+
+const stickerOptions = monoIcons.map((src, index) => ({
+  id: `sticker-${index + 1}`,
+  name: `sticker-${index + 1}`,
+  url: src,
+}));
+
 const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
 const MESSAGES_LIMIT = 10; // Max number of messages per request
 
@@ -86,6 +95,12 @@ const truncateMessage = (text, maxLength = 25) => {
   return text.length > maxLength ? `${text.substring(0, maxLength)}...` : text;
 };
 
+const isEmojiOnlyMessage = (text) => {
+  const normalized = text?.trim();
+  if (!normalized) return false;
+  return /^[\p{Extended_Pictographic}\p{Emoji_Presentation}\uFE0F\u200D\s]+$/u.test(normalized);
+};
+
 const getConversationId = (conversation) => conversation?._id || conversation?.id;
 const getMessageId = (message) => message?._id || message?.id;
 
@@ -100,16 +115,22 @@ function ChatsPage() {
   const [uploadProgress, setUploadProgress] = useState(0);
   const [isUploading, setIsUploading] = useState(false);
   const [filePreview, setFilePreview] = useState(null);
-  const [isEmojiPickerOpen, setIsEmojiPickerOpen] = useState(false);
   const [isNewConversationModalOpen, setIsNewConversationModalOpen] = useState(false);
   const [isOptionsMenuOpen, setIsOptionsMenuOpen] = useState(false);
   const [isChatMenuOpen, setIsChatMenuOpen] = useState(false);
+  const [isMediaPickerOpen, setIsMediaPickerOpen] = useState(false);
+  const [mediaTab, setMediaTab] = useState('gifs');
+  const [gifQuery, setGifQuery] = useState('');
+  const [giphyGifs, setGiphyGifs] = useState([]);
+  const [isGiphyLoading, setIsGiphyLoading] = useState(false);
+  const [giphyError, setGiphyError] = useState('');
   const [editingMessage, setEditingMessage] = useState(null);
   const [replyingToMessage, setReplyingToMessage] = useState(null);
   const [messageContextMenu, setMessageContextMenu] = useState(null);
   const [randomIcon, setRandomIcon] = useState(null);
   const optionsMenuRef = useRef(null);
   const chatMenuRef = useRef(null);
+  const mediaPickerRef = useRef(null);
   const messagesEndRef = useRef(null);
   const shouldAutoScrollRef = useRef(false);
   const isNearBottomRef = useRef(true);
@@ -607,6 +628,91 @@ function ChatsPage() {
     };
   }, [isOptionsMenuOpen]);
 
+  // Handle click outside media picker
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (mediaPickerRef.current && !mediaPickerRef.current.contains(event.target)) {
+        setIsMediaPickerOpen(false);
+      }
+    };
+
+    if (isMediaPickerOpen) {
+      document.addEventListener('mousedown', handleClickOutside);
+    }
+
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [isMediaPickerOpen]);
+
+  useEffect(() => {
+    if (!isMediaPickerOpen || mediaTab !== 'gifs') {
+      return;
+    }
+
+    const controller = new AbortController();
+    const query = gifQuery.trim();
+    const endpoint = query
+      ? 'https://api.giphy.com/v1/gifs/search'
+      : 'https://api.giphy.com/v1/gifs/trending';
+    const params = new URLSearchParams({
+      api_key: GIPHY_API_KEY,
+      limit: `${GIPHY_LIMIT}`,
+      rating: 'pg-13',
+    });
+
+    if (query) {
+      params.set('q', query);
+    }
+
+    const timeout = setTimeout(() => {
+      setIsGiphyLoading(true);
+      setGiphyError('');
+
+      fetch(`${endpoint}?${params.toString()}`, { signal: controller.signal })
+        .then(async (response) => {
+          if (response.status === 429) {
+            throw new Error('GIPHY_LIMIT_REACHED');
+          }
+          if (!response.ok) {
+            throw new Error('Unable to load GIFs right now.');
+          }
+          return response.json();
+        })
+        .then((payload) => {
+          const items = payload?.data || [];
+          const normalized = items.map((item) => ({
+            id: item.id,
+            name: item.title || 'gif',
+            url: item.images?.fixed_height_small?.url || item.images?.original?.url,
+            preview: item.images?.fixed_height_small_still?.url || item.images?.original_still?.url,
+          }));
+          setGiphyGifs(normalized.filter((gif) => gif.url));
+        })
+        .catch((error) => {
+          if (error?.name === 'AbortError') {
+            return;
+          }
+          if (error?.message === 'GIPHY_LIMIT_REACHED') {
+            const message = 'Giphy API rate limit reached. Please try again later.';
+            setGiphyError(message);
+            toast.error(message);
+            return;
+          }
+          const message = error?.message || 'Unable to load GIFs right now.';
+          setGiphyError(message);
+        })
+        .finally(() => {
+          setIsGiphyLoading(false);
+        });
+    }, 350);
+
+    return () => {
+      clearTimeout(timeout);
+      controller.abort();
+    };
+  }, [gifQuery, isMediaPickerOpen, mediaTab]);
+
   // Store previous scroll height for position preservation
   const previousScrollHeightRef = useRef(0);
 
@@ -1059,10 +1165,8 @@ function ChatsPage() {
     }
   }, []);
 
-  // Handle file upload
-  const handleFileChange = useCallback(
-    async (event) => {
-      const file = event.target.files?.[0];
+  const uploadFile = useCallback(
+    async (file, previewUrl) => {
       if (!file) return;
 
       if (!selectedChat) {
@@ -1072,11 +1176,9 @@ function ChatsPage() {
 
       if (file.size > MAX_FILE_SIZE) {
         alert('File size must be less than 5MB');
-        event.target.value = '';
         return;
       }
 
-      const previewUrl = URL.createObjectURL(file);
       setFilePreview(previewUrl);
       setSelectedFile(file);
       setIsUploading(true);
@@ -1130,6 +1232,53 @@ function ChatsPage() {
     [resetFileUploadState, selectedChat]
   );
 
+  // Handle file upload
+  const handleFileChange = useCallback(
+    async (event) => {
+      const file = event.target.files?.[0];
+      if (!file) return;
+
+      const previewUrl = URL.createObjectURL(file);
+      await uploadFile(file, previewUrl);
+      event.target.value = '';
+    },
+    [uploadFile]
+  );
+
+  const handleSendMedia = useCallback(
+    async (media) => {
+      if (!selectedChat) {
+        alert('Please select a chat before sending media.');
+        return;
+      }
+
+      const mediaUrl = media?.url;
+      if (!mediaUrl) return;
+
+      try {
+        const response = await fetch(mediaUrl);
+        if (!response.ok) {
+          throw new Error('Unable to fetch media.');
+        }
+
+        const blob = await response.blob();
+        const rawExtension = blob.type?.split('/')[1] || 'gif';
+        const extension = rawExtension.includes('svg') ? 'svg' : rawExtension;
+        const file = new File([blob], `${media.name}.${extension}`, {
+          type: blob.type || 'image/gif',
+        });
+        const previewUrl = URL.createObjectURL(blob);
+        await uploadFile(file, previewUrl);
+      } catch (error) {
+        console.error('Failed to send media:', error);
+        alert('Unable to send media right now.');
+      } finally {
+        setIsMediaPickerOpen(false);
+      }
+    },
+    [selectedChat, uploadFile]
+  );
+
   // Scroll to bottom only on initial load or when switching chats
   useLayoutEffect(() => {
     if (!messagesEndRef.current) return;
@@ -1160,6 +1309,8 @@ function ChatsPage() {
       }
     };
   }, [selectedChat]);
+
+  const activeMediaItems = mediaTab === 'stickers' ? stickerOptions : giphyGifs;
 
   return (
     <div className={styles.chatsPageContainer}>
@@ -1372,6 +1523,8 @@ function ChatsPage() {
                   const isPrivateChat = selectedChat?.type === 'pv';
                   const isGroupChat = selectedChat?.type === 'group';
                   const replyPreview = message.reply_to || message.replyTo || message.reply_to_message;
+                  const isEmojiOnly = isEmojiOnlyMessage(messageContent);
+                  const shouldUseEmojiOnlyStyle = isEmojiOnly && !replyPreview && !(message.type === 'file' && message.file_url);
                   const replyPreviewText = truncateMessage(
                     replyPreview?.content || replyPreview?.text || '',
                     80
@@ -1428,7 +1581,9 @@ function ChatsPage() {
                       )}
                       
                       <div
-                        className={`${styles.message} ${isMyMessage ? styles.sent : styles.received}`}
+                        className={`${styles.message} ${isMyMessage ? styles.sent : styles.received} ${
+                          shouldUseEmojiOnlyStyle ? styles.emojiOnly : ''
+                        }`}
                         data-message-type={isMyMessage ? 'sent' : 'received'}
                       >
                         {replyPreview && (
@@ -1624,21 +1779,90 @@ function ChatsPage() {
                   </button>
                 </>
               )}
-              <button
-                type="button"
-                className={styles.emojiButton}
-                onClick={() => setIsEmojiPickerOpen((prev) => !prev)}
-              >
-                <FontAwesomeIcon icon={faFaceSmile} />
-                <EmojiPicker
-                  className={styles.emojiPicker}
-                  open={isEmojiPickerOpen}
-                  theme="auto"
-                  onEmojiClick={(emojiData) => {
-                    setMessageInput((prev) => prev + emojiData.emoji);
-                  }}
-                />
-              </button>
+              <div className={styles.mediaPickerWrapper} ref={mediaPickerRef}>
+                <button
+                  type="button"
+                  className={styles.mediaButton}
+                  onClick={() => setIsMediaPickerOpen((prev) => !prev)}
+                  aria-label="Open emojis, GIFs, and stickers"
+                >
+                  <FontAwesomeIcon icon={faFaceSmile} />
+                </button>
+                {isMediaPickerOpen && (
+                  <div className={styles.mediaPicker}>
+                    <div className={styles.mediaTabs}>
+                      <button
+                        type="button"
+                        className={`${styles.mediaTab} ${mediaTab === 'emoji' ? styles.mediaTabActive : ''}`}
+                        onClick={() => setMediaTab('emoji')}
+                      >
+                        Emoji
+                      </button>
+                      <button
+                        type="button"
+                        className={`${styles.mediaTab} ${mediaTab === 'gifs' ? styles.mediaTabActive : ''}`}
+                        onClick={() => setMediaTab('gifs')}
+                      >
+                        GIFs
+                      </button>
+                      <button
+                        type="button"
+                        className={`${styles.mediaTab} ${mediaTab === 'stickers' ? styles.mediaTabActive : ''}`}
+                        onClick={() => setMediaTab('stickers')}
+                      >
+                        Stickers
+                      </button>
+                    </div>
+                    {mediaTab === 'emoji' && (
+                      <div className={styles.emojiPane}>
+                        <EmojiPicker
+                          className={styles.emojiPicker}
+                          open
+                          theme="auto"
+                          onEmojiClick={(emojiData) => {
+                            setMessageInput((prev) => prev + emojiData.emoji);
+                          }}
+                        />
+                      </div>
+                    )}
+                    {mediaTab !== 'emoji' && (
+                      <>
+                        {mediaTab === 'gifs' && (
+                          <div className={styles.mediaSearch}>
+                            <input
+                              type="text"
+                              placeholder="Search GIFs"
+                              value={gifQuery}
+                              onChange={(event) => setGifQuery(event.target.value)}
+                            />
+                          </div>
+                        )}
+                        {giphyError && mediaTab === 'gifs' && (
+                          <p className={styles.mediaError}>{giphyError}</p>
+                        )}
+                        {isGiphyLoading && mediaTab === 'gifs' && (
+                          <p className={styles.mediaLoading}>Loading GIFs...</p>
+                        )}
+                        {!isGiphyLoading && !giphyError && mediaTab === 'gifs' && activeMediaItems.length === 0 && (
+                          <p className={styles.mediaEmpty}>No GIFs found.</p>
+                        )}
+                        <div className={styles.mediaGrid}>
+                          {activeMediaItems.map((item) => (
+                            <button
+                              key={item.id}
+                              type="button"
+                              className={styles.mediaItem}
+                              onClick={() => handleSendMedia(item)}
+                            >
+                              <img src={item.preview || item.url} alt={item.name} />
+                            </button>
+                          ))}
+                        </div>
+                      </>
+                    )}
+                  </div>
+                )}
+              </div>
               {!editingMessage && (
                 <button type="button" className={styles.sendButton} onClick={handleSendMessage}>
                   <img src={sendIcon} alt="Send" className={styles.sendIcon} />
