@@ -7,6 +7,7 @@
   gap: 25px;
   align-items: center;
   position: relative; /* ensure absolute children position correctly */
+  animation: profileFade 0.35s ease-out;
 }
 
 .editBtn {
@@ -63,6 +64,7 @@
 .avatarRow {
   align-items: center;
   gap: 20px;
+  animation: avatarPop 0.3s ease-out;
 }
 
 .avatarRow h3 {
@@ -86,6 +88,7 @@
   gap: 15px;
   width: 50%;
   margin-top: 10px;
+  animation: fieldsFade 0.35s ease-out;
 }
 
 .infoRow {
@@ -97,6 +100,13 @@
   border-radius: 10px;
   font-size: 15px;
   color: var(--text-sub);
+  transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
+}
+
+.infoRow:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 10px 18px rgba(0, 0, 0, 0.2);
+  border-color: rgba(255, 255, 255, 0.08);
 }
 
 .infoRow span {
@@ -123,6 +133,7 @@
   border-radius: 10px;
   font-size: 15px;
   color: var(--text-sub);
+  transition: box-shadow 0.2s ease, border-color 0.2s ease;
 }
 
 .editInput {
@@ -134,6 +145,7 @@
   border-radius: 10px;
   font-size: 15px;
   color: var(--text-sub);
+  transition: box-shadow 0.2s ease, border-color 0.2s ease;
 }
 
 .editInput:focus {
@@ -146,4 +158,31 @@
   justify-content: space-between;
   gap: 10px;
   margin-top: 20px;
+}
+
+@keyframes profileFade {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes avatarPop {
+  from { opacity: 0; transform: scale(0.96); }
+  to { opacity: 1; transform: scale(1); }
+}
+
+@keyframes fieldsFade {
+  from { opacity: 0; transform: translateY(6px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .profileContainer,
+  .avatarRow,
+  .formFields,
+  .infoRow,
+  .editInputCart,
+  .editInput {
+    animation: none !important;
+    transition: none !important;
+  }
 }

@@ -5,6 +5,13 @@
   gap: 15px;
   border-radius: 20px;
   align-items: center;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  animation: cardFade 0.3s ease-out;
+}
+
+.Profilcart:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 12px 20px rgba(0, 0, 0, 0.25);
 }
 
 /* Text Sizes */
@@ -71,4 +78,16 @@
 @keyframes pulse {
   0%, 100% { opacity: 1 }
   50% { opacity: 0.5 }
+}
+
+@keyframes cardFade {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .Profilcart {
+    animation: none !important;
+    transition: none !important;
+  }
 }

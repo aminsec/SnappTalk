@@ -19,7 +19,7 @@
     padding: 10px;
     width: 25vw;
     height: 100%;
-    background: var(--bg-panel);
+    background: linear-gradient(180deg, rgba(255, 255, 255, 0.02), rgba(255, 255, 255, 0)) , var(--bg-panel);
     display: flex;
     flex-direction: column;
     flex-wrap: nowrap;
@@ -32,6 +32,7 @@
     height: 100vh;
     overflow-y: auto;
     position: relative;
+    animation: panelSlideIn 0.35s ease-out;
 }
 
 .chatListSidebar::-webkit-scrollbar {
@@ -61,6 +62,7 @@
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
     transition: var(--transition);
     z-index: 10;
+    animation: floatPulse 3s ease-in-out infinite;
 }
 
 .newConversationButton:hover {
@@ -122,11 +124,14 @@
     cursor: pointer;
     /* Solid background using app theme colors */
     background-color: var(--input-bg);
-    transition: background-color 0.2s ease, transform 0.1s ease;
+    transition: background-color 0.2s ease, transform 0.2s ease, box-shadow 0.2s ease;
+    animation: listItemIn 0.25s ease-out;
 }
 
 .chatItem:hover {
     background-color: var(--item-hover);
+    transform: translateX(2px);
+    box-shadow: 0 6px 14px rgba(0, 0, 0, 0.25);
 }
 
 /* Selected contact in the list */
@@ -207,6 +212,7 @@
     display: flex;
     flex-direction: column;
     background-color: var(--bg-color);
+    animation: panelFadeIn 0.35s ease-out;
 }
 
 .chatHeader {
@@ -214,12 +220,14 @@
     display: flex;
     gap: 12px;
     padding: 15px;
-    background-color: var(--bg-panel);
+    background: linear-gradient(180deg, rgba(255, 255, 255, 0.02), rgba(255, 255, 255, 0)) , var(--bg-panel);
     border-bottom: 3px solid var(--input-border);
     flex-direction: row;
     flex-wrap: nowrap;
     justify-content: space-between;
     align-items: center;
+    box-shadow: 0 8px 18px rgba(0, 0, 0, 0.2);
+    animation: headerSlide 0.3s ease-out;
 }
 
 .UserStatus {
@@ -253,6 +261,7 @@
     display: flex;
     flex-direction: column;
     gap: 12px;
+    animation: messagesFade 0.3s ease-out;
 }
 
 .messagesContainer::-webkit-scrollbar {
@@ -409,6 +418,12 @@
     overflow-wrap: anywhere;
     word-break: break-word;
     min-width: 0;
+    transition: transform 0.18s ease, box-shadow 0.18s ease;
+}
+
+.message:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 10px 20px rgba(0, 0, 0, 0.18);
 }
 
 .replyPreview {
@@ -808,6 +823,7 @@
     align-items: center;
     justify-content: center;
     padding: 40px 20px;
+    animation: fadeInUp 0.35s ease-out;
 }
 
 .noChatSelected h2 {
@@ -819,6 +835,7 @@
     text-align: center;
     max-width: 400px;
     padding: 20px;
+    animation: fadeInUp 0.4s ease-out;
 }
 
 .emptyChatTitle {
@@ -867,6 +884,7 @@
     height: 50px;
     border-radius: 4px;
     object-fit: cover;
+    animation: previewPop 0.2s ease-out;
 }
 
 .fileInfo {
@@ -899,6 +917,7 @@
     background-color: var(--btn-color);
     border-radius: 2px;
     transition: width 0.3s ease;
+    animation: progressGlow 1.6s ease-in-out infinite;
 }
 
 .cancelUpload {
@@ -950,6 +969,7 @@
     overflow-y: auto;
     transition: opacity 0.3s ease, visibility 0.3s ease;
     border-radius: 8px;
+    animation: fadeInUp 0.22s ease-out;
 }
 
 .sendButton {
@@ -968,11 +988,14 @@
     align-items: center;
     justify-content: center;
     flex-shrink: 0;
-    transition: var(--transition);
+    transition: var(--transition), transform 0.2s ease, box-shadow 0.2s ease;
+    box-shadow: 0 10px 24px rgba(45, 144, 228, 0.25);
 }
 
 .sendButton:hover {
     background-color: var(--btn-hover);
+    transform: translateY(-1px);
+    box-shadow: 0 14px 28px rgba(45, 144, 228, 0.35);
 }
 
 .sendButton:active {
@@ -1016,3 +1039,66 @@
 
 }
   
+@keyframes panelSlideIn {
+    from { opacity: 0; transform: translateX(-10px); }
+    to { opacity: 1; transform: translateX(0); }
+}
+
+@keyframes panelFadeIn {
+    from { opacity: 0; transform: translateY(8px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes headerSlide {
+    from { opacity: 0; transform: translateY(-8px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes listItemIn {
+    from { opacity: 0; transform: translateY(6px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes messagesFade {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+
+@keyframes fadeInUp {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes previewPop {
+    from { opacity: 0; transform: scale(0.96); }
+    to { opacity: 1; transform: scale(1); }
+}
+
+@keyframes floatPulse {
+    0%, 100% { transform: translateY(0); box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3); }
+    50% { transform: translateY(-3px); box-shadow: 0 8px 18px rgba(45, 144, 228, 0.28); }
+}
+
+@keyframes progressGlow {
+    0%, 100% { box-shadow: 0 0 0 rgba(45, 144, 228, 0.3); }
+    50% { box-shadow: 0 0 12px rgba(45, 144, 228, 0.4); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .chatListSidebar,
+    .chatMain,
+    .chatHeader,
+    .chatItem,
+    .messagesContainer,
+    .message,
+    .newConversationButton,
+    .sendButton,
+    .noChatSelected,
+    .emptyChatMessage,
+    .filePreview,
+    .progressFill,
+    .inputBar .emojiButton .emojiPicker {
+        animation: none !important;
+        transition: none !important;
+    }
+}

@@ -6,6 +6,7 @@
     flex-wrap: nowrap;
     align-items: stretch;
     overflow: hidden;
+    background: var(--bg-color);
 }
 
 .sidebar {
@@ -18,7 +19,7 @@
     padding: 10px;
     width: 25vw;
     height: 100%;
-    background: var(--bg-panel);
+    background: linear-gradient(180deg, rgba(255, 255, 255, 0.02), rgba(255, 255, 255, 0)) , var(--bg-panel);
     display: flex;
     flex-direction: column;
     flex-wrap: nowrap;
@@ -31,6 +32,8 @@
     max-width: 400px;
     height: 100vh;
     overflow-y: auto;
+    animation: panelSlideIn 0.35s ease-out;
+    box-shadow: 8px 0 24px rgba(0, 0, 0, 0.2);
 }
 
 .settingsPageName {
@@ -44,6 +47,7 @@
     overflow-y: auto;
     display: flex;
     flex-direction: column;
+    animation: panelFadeIn 0.35s ease-out;
 }
 
 .settingsTitle {
@@ -55,6 +59,8 @@
     background-color: var(--bg-panel);
     font-size: 18px;
     font-weight: 500;
+    letter-spacing: 0.02em;
+    animation: titleSlide 0.3s ease-out;
 }
 
 .settingsContents {
@@ -69,4 +75,35 @@
     border-top: solid 3px var(--input-border);
     border-left: solid 3px var(--input-border);
     text-align: center;
+    animation: contentFade 0.35s ease-out;
+}
+
+@keyframes panelSlideIn {
+    from { opacity: 0; transform: translateX(-10px); }
+    to { opacity: 1; transform: translateX(0); }
+}
+
+@keyframes panelFadeIn {
+    from { opacity: 0; transform: translateY(8px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes titleSlide {
+    from { opacity: 0; transform: translateY(-6px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes contentFade {
+    from { opacity: 0; transform: translateY(6px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .settingsSidebar,
+    .settingsContent,
+    .settingsTitle,
+    .settingsContents {
+        animation: none !important;
+        transition: none !important;
+    }
 }
