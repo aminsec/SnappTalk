@@ -8,7 +8,8 @@ export function initSocket(server: http.Server){
   const io = new Server(server, {
     cors: {
       origin: 'http://snapptalk.io:3000', // React app
-      methods: ['GET', 'POST']
+      methods: ['GET', 'POST'],
+      credentials: true
     }
   });
 
