@@ -104,6 +104,12 @@ const isEmojiOnlyMessage = (text) => {
 
 const getConversationId = (conversation) => conversation?._id || conversation?.id;
 const getMessageId = (message) => message?._id || message?.id;
+const getSenderId = (message) =>
+  message?.sender_id
+  || message?.sender?._id
+  || message?.sender
+  || message?.user_id
+  || message?.from_user_id;
 
 function ChatsPage() {
   const { user } = useAuth();
@@ -138,6 +144,7 @@ function ChatsPage() {
   const optionsMenuRef = useRef(null);
   const chatMenuRef = useRef(null);
   const mediaPickerRef = useRef(null);
+  const messageRefs = useRef(new Map());
   const messagesEndRef = useRef(null);
   const shouldAutoScrollRef = useRef(false);
   const isNearBottomRef = useRef(true);
@@ -155,6 +162,20 @@ function ChatsPage() {
     }
     if (container) {
       container.scrollTop = container.scrollHeight;
+    }
+  }, []);
+
+  const scrollToMessage = useCallback((messageId) => {
+    if (!messageId) return;
+    const target = messageRefs.current.get(messageId.toString());
+    if (target) {
+      target.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      setTimeout(() => {
+        target.classList.add(styles.messageHighlight);
+        setTimeout(() => {
+          target.classList.remove(styles.messageHighlight);
+        }, 1400);
+      }, 350);
     }
   }, []);
 
@@ -1321,6 +1342,32 @@ function ChatsPage() {
     [selectedChat, uploadFile]
   );
 
+  const handleDebugSend = useCallback(() => {
+    if (!selectedChat) {
+      alert('Please select a chat first.');
+      return;
+    }
+
+    const conversationId = getConversationId(selectedChat);
+    if (!conversationId) {
+      alert('Invalid conversation.');
+      return;
+    }
+
+    if (!socket || !socket.connected) {
+      toast.error('Not connected.');
+      return;
+    }
+
+    const content = `debug-${Date.now()}`;
+    socket.emit('message', {
+      conversationId,
+      type: 'text',
+      content,
+    });
+  }, [selectedChat, socket]);
+
+
   // Scroll to bottom only on initial load or when switching chats
   useLayoutEffect(() => {
     if (!messagesEndRef.current) return;
@@ -1372,6 +1419,16 @@ function ChatsPage() {
   const activeChatId = getConversationId(selectedChat);
   const shouldRenderMessages = activeChatId && activeChatId === messagesConversationId;
   const visibleMessages = shouldRenderMessages ? messages : [];
+  const isActiveGroup = selectedChat?.type === 'group';
+  const missingSenderInfo = isActiveGroup
+    && visibleMessages.some((msg) => {
+      const senderId = getSenderId(msg);
+      const senderIdStr = senderId?.toString();
+      if (!senderIdStr) return false;
+      const isMine = senderIdStr === user?.id?.toString();
+      return !isMine && !senderInfoCache[senderIdStr];
+    });
+  const shouldHoldGroupMessages = isActiveGroup && missingSenderInfo;
 
   return (
     <div className={styles.chatsPageContainer}>
@@ -1529,6 +1586,17 @@ function ChatsPage() {
                   </div>
                 </div>
               )}
+              {shouldHoldGroupMessages && visibleMessages.length > 0 && (
+                <div className={styles.loadingMessages}>
+                  <div className={styles.loadingCenter}>
+                    <div className={styles.loadingPulse}>
+                      <span />
+                      <span />
+                      <span />
+                    </div>
+                  </div>
+                </div>
+              )}
               {!isLoadingMessages && visibleMessages.length === 0 && (
                 <div className={styles.emptyMessages}>
                   <p>No messages yet. Start the conversation!</p>
@@ -1544,7 +1612,7 @@ function ChatsPage() {
                 </div>
               )}
               <div className={styles.messagesWrapper}>
-                {visibleMessages.map((message, index) => {
+                {!shouldHoldGroupMessages && visibleMessages.map((message, index) => {
                   // Message detection: message.sender is an ObjectId that should match user.id
                   const userId = user?.id; // User object uses 'id' not '_id'
                   const username = user?.username;
@@ -1566,30 +1634,6 @@ function ChatsPage() {
                     // Username fallback (less reliable but included for compatibility)
                     message.sender === username ||
                     message.sender_name === username;
-                  
-                  // Debug logging for first message - inspect actual message structure
-                  if (index === 0 && messages.length > 0) {
-                    console.log('Full message object:', message);
-                    console.log('Message detection debug:', {
-                      messageSenderId,
-                      currentUserId,
-                      username,
-                      isMyMessage,
-                      messageKeys: Object.keys(message),
-                      message: {
-                        sender: message.sender,
-                        sender_id: message.sender_id,
-                        sender_username: message.sender_username,
-                        sender_name: message.sender_name,
-                        sender_info: message.sender_info,
-                        user_id: message.user_id,
-                      },
-                      user: {
-                        id: user?.id,
-                        username: user?.username,
-                      }
-                    });
-                  }
                   
                   const messageId = message._id || message.id || `msg-${index}`;
                   const messageContent = message.content || message.text || '';
@@ -1642,6 +1686,15 @@ function ChatsPage() {
                       } ${
                         animatedMessageIdsRef.current.has(messageId) ? styles.messageEnter : ''
                       }`}
+                      ref={(el) => {
+                        const id = messageId?.toString();
+                        if (!id) return;
+                        if (el) {
+                          messageRefs.current.set(id, el);
+                        } else {
+                          messageRefs.current.delete(id);
+                        }
+                      }}
                       onContextMenu={(e) => {
                         e.preventDefault();
                         setMessageContextMenu({
@@ -1672,7 +1725,17 @@ function ChatsPage() {
                         data-message-type={isMyMessage ? 'sent' : 'received'}
                       >
                         {replyPreview && (
-                          <div className={styles.replyPreview}>
+                          <div
+                            className={styles.replyPreview}
+                            role="button"
+                            tabIndex={0}
+                            onClick={() => scrollToMessage(replyPreview?.messageId || replyPreview?.message_id)}
+                            onKeyDown={(event) => {
+                              if (event.key === 'Enter') {
+                                scrollToMessage(replyPreview?.messageId || replyPreview?.message_id);
+                              }
+                            }}
+                          >
                             <div className={styles.replyPreviewLine} />
                             <div className={styles.replyPreviewContent}>
                               <p className={styles.replyPreviewText}>
@@ -1760,6 +1823,30 @@ function ChatsPage() {
               </div>
             )}
 
+            {replyingToMessage && (
+              <div className={styles.replyBarRow}>
+                <div className={styles.replyBar}>
+                  <div className={styles.replyBarContent}>
+                    <p className={styles.replyBarTitle}>Replying to</p>
+                    <p className={styles.replyBarText}>
+                      {truncateMessage(
+                        replyingToMessage?.content || replyingToMessage?.text || '',
+                        60
+                      )}
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    className={styles.replyBarClose}
+                    onClick={() => setReplyingToMessage(null)}
+                    aria-label="Cancel reply"
+                  >
+                    <FontAwesomeIcon icon={faXmark} />
+                  </button>
+                </div>
+              </div>
+            )}
+
             <div className={styles.inputBar}>
               <div className={styles.optionsMenuContainer} ref={optionsMenuRef}>
                 <button
@@ -1800,28 +1887,6 @@ function ChatsPage() {
                 title="Maximum file size is 5MB"
               />
               <div className={styles.composer}>
-                {replyingToMessage && (
-                  <div className={styles.replyBar}>
-                    <div className={styles.replyBarContent}>
-                      <p className={styles.replyBarTitle}>Replying to</p>
-                      <p className={styles.replyBarText}>
-                        {truncateMessage(
-                          replyingToMessage?.content || replyingToMessage?.text || '',
-                          60
-                        )}
-                      </p>
-                    </div>
-                    <button
-                      type="button"
-                      className={styles.replyBarClose}
-                      onClick={() => setReplyingToMessage(null)}
-                      aria-label="Cancel reply"
-                    >
-                      <FontAwesomeIcon icon={faXmark} />
-                    </button>
-                  </div>
-                )}
-
                 <textarea
                   className={styles.messageTextarea}
                   placeholder={editingMessage ? 'Edit message...' : 'Type a message...'}
@@ -1953,6 +2018,14 @@ function ChatsPage() {
                   <img src={sendIcon} alt="Send" className={styles.sendIcon} />
                 </button>
               )}
+              <button
+                type="button"
+                className={styles.debugSendButton}
+                onClick={handleDebugSend}
+                aria-label="Send debug message"
+              >
+                Debug
+              </button>
             </div>
 
             {messageContextMenu && (

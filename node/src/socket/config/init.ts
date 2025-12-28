@@ -1,7 +1,7 @@
 import { Server } from 'socket.io';
-import { handleSocketConnection } from './main';
+import { handleSocketConnection } from '../main';
 import http from "http";
-import { authenticateSocket } from "./socket.middlewares";
+import { authenticateSocket } from "../../middlewares/socket.middlewares";
 
 export function initSocket(server: http.Server){
 // Socket Setup

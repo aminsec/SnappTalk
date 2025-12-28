@@ -1,5 +1,5 @@
-import { validateJWT } from "../../utils/validate";
-import { ProtectedUserInfo } from "../../types/user.types";
+import { validateJWT } from "../utils/validate";
+import { ProtectedUserInfo } from "../types/user.types";
 import { Socket } from "socket.io";
 import cookie from "cookie";
 
