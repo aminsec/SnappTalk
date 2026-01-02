@@ -45,16 +45,30 @@ const SocketProvider = ({ children }) => {
       setStatus('auth_error');
     };
 
+    const handleNewPvConversation = (payload) => {
+      try {
+        localStorage.setItem(
+          'new_pv_conversation_pending',
+          JSON.stringify({ payload, ts: Date.now() })
+        );
+      } catch (error) {
+        console.error('Failed to store new pv conversation flag:', error);
+      }
+      window.dispatchEvent(new CustomEvent('new_pv_conversation', { detail: payload }));
+    };
+
     socket.on('connect', handleConnect);
     socket.on('disconnect', handleDisconnect);
     socket.on(SOCKET_EVENTS.AUTH_OK, handleAuthOk);
     socket.on(SOCKET_EVENTS.AUTH_ERROR, handleAuthError);
+    socket.on('new_pv_conversation', handleNewPvConversation);
 
     return () => {
       socket.off('connect', handleConnect);
       socket.off('disconnect', handleDisconnect);
       socket.off(SOCKET_EVENTS.AUTH_OK, handleAuthOk);
       socket.off(SOCKET_EVENTS.AUTH_ERROR, handleAuthError);
+      socket.off('new_pv_conversation', handleNewPvConversation);
     };
   }, [user]);
 

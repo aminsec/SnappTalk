@@ -18,11 +18,13 @@ export async function getUserConversations(userInfo: ProtectedUserInfo): Promise
 
         //Attaching contact userinfo for pv types of conversations
         for(let index in conversations){
-            var contactId = (conversations[index].members[0]).toString() !== userInfo.id ? conversations[index].members[0] : conversations[index].members[1];
+            var contactId = (conversations[index].members[0]).toString() !== userInfo.id ? conversations[index].members[0].toString() : conversations[index].members[1].toString();
+            console.log(contactId)
             if(conversations[index].type === "pv" && conversations[index].members){    
                  //Extracting contact userid by checking !userid
                 const [contactUserInfo, error] = await getUserInfoById(contactId);
                 if(error){
+                    console.log(error)
                     throw new Error();
                 }
 
@@ -89,10 +91,10 @@ export async function createNewPvConversation(firstUserId: ObjectId, secondUserI
             type: "pv",
             last_message_id: lastMessageId,
             deleted_for: {
-                [firstUserId.toString()]: new Date().toISOString(),
-                [secondUserId.toString()]: new Date().toISOString()
+                [firstUserId.toString()]: new Date(),
+                [secondUserId.toString()]: new Date()
             },
-            created_at: new Date().toISOString()
+            created_at: new Date()
         });
 
         if(conversation.acknowledged === true){

@@ -43,6 +43,7 @@ export async function createNewMessage(conversationId: ObjectId, sender: ObjectI
             type: type,
             content: content,
             attachments: attachments,
+            seen_by: {sender: new Date()},
             edited: false,
             created_at: new Date().toISOString()
         });

@@ -102,7 +102,11 @@ const isEmojiOnlyMessage = (text) => {
   return /^[\p{Extended_Pictographic}\p{Emoji_Presentation}\uFE0F\u200D\s]+$/u.test(normalized);
 };
 
-const getConversationId = (conversation) => conversation?._id || conversation?.id;
+const getConversationId = (conversation) =>
+  conversation?._id
+  || conversation?.id
+  || conversation?.conversation_id
+  || conversation?.conversationId;
 const getMessageId = (message) => message?._id || message?.id;
 const getSenderId = (message) =>
   message?.sender_id
@@ -145,10 +149,12 @@ function ChatsPage() {
   const chatMenuRef = useRef(null);
   const mediaPickerRef = useRef(null);
   const messageRefs = useRef(new Map());
+  const refreshTimeoutsRef = useRef([]);
   const messagesEndRef = useRef(null);
   const shouldAutoScrollRef = useRef(false);
   const isNearBottomRef = useRef(true);
   const animatedMessageIdsRef = useRef(new Set());
+  const pendingPvRef = useRef(null);
 
   const [unreadCounts, setUnreadCounts] = useState({});
 
@@ -196,6 +202,11 @@ function ChatsPage() {
       return;
     }
 
+    const isPendingPv = selectedChat?.type === 'pv'
+      && conversationId.toString().startsWith('temp-');
+    const contactUserId = selectedChat?.contact_info?._id
+      || selectedChat?.contact_info?.id;
+
     // Clear reply immediately to avoid UI sticking around if socket emits fail.
     setReplyingToMessage(null);
 
@@ -225,10 +236,79 @@ function ChatsPage() {
     setMessages((prev) => [...prev, optimisticMessage]);
     setMessageInput('');
     shouldAutoScrollRef.current = true;
+    if (isPendingPv) {
+      setMessagesConversationId(conversationId);
+    }
 
     try {
       if (!socket || !socket.connected) {
         toast.error('Not connected.');
+        return;
+      }
+
+      if (isPendingPv && !contactUserId) {
+        toast.error('Unable to start this conversation.');
+        return;
+      }
+
+      if (isPendingPv && contactUserId) {
+        pendingPvRef.current = { tempId: conversationId };
+        socket.emit(
+          SOCKET_EVENTS.NEW_PV_CONVERSATION,
+          {
+            new_user_id: contactUserId,
+            message_text: content,
+            date: new Date().toISOString(),
+          },
+          (ack) => {
+            if (!ack?.ok) {
+              toast.error(ack?.error || 'Unable to send message.');
+              return;
+            }
+
+            const newConversationId = ack?.conversationId || ack?.conversation?._id || ack?.conversation?.id;
+            if (newConversationId) {
+              setContacts((prev) =>
+                prev.map((chat) =>
+                  getConversationId(chat) === conversationId
+                    ? { ...chat, _id: newConversationId, id: newConversationId }
+                    : chat
+                )
+              );
+              setSelectedChat((prev) =>
+                prev && getConversationId(prev) === conversationId
+                  ? { ...prev, _id: newConversationId, id: newConversationId }
+                  : prev
+              );
+              setMessages((prev) =>
+                prev.map((m) =>
+                  m.conversation_id === conversationId
+                    ? { ...m, conversation_id: newConversationId }
+                    : m
+                )
+              );
+              setMessagesConversationId(newConversationId);
+            } else {
+              refreshContacts();
+            }
+
+            const serverMessage = ack?.message;
+            const serverMessageId = getMessageId(serverMessage);
+            if (!serverMessage || !serverMessageId) {
+              return;
+            }
+
+            setMessages((prev) =>
+              prev.map((m) => {
+                const mid = getMessageId(m);
+                if (mid === optimisticId) {
+                  return serverMessage;
+                }
+                return m;
+              })
+            );
+          }
+        );
         return;
       }
 
@@ -375,6 +455,25 @@ function ChatsPage() {
       }
     );
   }, [selectedChat, socket]);
+
+  // Refresh conversations list
+  const refreshContacts = useCallback(async () => {
+    try {
+      const response = await fetch('/api/v1/user/conversations', {
+        method: "GET",
+        credentials: "include"
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        setContacts(data.conversations || []);
+        return data.conversations || [];
+      }
+    } catch (error) {
+      console.error('Failed to refresh conversations:', error);
+    }
+    return [];
+  }, []);
   
   // Messages state
   const [messages, setMessages] = useState([]);
@@ -534,11 +633,55 @@ function ChatsPage() {
       }
     };
 
+    const handleGenericMessage = (payload) => {
+      const messageText = payload?.message;
+      const newConversationId = payload?.conversationId || payload?.conversation_id;
+      const pending = pendingPvRef.current;
+      if (messageText !== 'Conversation created' || !newConversationId || !pending?.tempId) {
+        return;
+      }
+
+      const tempId = pending.tempId;
+      setContacts((prev) =>
+        prev.map((chat) =>
+          getConversationId(chat) === tempId
+            ? { ...chat, _id: newConversationId, id: newConversationId }
+            : chat
+        )
+      );
+      setSelectedChat((prev) =>
+        prev && getConversationId(prev) === tempId
+          ? { ...prev, _id: newConversationId, id: newConversationId }
+          : prev
+      );
+      setMessages((prev) =>
+        prev.map((m) =>
+          m.conversation_id === tempId
+            ? { ...m, conversation_id: newConversationId }
+            : m
+        )
+      );
+      setMessagesConversationId(newConversationId);
+      pendingPvRef.current = null;
+    };
+
+    const handleNewPvConversation = (payload) => {
+      const conversationId = payload?.conversation_id || payload?.conversationId;
+      if (!conversationId) {
+        return;
+      }
+      refreshContacts();
+      refreshTimeoutsRef.current.push(setTimeout(refreshContacts, 600));
+      refreshTimeoutsRef.current.push(setTimeout(refreshContacts, 1500));
+    };
+
     socket.on(SOCKET_EVENTS.MESSAGE_NEW, handleMessageNew);
     socket.on(SOCKET_EVENTS.MESSAGE_UPDATED, handleMessageUpdated);
     socket.on(SOCKET_EVENTS.MESSAGE_DELETED, handleMessageDeleted);
     socket.on(SOCKET_EVENTS.MESSAGE_SEEN_UPDATE, handleSeenUpdate);
     socket.on(SOCKET_EVENTS.CONVERSATION_DELETED, handleConversationDeleted);
+    socket.on('message', handleGenericMessage);
+    socket.on(SOCKET_EVENTS.NEW_PV_CONVERSATION, handleNewPvConversation);
 
     return () => {
       socket.off(SOCKET_EVENTS.MESSAGE_NEW, handleMessageNew);
@@ -546,8 +689,12 @@ function ChatsPage() {
       socket.off(SOCKET_EVENTS.MESSAGE_DELETED, handleMessageDeleted);
       socket.off(SOCKET_EVENTS.MESSAGE_SEEN_UPDATE, handleSeenUpdate);
       socket.off(SOCKET_EVENTS.CONVERSATION_DELETED, handleConversationDeleted);
+      socket.off('message', handleGenericMessage);
+      socket.off(SOCKET_EVENTS.NEW_PV_CONVERSATION, handleNewPvConversation);
+      refreshTimeoutsRef.current.forEach((timeoutId) => clearTimeout(timeoutId));
+      refreshTimeoutsRef.current = [];
     };
-  }, [socket]);
+  }, [socket, refreshContacts]);
 
   useEffect(() => {
     const nextConversationId = getConversationId(selectedChat);
@@ -637,6 +784,30 @@ function ChatsPage() {
 
     fetchContacts();
   }, []);
+
+  useEffect(() => {
+    const handleNewPvEvent = () => {
+      refreshContacts();
+      refreshTimeoutsRef.current.push(setTimeout(refreshContacts, 600));
+      refreshTimeoutsRef.current.push(setTimeout(refreshContacts, 1500));
+    };
+
+    window.addEventListener('new_pv_conversation', handleNewPvEvent);
+
+    try {
+      const pending = localStorage.getItem('new_pv_conversation_pending');
+      if (pending) {
+        handleNewPvEvent();
+        localStorage.removeItem('new_pv_conversation_pending');
+      }
+    } catch (error) {
+      console.error('Failed to read new pv conversation flag:', error);
+    }
+
+    return () => {
+      window.removeEventListener('new_pv_conversation', handleNewPvEvent);
+    };
+  }, [refreshContacts]);
 
   // Set random welcome icon on mount
   useEffect(() => {
@@ -774,6 +945,9 @@ function ChatsPage() {
   // Scroll up: offset=10,20,30... → fetches next 10 older messages each time
   const fetchMessages = useCallback(async (conversationId, offset = 0, append = false) => {
     if (!conversationId || isLoadingMoreRef.current) return;
+    if (conversationId.toString().startsWith('temp-')) {
+      return;
+    }
 
     setIsLoadingMessages(true);
     isLoadingMoreRef.current = true;
@@ -838,7 +1012,28 @@ function ChatsPage() {
         } else {
           // Initial load: replace messages with the last 10 messages (newest)
           // Already sorted oldest->newest
-          setMessages(sortedFetchedMessages);
+          if (sortedFetchedMessages.length === 0) {
+            const currentChat = selectedChatRef.current;
+            const lastMessage = currentChat?.last_message;
+            if (lastMessage?.content) {
+              const fallbackMessage = {
+                _id: `fallback-${conversationId}`,
+                id: `fallback-${conversationId}`,
+                conversation_id: conversationId,
+                sender: lastMessage.sender || '',
+                type: lastMessage.type || 'text',
+                content: lastMessage.content || '',
+                created_at: lastMessage.when || new Date().toISOString(),
+                seen_by: {},
+                edited: false,
+              };
+              setMessages([fallbackMessage]);
+            } else {
+              setMessages([]);
+            }
+          } else {
+            setMessages(sortedFetchedMessages);
+          }
           isInitialLoadRef.current = true;
         }
 
@@ -911,10 +1106,12 @@ function ChatsPage() {
     setMessages([]);
     setMessagesOffset(0);
     setHasMoreMessages(true);
-    setMessagesConversationId(null);
+    setMessagesConversationId(conversationId);
     setSenderInfoCache({}); // Clear cache
     isInitialLoadRef.current = true;
-    fetchMessages(conversationId, 0, false);
+    if (!conversationId.toString().startsWith('temp-')) {
+      fetchMessages(conversationId, 0, false);
+    }
   }, [selectedChat, fetchMessages]);
 
   // Fetch sender info for group messages
@@ -1069,31 +1266,20 @@ function ChatsPage() {
     });
   }, [searchQuery, contacts]);
 
+  const sortedChats = useMemo(() => {
+    const getTime = (chat) => {
+      const when = chat?.last_message?.when;
+      return when ? new Date(when).getTime() : 0;
+    };
+    return [...filteredChats].sort((a, b) => getTime(b) - getTime(a));
+  }, [filteredChats]);
+
   // Reset file upload state
   const resetFileUploadState = useCallback(() => {
     setSelectedFile(null);
     setFilePreview(null);
     setIsUploading(false);
     setUploadProgress(0);
-  }, []);
-
-  // Refresh conversations list
-  const refreshContacts = useCallback(async () => {
-    try {
-      const response = await fetch('/api/v1/user/conversations', {
-        method: "GET",
-        credentials: "include"
-      });
-
-      if (response.ok) {
-        const data = await response.json();
-        setContacts(data.conversations || []);
-        return data.conversations || [];
-      }
-    } catch (error) {
-      console.error('Failed to refresh conversations:', error);
-    }
-    return [];
   }, []);
 
   // Fetch sender info for group messages
@@ -1342,30 +1528,6 @@ function ChatsPage() {
     [selectedChat, uploadFile]
   );
 
-  const handleDebugSend = useCallback(() => {
-    if (!selectedChat) {
-      alert('Please select a chat first.');
-      return;
-    }
-
-    const conversationId = getConversationId(selectedChat);
-    if (!conversationId) {
-      alert('Invalid conversation.');
-      return;
-    }
-
-    if (!socket || !socket.connected) {
-      toast.error('Not connected.');
-      return;
-    }
-
-    const content = `debug-${Date.now()}`;
-    socket.emit('message', {
-      conversationId,
-      type: 'text',
-      content,
-    });
-  }, [selectedChat, socket]);
 
 
   // Scroll to bottom only on initial load or when switching chats
@@ -1456,7 +1618,7 @@ function ChatsPage() {
               <p>Start a conversation...</p>
             </div>
           ) : (
-            filteredChats.map((chat) => {
+            sortedChats.map((chat) => {
               const isPrivateChat = chat.type === "pv";
               const isMyMessage = chat.last_message.sender === user?.username;
               const selectedId = selectedChat?._id || selectedChat?.id;
@@ -2018,14 +2180,6 @@ function ChatsPage() {
                   <img src={sendIcon} alt="Send" className={styles.sendIcon} />
                 </button>
               )}
-              <button
-                type="button"
-                className={styles.debugSendButton}
-                onClick={handleDebugSend}
-                aria-label="Send debug message"
-              >
-                Debug
-              </button>
             </div>
 
             {messageContextMenu && (
