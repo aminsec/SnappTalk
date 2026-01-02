@@ -127,6 +127,7 @@ function ChatsPage() {
   const [isUploading, setIsUploading] = useState(false);
   const [filePreview, setFilePreview] = useState(null);
   const [isNewConversationModalOpen, setIsNewConversationModalOpen] = useState(false);
+  const [activeTab, setActiveTab] = useState('all');
   const [isOptionsMenuOpen, setIsOptionsMenuOpen] = useState(false);
   const [isChatMenuOpen, setIsChatMenuOpen] = useState(false);
   const [isMediaPickerOpen, setIsMediaPickerOpen] = useState(false);
@@ -1274,6 +1275,18 @@ function ChatsPage() {
     return [...filteredChats].sort((a, b) => getTime(b) - getTime(a));
   }, [filteredChats]);
 
+  const tabbedChats = useMemo(() => {
+    const isPersonal = (chat) => chat?.type === 'pv' && chat?.contact_info;
+    const isGroup = (chat) => chat?.type === 'group' || !chat?.contact_info;
+    if (activeTab === 'personal') {
+      return sortedChats.filter(isPersonal);
+    }
+    if (activeTab === 'groups') {
+      return sortedChats.filter(isGroup);
+    }
+    return sortedChats;
+  }, [activeTab, sortedChats]);
+
   // Reset file upload state
   const resetFileUploadState = useCallback(() => {
     setSelectedFile(null);
@@ -1611,6 +1624,29 @@ function ChatsPage() {
             onChange={(e) => setSearchQuery(e.target.value)}
           />
         </div>
+        <div className={styles.chatTabs}>
+          <button
+            type="button"
+            className={`${styles.chatTab} ${activeTab === 'all' ? styles.chatTabActive : ''}`}
+            onClick={() => setActiveTab('all')}
+          >
+            All
+          </button>
+          <button
+            type="button"
+            className={`${styles.chatTab} ${activeTab === 'personal' ? styles.chatTabActive : ''}`}
+            onClick={() => setActiveTab('personal')}
+          >
+            Personal
+          </button>
+          <button
+            type="button"
+            className={`${styles.chatTab} ${activeTab === 'groups' ? styles.chatTabActive : ''}`}
+            onClick={() => setActiveTab('groups')}
+          >
+            Groups
+          </button>
+        </div>
 
         <div className={styles.chatList}>
           {contacts.length === 0 ? (
@@ -1618,7 +1654,7 @@ function ChatsPage() {
               <p>Start a conversation...</p>
             </div>
           ) : (
-            sortedChats.map((chat) => {
+            tabbedChats.map((chat) => {
               const isPrivateChat = chat.type === "pv";
               const isMyMessage = chat.last_message.sender === user?.username;
               const selectedId = selectedChat?._id || selectedChat?.id;

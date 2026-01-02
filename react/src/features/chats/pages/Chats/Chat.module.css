@@ -35,6 +35,40 @@
     animation: panelSlideIn 0.35s ease-out;
 }
 
+.chatTabs {
+    width: 100%;
+    display: flex;
+    gap: 6px;
+    padding: 6px;
+    border-radius: 12px;
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid rgba(255, 255, 255, 0.06);
+    margin-bottom: 10px;
+}
+
+.chatTab {
+    flex: 1;
+    border: none;
+    background: transparent;
+    color: var(--text-muted);
+    font-size: 12px;
+    font-weight: 600;
+    padding: 8px 10px;
+    border-radius: 10px;
+    cursor: pointer;
+    transition: background-color 0.2s ease, color 0.2s ease, transform 0.2s ease;
+}
+
+.chatTab:hover {
+    color: var(--text-main);
+    transform: translateY(-1px);
+}
+
+.chatTabActive {
+    background: rgba(45, 144, 228, 0.2);
+    color: var(--text-main);
+}
+
 .chatListSidebar::-webkit-scrollbar {
     display: none;
 }
@@ -684,8 +718,8 @@
 }
 
 .seenIconImage {
-    width: 16px;
-    height: 16px;
+    width: 14px;
+    height: 14px;
     display: block;
     opacity: 0.9;
 }
