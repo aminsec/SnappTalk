@@ -33,3 +33,30 @@ export async function getConversationMessagesByLimitedDate(conversationId: Objec
         return [null, err];
     }
 };
+
+export async function createNewMessage(conversationId: ObjectId, sender: ObjectId, type: string, content: string, attachments: string[]): Promise<[ObjectId | null, ErrorResponse | null]> {
+    try {
+        const messagesCollection = await getMessagesCollection();
+        const message = await messagesCollection.insertOne({
+            conversation_id: conversationId,
+            sender: sender,
+            type: type,
+            content: content,
+            attachments: attachments,
+            edited: false,
+            created_at: new Date().toISOString()
+        });
+
+        if(message.acknowledged === true){
+            return [message.insertedId, null];
+        }else{
+            const err: ErrorResponse = {message: "Couldn't create message", state: "failed", type: "system_error"};
+            return [null, err];
+        }
+
+    } catch (error) {
+        console.log(error);
+        const err: ErrorResponse = {message: "A system error occurred", state: "failed", type: "system_error"};
+        return [null, err];
+    }
+};

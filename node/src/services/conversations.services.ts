@@ -52,3 +52,77 @@ export async function getUserConversations(userInfo: ProtectedUserInfo): Promise
         return [null, err];
     }
 };
+
+export async function checkIsThereConversation(firstUserId: ObjectId, secondUserId: ObjectId): Promise<[Boolean | null, null | ErrorResponse]> {
+    try {
+        const conversationsCollection  = await getConversationsCollection();
+        const conversation: Conversation = await conversationsCollection.findOne(
+            {
+                members: {
+                    $all: [firstUserId, secondUserId]
+                },
+                type: "pv"
+            }
+        );
+    
+        if(conversation){
+            return [true, null];
+
+        }else{
+            return [false, null];
+        }
+
+    } catch (error) {
+        console.log(error);
+        const err: ErrorResponse = {message: "A system error occurred", state: "failed", type: "system_error"};
+        return [null, err];
+    }
+};
+
+export async function createNewPvConversation(firstUserId: ObjectId, secondUserId: ObjectId, lastMessageId: ObjectId): Promise<[ObjectId | null, ErrorResponse | null]> {
+    try {
+        const conversationsCollection  = await getConversationsCollection();
+        const conversation = await conversationsCollection.insertOne({
+            group_name: null,
+            group_avatar: null,
+            members: [firstUserId, secondUserId],
+            type: "pv",
+            last_message_id: lastMessageId,
+            deleted_for: {
+                [firstUserId.toString()]: new Date().toISOString(),
+                [secondUserId.toString()]: new Date().toISOString()
+            },
+            created_at: new Date().toISOString()
+        });
+
+        if(conversation.acknowledged === true){
+            return [conversation.insertedId, null];
+        }else{
+            const err: ErrorResponse = {message: "Couldn't create conversation", state: "failed", type: "system_error"};
+            return [null, err];
+        }
+
+    } catch (error) {
+        console.log(error);
+        const err: ErrorResponse = {message: "A system error occurred", state: "failed", type: "system_error"};
+        return [null, err];
+    }
+};
+
+export async function updateConversationLastMessageId(conversationId: ObjectId, lastMessageId: ObjectId): Promise<[true | false | null, ErrorResponse | null]> {
+    try {
+        const conversationsCollection  = await getConversationsCollection();
+        const conversation = await conversationsCollection.updateOne({_id: conversationId}, {$set: {last_message_id: lastMessageId}});
+        if(conversation.acknowledged === true){
+            return [true, null];
+        }else{
+            const err: ErrorResponse = {message: "Couldn't update conversation last message id", state: "failed", type: "system_error"};
+            return [null, err];
+        }
+
+    } catch (error) {
+        console.log(error);
+        const err: ErrorResponse = {message: "A system error occurred", state: "failed", type: "system_error"};
+        return [null, err];
+    }
+};

@@ -1,13 +1,22 @@
 // Entry point of every ws connection
-import { Socket } from "socket.io";
+import { Socket, Server } from "socket.io";
+import { handleNewPvConversationEvent } from "./events/new_pv_conversation.event";
 
-export function handleSocketConnection(socket: Socket): void{
+export function handleSocketConnection(socket: Socket, io: Server, onlineUsers: Map<string, string>): void{
   console.log('New client connected:', socket.id);
+
+  //Attaching user id as key and socket id as value to online users map to track user because we can not change socket.id
+  onlineUsers.set(socket.userInfo.id, socket.id);
   
-  // Listen for events from the client
+  // Listen for message from the client
   socket.on('message', (data) => {
     console.log(socket.rooms);
     console.log('Message received:', data);
+  });
+
+  //An event for creating new conversation
+  socket.on("new_pv_conversation", (data) => {
+    handleNewPvConversationEvent(socket, data, onlineUsers, io);
   });
 
   socket.on('disconnect', () => {
