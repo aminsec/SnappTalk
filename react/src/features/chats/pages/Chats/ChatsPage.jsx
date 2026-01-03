@@ -15,8 +15,10 @@ import {
   faCheck,
   faXmark,
   faReply,
+  faMicrophone,
+  faStop,
 } from '@fortawesome/free-solid-svg-icons';
-import { faFile, faFaceSmile } from '@fortawesome/free-regular-svg-icons';
+import { faFaceSmile } from '@fortawesome/free-regular-svg-icons';
 import { Sidebar, Input, Button, ProfileAvatar } from '@/shared/components';
 import { useAuth } from '@/shared/state/useAuth';
 import toast from 'react-hot-toast';
@@ -96,6 +98,37 @@ const truncateMessage = (text, maxLength = 25) => {
   return text.length > maxLength ? `${text.substring(0, maxLength)}...` : text;
 };
 
+const formatDuration = (totalSeconds) => {
+  const minutes = Math.floor(totalSeconds / 60);
+  const seconds = totalSeconds % 60;
+  const paddedSeconds = seconds.toString().padStart(2, '0');
+  return `${minutes}:${paddedSeconds}`;
+};
+
+const getMessagePreviewText = (message) => {
+  if (!message) return '';
+  const content = message.content || message.text;
+  if (content) return content;
+  switch (message.type) {
+    case 'image':
+      return 'Photo';
+    case 'video':
+      return 'Video';
+    case 'gif':
+      return 'GIF';
+    case 'sticker':
+      return 'Sticker';
+    case 'voice':
+      return 'Voice message';
+    case 'audio':
+      return 'Audio';
+    case 'file':
+      return 'Attachment';
+    default:
+      return '';
+  }
+};
+
 const isEmojiOnlyMessage = (text) => {
   const normalized = text?.trim();
   if (!normalized) return false;
@@ -108,12 +141,75 @@ const getConversationId = (conversation) =>
   || conversation?.conversation_id
   || conversation?.conversationId;
 const getMessageId = (message) => message?._id || message?.id;
+const getMessageMediaUrl = (message) =>
+  message?.file_url
+  || message?.media_url
+  || message?.url
+  || message?.fileUrl
+  || message?.mediaUrl
+  || message?.preview_url
+  || message?.local_preview
+  || '';
 const getSenderId = (message) =>
   message?.sender_id
   || message?.sender?._id
   || message?.sender
   || message?.user_id
   || message?.from_user_id;
+
+const fileToBase64 = (file) => new Promise((resolve, reject) => {
+  const reader = new FileReader();
+  reader.onload = () => {
+    const result = reader.result;
+    const base64 = typeof result === 'string' ? result.split(',').pop() : '';
+    if (!base64) {
+      reject(new Error('Unable to read file.'));
+      return;
+    }
+    resolve(base64);
+  };
+  reader.onerror = () => reject(reader.error || new Error('Unable to read file.'));
+  reader.readAsDataURL(file);
+});
+
+const uploadMediaFile = async (file) => {
+  const base64 = await fileToBase64(file);
+  const response = await fetch('/api/v1/chat/media', {
+    method: 'POST',
+    credentials: 'include',
+    headers: {
+      'content-type': 'application/json',
+    },
+    body: JSON.stringify({
+      file: base64,
+      mime_type: file.type,
+      name: file.name,
+      size: file.size,
+    }),
+  });
+
+  if (!response.ok) {
+    throw new Error('Unable to upload media right now.');
+  }
+
+  const data = await response.json();
+  return data?.url || data?.file_url || data?.media_url || data?.data?.url || '';
+};
+
+const getMediaTypeFromFile = (file) => {
+  if (file.type.startsWith('image/')) return 'image';
+  if (file.type.startsWith('video/')) return 'video';
+  if (file.type.startsWith('audio/')) return 'voice';
+  return 'file';
+};
+
+const getMediaTypeFromMime = (mimeType) => {
+  if (!mimeType) return null;
+  if (mimeType.startsWith('image/')) return 'image';
+  if (mimeType.startsWith('video/')) return 'video';
+  if (mimeType.startsWith('audio/')) return 'voice';
+  return null;
+};
 
 function ChatsPage() {
   const { user } = useAuth();
@@ -145,6 +241,8 @@ function ChatsPage() {
   const [editingMessage, setEditingMessage] = useState(null);
   const [replyingToMessage, setReplyingToMessage] = useState(null);
   const [messageContextMenu, setMessageContextMenu] = useState(null);
+  const [isRecording, setIsRecording] = useState(false);
+  const [recordingDuration, setRecordingDuration] = useState(0);
   const [randomIcon, setRandomIcon] = useState(null);
   const optionsMenuRef = useRef(null);
   const chatMenuRef = useRef(null);
@@ -156,6 +254,11 @@ function ChatsPage() {
   const isNearBottomRef = useRef(true);
   const animatedMessageIdsRef = useRef(new Set());
   const pendingPvRef = useRef(null);
+  const pendingMessagesRef = useRef({});
+  const mediaRecorderRef = useRef(null);
+  const recordedChunksRef = useRef([]);
+  const recordingTimerRef = useRef(null);
+  const recordingStreamRef = useRef(null);
 
   const [unreadCounts, setUnreadCounts] = useState({});
 
@@ -215,7 +318,9 @@ function ChatsPage() {
     const replyTo = replyingToMessage
       ? {
           messageId: getMessageId(replyingToMessage),
-          content: replyingToMessage?.content || replyingToMessage?.text || '',
+          content: replyingToMessage?.content
+            || replyingToMessage?.text
+            || getMessagePreviewText(replyingToMessage),
           sender: replyingToMessage?.sender,
         }
       : null;
@@ -234,12 +339,34 @@ function ChatsPage() {
 
     animatedMessageIdsRef.current.add(optimisticId);
 
+    const conversationIdStr = conversationId.toString();
+    setContacts((prev) => {
+      const next = [...prev];
+      const idx = next.findIndex((c) => getConversationId(c)?.toString() === conversationIdStr);
+      if (idx === -1) return prev;
+
+      const chat = next[idx];
+      next[idx] = {
+        ...chat,
+        last_message: {
+          content,
+          type: 'text',
+          sender: user?.username || chat?.last_message?.sender || '',
+          when: optimisticMessage.created_at,
+          seen: chat?.last_message?.seen ?? null,
+        },
+      };
+
+      const [moved] = next.splice(idx, 1);
+      next.unshift(moved);
+      return next;
+    });
+
     setMessages((prev) => [...prev, optimisticMessage]);
     setMessageInput('');
     shouldAutoScrollRef.current = true;
-    if (isPendingPv) {
-      setMessagesConversationId(conversationId);
-    }
+    setMessagesConversationId(conversationId.toString());
+    scrollToBottom();
 
     try {
       if (!socket || !socket.connected) {
@@ -316,33 +443,8 @@ function ChatsPage() {
       socket.emit(
         SOCKET_EVENTS.MESSAGE_SEND,
         {
-          conversationId,
-          type: 'text',
-          content,
-          clientId: optimisticId,
-          replyTo,
-        },
-        (ack) => {
-          if (!ack?.ok) {
-            toast.error(ack?.error || 'Unable to send message.');
-            return;
-          }
-
-          const serverMessage = ack?.message;
-          const serverMessageId = getMessageId(serverMessage);
-          if (!serverMessage || !serverMessageId) {
-            return;
-          }
-
-          setMessages((prev) =>
-            prev.map((m) => {
-              const mid = getMessageId(m);
-              if (mid === optimisticId) {
-                return serverMessage;
-              }
-              return m;
-            })
-          );
+          conversation_id: conversationId,
+          message_text: content,
         }
       );
     } catch (err) {
@@ -517,9 +619,86 @@ function ChatsPage() {
   }, [user]);
 
   useEffect(() => {
-    if (!socket || !socket.connected) {
+    if (!socket) {
       return;
     }
+
+    const handleAnyEvent = (eventName, payload) => {
+      console.log('[socket]', eventName, payload);
+    };
+
+    const handleMessageReceive = (payload) => {
+      const conversationId = payload?.conversation_id || payload?.conversationId;
+      const messageText = payload?.message_text || payload?.message || '';
+      if (!conversationId || !messageText) {
+        return;
+      }
+      const conversationIdStr = conversationId?.toString();
+
+      const messageId = payload?.message_id || `receive-${Date.now()}`;
+      const messageSender = payload?.sender_id
+        || payload?.sender
+        || payload?.from_user_id
+        || payload?.user_id
+        || null;
+
+      const message = {
+        _id: messageId,
+        id: messageId,
+        conversation_id: conversationId,
+        sender: messageSender,
+        type: 'text',
+        content: messageText,
+        created_at: new Date().toISOString(),
+        seen_by: {},
+        edited: false,
+      };
+
+      pendingMessagesRef.current[conversationIdStr] = [
+        ...(pendingMessagesRef.current[conversationIdStr] || []),
+        message,
+      ];
+
+      setContacts((prev) => {
+        const next = [...prev];
+        const idx = next.findIndex(
+          (c) => getConversationId(c)?.toString() === conversationIdStr
+        );
+        if (idx === -1) return prev;
+
+        const chat = next[idx];
+        next[idx] = {
+          ...chat,
+          last_message: {
+            content: messageText,
+            type: 'text',
+            sender: payload?.senderUsername || payload?.sender || chat?.last_message?.sender || '',
+            when: message.created_at,
+            seen: chat?.last_message?.seen ?? null,
+          },
+        };
+
+        const [moved] = next.splice(idx, 1);
+        next.unshift(moved);
+        return next;
+      });
+
+      const selectedConversationId = getConversationId(selectedChatRef.current);
+      const selectedConversationIdStr = selectedConversationId?.toString();
+      if (selectedConversationIdStr && selectedConversationIdStr === conversationIdStr) {
+        setMessagesConversationId(conversationIdStr);
+        animatedMessageIdsRef.current.add(messageId);
+        flushPendingMessages(conversationIdStr);
+        if (isNearBottomRef.current) {
+          shouldAutoScrollRef.current = true;
+        }
+      } else {
+        setUnreadCounts((prev) => ({
+          ...prev,
+          [conversationIdStr]: (prev[conversationIdStr] || 0) + 1,
+        }));
+      }
+    };
 
     const handleMessageNew = (payload) => {
       const message = payload?.message;
@@ -539,7 +718,7 @@ function ChatsPage() {
         next[idx] = {
           ...chat,
           last_message: {
-            content: message?.content ?? '',
+            content: getMessagePreviewText(message),
             type: message?.type ?? 'text',
             sender: payload?.senderUsername || payload?.sender || chat?.last_message?.sender || '',
             when: message?.created_at || new Date().toISOString(),
@@ -677,21 +856,25 @@ function ChatsPage() {
     };
 
     socket.on(SOCKET_EVENTS.MESSAGE_NEW, handleMessageNew);
+    socket.on(SOCKET_EVENTS.MESSAGE_RECEIVE, handleMessageReceive);
     socket.on(SOCKET_EVENTS.MESSAGE_UPDATED, handleMessageUpdated);
     socket.on(SOCKET_EVENTS.MESSAGE_DELETED, handleMessageDeleted);
     socket.on(SOCKET_EVENTS.MESSAGE_SEEN_UPDATE, handleSeenUpdate);
     socket.on(SOCKET_EVENTS.CONVERSATION_DELETED, handleConversationDeleted);
     socket.on('message', handleGenericMessage);
     socket.on(SOCKET_EVENTS.NEW_PV_CONVERSATION, handleNewPvConversation);
+    socket.onAny(handleAnyEvent);
 
     return () => {
       socket.off(SOCKET_EVENTS.MESSAGE_NEW, handleMessageNew);
+      socket.off(SOCKET_EVENTS.MESSAGE_RECEIVE, handleMessageReceive);
       socket.off(SOCKET_EVENTS.MESSAGE_UPDATED, handleMessageUpdated);
       socket.off(SOCKET_EVENTS.MESSAGE_DELETED, handleMessageDeleted);
       socket.off(SOCKET_EVENTS.MESSAGE_SEEN_UPDATE, handleSeenUpdate);
       socket.off(SOCKET_EVENTS.CONVERSATION_DELETED, handleConversationDeleted);
       socket.off('message', handleGenericMessage);
       socket.off(SOCKET_EVENTS.NEW_PV_CONVERSATION, handleNewPvConversation);
+      socket.offAny(handleAnyEvent);
       refreshTimeoutsRef.current.forEach((timeoutId) => clearTimeout(timeoutId));
       refreshTimeoutsRef.current = [];
     };
@@ -699,23 +882,24 @@ function ChatsPage() {
 
   useEffect(() => {
     const nextConversationId = getConversationId(selectedChat);
-    const prevConversationId = activeConversationIdRef.current;
+    const nextConversationIdStr = nextConversationId?.toString();
+    const prevConversationIdStr = activeConversationIdRef.current;
 
-    if (socket && socket.connected && prevConversationId && prevConversationId !== nextConversationId) {
-      socket.emit(SOCKET_EVENTS.CONVERSATION_LEAVE, { conversationId: prevConversationId });
+    if (socket && socket.connected && prevConversationIdStr && prevConversationIdStr !== nextConversationIdStr) {
+      socket.emit(SOCKET_EVENTS.CONVERSATION_LEAVE, { conversationId: prevConversationIdStr });
     }
 
-    activeConversationIdRef.current = nextConversationId;
+    activeConversationIdRef.current = nextConversationIdStr;
 
-    if (!socket || !socket.connected || !nextConversationId) {
+    if (!socket || !socket.connected || !nextConversationIdStr) {
       return;
     }
 
-    socket.emit(SOCKET_EVENTS.CONVERSATION_JOIN, { conversationId: nextConversationId });
-    setUnreadCounts((prev) => ({ ...prev, [nextConversationId]: 0 }));
+    socket.emit(SOCKET_EVENTS.CONVERSATION_JOIN, { conversationId: nextConversationIdStr });
+    setUnreadCounts((prev) => ({ ...prev, [nextConversationIdStr]: 0 }));
 
     // Mark conversation as seen when opened (backend should translate to message-level seen updates)
-    socket.emit(SOCKET_EVENTS.MESSAGE_SEEN, { conversationId: nextConversationId });
+    socket.emit(SOCKET_EVENTS.MESSAGE_SEEN, { conversationId: nextConversationIdStr });
   }, [selectedChat, socket, socketStatus]);
 
   // Close menus when clicking outside
@@ -819,11 +1003,25 @@ function ChatsPage() {
   // Cleanup file preview URL
   useEffect(() => {
     return () => {
-      if (filePreview) {
+      if (filePreview && filePreview.startsWith('blob:')) {
         URL.revokeObjectURL(filePreview);
       }
     };
   }, [filePreview]);
+
+  useEffect(() => {
+    return () => {
+      if (recordingTimerRef.current) {
+        clearInterval(recordingTimerRef.current);
+      }
+      if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
+        mediaRecorderRef.current.stop();
+      }
+      if (recordingStreamRef.current) {
+        recordingStreamRef.current.getTracks().forEach((track) => track.stop());
+      }
+    };
+  }, []);
 
   // Handle click outside options menu
   useEffect(() => {
@@ -941,6 +1139,28 @@ function ChatsPage() {
   // Store previous scroll height for position preservation
   const previousScrollHeightRef = useRef(0);
 
+  function flushPendingMessages(conversationId) {
+    const conversationIdStr = conversationId?.toString();
+    if (!conversationIdStr) return;
+
+    const pending = pendingMessagesRef.current[conversationIdStr];
+    if (!pending || pending.length === 0) return;
+
+    pendingMessagesRef.current[conversationIdStr] = [];
+    setMessages((prev) => {
+      const existingIds = new Set(
+        prev.map((msg) => getMessageId(msg)?.toString()).filter(Boolean)
+      );
+      const merged = [...prev];
+      pending.forEach((msg) => {
+        const mid = getMessageId(msg)?.toString();
+        if (!mid || existingIds.has(mid)) return;
+        merged.push(msg);
+      });
+      return merged;
+    });
+  }
+
   // Fetch messages function - implements lazy loading
   // Initial load: offset=0, limit=10 → fetches last 10 messages (newest)
   // Scroll up: offset=10,20,30... → fetches next 10 older messages each time
@@ -1005,6 +1225,7 @@ function ChatsPage() {
             });
             return [...newMessages, ...prevMessages];
           });
+          flushPendingMessages(conversationId);
           if (sortedFetchedMessages.length === 0) {
             pendingPrependRef.current = false;
             previousScrollHeightRef.current = 0;
@@ -1035,10 +1256,11 @@ function ChatsPage() {
           } else {
             setMessages(sortedFetchedMessages);
           }
+          flushPendingMessages(conversationId);
           isInitialLoadRef.current = true;
         }
 
-        setMessagesConversationId(conversationId);
+        setMessagesConversationId(conversationId.toString());
         // Check if there are more messages to load
         // If we got exactly limit (10) messages, there might be more
         // If we got fewer than limit, we've reached the end (no more messages)
@@ -1107,7 +1329,7 @@ function ChatsPage() {
     setMessages([]);
     setMessagesOffset(0);
     setHasMoreMessages(true);
-    setMessagesConversationId(conversationId);
+    setMessagesConversationId(conversationId.toString());
     setSenderInfoCache({}); // Clear cache
     isInitialLoadRef.current = true;
     if (!conversationId.toString().startsWith('temp-')) {
@@ -1427,71 +1649,125 @@ function ChatsPage() {
     }
   }, []);
 
-  const uploadFile = useCallback(
-    async (file, previewUrl) => {
+  const sendMediaMessage = useCallback(
+    async ({ file, type, previewUrl, caption }) => {
       if (!file) return;
 
       if (!selectedChat) {
-        alert('Please select a chat before uploading a file.');
+        toast.error('Please select a chat before sending media.');
+        return;
+      }
+
+      const conversationId = getConversationId(selectedChat);
+      if (!conversationId) {
+        toast.error('Invalid conversation.');
+        return;
+      }
+
+      const isPendingPv = selectedChat?.type === 'pv'
+        && conversationId.toString().startsWith('temp-');
+      if (isPendingPv) {
+        toast.error('Send a text message first to start the conversation.');
         return;
       }
 
       if (file.size > MAX_FILE_SIZE) {
-        alert('File size must be less than 5MB');
+        toast.error('File size must be less than 5MB.');
         return;
       }
 
+      const replyTo = replyingToMessage
+        ? {
+            messageId: getMessageId(replyingToMessage),
+            content: replyingToMessage?.content
+              || replyingToMessage?.text
+              || getMessagePreviewText(replyingToMessage),
+            sender: replyingToMessage?.sender,
+          }
+        : null;
+
+      setReplyingToMessage(null);
       setFilePreview(previewUrl);
       setSelectedFile(file);
       setIsUploading(true);
-      setUploadProgress(0);
+      setUploadProgress(10);
 
-      const reader = new FileReader();
-      reader.onloadend = async () => {
-        // Simulate upload progress
-        const interval = setInterval(() => {
-          setUploadProgress((prev) => {
-            if (prev >= 100) {
-              clearInterval(interval);
-              setIsUploading(false);
-              return 100;
-            }
-            return prev + 10;
-          });
-        }, 200);
-
-        try {
-          const response = await fetch('/api/v1/chat/upload', {
-            method: 'POST',
-            credentials: 'include',
-            headers: {
-              'content-type': 'application/json',
-            },
-            body: JSON.stringify({
-              chatId: selectedChat.id,
-              file: reader.result.split(',').pop(),
-            }),
-          });
-
-          if (!response.ok) {
-            if (response.status === 413) {
-              alert('File is too large.');
-            } else {
-              alert('Unable to upload the file right now.');
-            }
-          }
-        } catch (error) {
-          console.error('Upload failed:', error);
-          alert('Something went wrong uploading your file.');
-        } finally {
-          clearInterval(interval);
-          resetFileUploadState();
-        }
+      const optimisticId = `optimistic-${Date.now()}`;
+      const optimisticMessage = {
+        _id: optimisticId,
+        id: optimisticId,
+        conversation_id: conversationId,
+        sender: user?.id,
+        type,
+        content: caption || '',
+        created_at: new Date().toISOString(),
+        seen_by: {},
+        edited: false,
+        reply_to: replyTo,
+        local_preview: previewUrl,
+        file_name: file.name,
+        mime_type: file.type,
       };
 
-      reader.readAsDataURL(file);
+      animatedMessageIdsRef.current.add(optimisticId);
+      setMessages((prev) => [...prev, optimisticMessage]);
+      shouldAutoScrollRef.current = true;
+      scrollToBottom();
+
+      try {
+        setUploadProgress(35);
+        const uploadedUrl = await uploadMediaFile(file);
+        if (!uploadedUrl) {
+          throw new Error('Upload did not return a media url.');
+        }
+        setUploadProgress(70);
+
+        const response = await fetch('/api/v1/chat/messages/media', {
+          method: 'POST',
+          credentials: 'include',
+          headers: {
+            'content-type': 'application/json',
+          },
+          body: JSON.stringify({
+            conversation_id: conversationId,
+            type,
+            message_text: caption || '',
+            media_url: uploadedUrl,
+            file_name: file.name,
+            mime_type: file.type,
+            file_size: file.size,
+            reply_to: replyTo?.messageId || null,
+          }),
+        });
+
+        if (!response.ok) {
+          throw new Error('Unable to send media.');
+        }
+
+        const data = await response.json();
+        const serverMessage = data?.message;
+        const serverMessageId = getMessageId(serverMessage);
+        if (serverMessage && serverMessageId) {
+          setMessages((prev) =>
+            prev.map((m) => {
+              const mid = getMessageId(m);
+              if (mid === optimisticId) {
+                return serverMessage;
+              }
+              return m;
+            })
+          );
+        }
+      } catch (error) {
+        console.error('Failed to send media:', error);
+        toast.error('Unable to send media right now.');
+        setMessages((prev) => prev.filter((m) => getMessageId(m) !== optimisticId));
+      } finally {
+        setUploadProgress(100);
+        setTimeout(resetFileUploadState, 300);
+      }
     },
-    [resetFileUploadState, selectedChat]
+    [replyingToMessage, resetFileUploadState, scrollToBottom, selectedChat, user?.id]
   );
 
   // Handle file upload
@@ -1501,16 +1777,17 @@ function ChatsPage() {
       if (!file) return;
 
       const previewUrl = URL.createObjectURL(file);
-      await uploadFile(file, previewUrl);
+      const type = getMediaTypeFromFile(file);
+      await sendMediaMessage({ file, type, previewUrl });
       event.target.value = '';
     },
-    [uploadFile]
+    [sendMediaMessage]
   );
 
   const handleSendMedia = useCallback(
     async (media) => {
       if (!selectedChat) {
-        alert('Please select a chat before sending media.');
+        toast.error('Please select a chat before sending media.');
         return;
       }
 
@@ -1529,17 +1806,112 @@ function ChatsPage() {
         const file = new File([blob], `${media.name}.${extension}`, {
           type: blob.type || 'image/gif',
         });
-        const previewUrl = URL.createObjectURL(blob);
-        await uploadFile(file, previewUrl);
+        const previewUrl = mediaUrl;
+        const type = mediaTab === 'stickers' ? 'sticker' : 'gif';
+        await sendMediaMessage({ file, type, previewUrl });
       } catch (error) {
         console.error('Failed to send media:', error);
-        alert('Unable to send media right now.');
+        toast.error('Unable to send media right now.');
       } finally {
         setIsMediaPickerOpen(false);
       }
     },
-    [selectedChat, uploadFile]
+    [mediaTab, selectedChat, sendMediaMessage]
   );
+
+  const getRecorderMimeType = useCallback(() => {
+    if (typeof MediaRecorder === 'undefined' || !MediaRecorder.isTypeSupported) {
+      return '';
+    }
+    const options = [
+      'audio/webm;codecs=opus',
+      'audio/webm',
+      'audio/mp4',
+      'audio/mpeg',
+    ];
+    return options.find((type) => MediaRecorder.isTypeSupported(type)) || '';
+  }, []);
+
+  const startRecording = useCallback(async () => {
+    if (isRecording) return;
+
+    if (!window.isSecureContext) {
+      toast.error('Voice recording requires HTTPS or localhost.');
+      return;
+    }
+
+    if (!navigator.mediaDevices?.getUserMedia) {
+      toast.error('Voice recording is not supported in this browser.');
+      return;
+    }
+    if (typeof MediaRecorder === 'undefined') {
+      toast.error('Voice recording is not supported in this browser.');
+      return;
+    }
+
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      recordingStreamRef.current = stream;
+      const mimeType = getRecorderMimeType();
+      const recorder = mimeType ? new MediaRecorder(stream, { mimeType }) : new MediaRecorder(stream);
+      recordedChunksRef.current = [];
+
+      recorder.ondataavailable = (event) => {
+        if (event.data && event.data.size > 0) {
+          recordedChunksRef.current.push(event.data);
+        }
+      };
+
+      recorder.onstop = async () => {
+        const chunks = recordedChunksRef.current;
+        const resolvedMimeType = recorder.mimeType || mimeType || 'audio/webm';
+        const blob = new Blob(chunks, { type: resolvedMimeType });
+        recordedChunksRef.current = [];
+
+        if (recordingStreamRef.current) {
+          recordingStreamRef.current.getTracks().forEach((track) => track.stop());
+          recordingStreamRef.current = null;
+        }
+
+        if (blob.size === 0) {
+          return;
+        }
+
+        const file = new File(
+          [blob],
+          `voice-${Date.now()}.${resolvedMimeType.includes('mp4') ? 'm4a' : 'webm'}`,
+          { type: blob.type || resolvedMimeType }
+        );
+        const previewUrl = URL.createObjectURL(blob);
+        await sendMediaMessage({ file, type: 'voice', previewUrl });
+      };
+
+      mediaRecorderRef.current = recorder;
+      recorder.start();
+      setIsRecording(true);
+      setRecordingDuration(0);
+      recordingTimerRef.current = setInterval(() => {
+        setRecordingDuration((prev) => prev + 1);
+      }, 1000);
+    } catch (error) {
+      console.error('Unable to start recording:', error);
+      toast.error('Unable to access your microphone.');
+    }
+  }, [getRecorderMimeType, isRecording, sendMediaMessage]);
+
+  const stopRecording = useCallback(() => {
+    if (!mediaRecorderRef.current || mediaRecorderRef.current.state === 'inactive') {
+      return;
+    }
+
+    mediaRecorderRef.current.stop();
+    mediaRecorderRef.current = null;
+    setIsRecording(false);
+    if (recordingTimerRef.current) {
+      clearInterval(recordingTimerRef.current);
+      recordingTimerRef.current = null;
+    }
+  }, []);
 
 
 
@@ -1592,7 +1964,9 @@ function ChatsPage() {
   }, [wallpaperId]);
 
   const activeChatId = getConversationId(selectedChat);
-  const shouldRenderMessages = activeChatId && activeChatId === messagesConversationId;
+  const activeChatIdStr = activeChatId?.toString();
+  const messagesConversationIdStr = messagesConversationId?.toString();
+  const shouldRenderMessages = activeChatIdStr && activeChatIdStr === messagesConversationIdStr;
   const visibleMessages = shouldRenderMessages ? messages : [];
   const isActiveGroup = selectedChat?.type === 'group';
   const missingSenderInfo = isActiveGroup
@@ -1604,6 +1978,8 @@ function ChatsPage() {
       return !isMine && !senderInfoCache[senderIdStr];
     });
   const shouldHoldGroupMessages = isActiveGroup && missingSenderInfo;
+  const isPreviewImage = selectedFile?.type?.startsWith('image/');
+  const isPreviewVideo = selectedFile?.type?.startsWith('video/');
 
   return (
     <div className={styles.chatsPageContainer}>
@@ -1683,7 +2059,7 @@ function ChatsPage() {
                         {!isPrivateChat && isMyMessage && (
                           <span className={styles.youText}>You: </span>
                         )}
-                        {truncateMessage(chat.last_message.content)}
+                        {truncateMessage(getMessagePreviewText(chat.last_message))}
                       </p>
                     </div>
                     <div className={styles.chatInfoFooter}>
@@ -1839,10 +2215,18 @@ function ChatsPage() {
                   const isPrivateChat = selectedChat?.type === 'pv';
                   const isGroupChat = selectedChat?.type === 'group';
                   const replyPreview = message.reply_to || message.replyTo || message.reply_to_message;
+                  const mediaUrl = getMessageMediaUrl(message);
+                  const messageType = message.type || (mediaUrl ? 'file' : 'text');
+                  const resolvedMessageType = messageType === 'file'
+                    ? (getMediaTypeFromMime(message?.mime_type) || 'file')
+                    : messageType;
+                  const isMedia = Boolean(mediaUrl);
+                  const isMediaOnly = isMedia && !messageContent && !replyPreview
+                    && (resolvedMessageType === 'sticker' || resolvedMessageType === 'gif');
                   const isEmojiOnly = isEmojiOnlyMessage(messageContent);
-                  const shouldUseEmojiOnlyStyle = isEmojiOnly && !replyPreview && !(message.type === 'file' && message.file_url);
+                  const shouldUseEmojiOnlyStyle = isEmojiOnly && !replyPreview && !isMedia;
                   const replyPreviewText = truncateMessage(
-                    replyPreview?.content || replyPreview?.text || '',
+                    replyPreview?.content || replyPreview?.text || getMessagePreviewText(replyPreview),
                     80
                   );
                   
@@ -1919,7 +2303,7 @@ function ChatsPage() {
                       <div
                         className={`${styles.message} ${isMyMessage ? styles.sent : styles.received} ${
                           shouldUseEmojiOnlyStyle ? styles.emojiOnly : ''
-                        }`}
+                        } ${isMediaOnly ? styles.mediaOnly : ''}`}
                         data-message-type={isMyMessage ? 'sent' : 'received'}
                       >
                         {replyPreview && (
@@ -1949,11 +2333,40 @@ function ChatsPage() {
                           </div>
                         )}
                         
-                        {message.type === 'file' && message.file_url && (
-                          <img 
-                            src={message.file_url} 
-                            alt="File attachment" 
-                            className={styles.messageImage}
+                        {isMedia && (resolvedMessageType === 'video') && (
+                          <video
+                            className={`${styles.messageMedia} ${styles.messageMediaVideo}`}
+                            controls
+                            preload="metadata"
+                            playsInline
+                            onLoadedMetadata={() => {
+                              if (isInitialLoadRef.current) {
+                                scrollToBottom();
+                              }
+                            }}
+                          >
+                            <source src={mediaUrl} type={message?.mime_type || 'video/mp4'} />
+                          </video>
+                        )}
+                        {isMedia && (resolvedMessageType === 'voice' || resolvedMessageType === 'audio') && (
+                          <audio
+                            className={`${styles.messageMedia} ${styles.messageMediaAudio}`}
+                            controls
+                            preload="metadata"
+                            src={mediaUrl}
+                          />
+                        )}
+                        {isMedia && !['video', 'voice', 'audio'].includes(resolvedMessageType) && (
+                          <img
+                            src={mediaUrl}
+                            alt={resolvedMessageType}
+                            className={`${styles.messageMedia} ${
+                              resolvedMessageType === 'sticker'
+                                ? styles.messageMediaSticker
+                                : resolvedMessageType === 'gif'
+                                  ? styles.messageMediaGif
+                                  : styles.messageMediaImage
+                            }`}
                             onLoad={() => {
                               if (isInitialLoadRef.current) {
                                 scrollToBottom();
@@ -1998,12 +2411,25 @@ function ChatsPage() {
             {selectedFile && (
               <div className={styles.uploadProgress}>
                 <div className={styles.filePreviewContainer}>
-                  {filePreview && (
+                  {filePreview && isPreviewImage && (
                     <img
                       src={filePreview}
                       alt="Preview"
                       className={styles.filePreview}
                     />
+                  )}
+                  {filePreview && isPreviewVideo && (
+                    <video
+                      className={styles.filePreviewVideo}
+                      src={filePreview}
+                      muted
+                      playsInline
+                    />
+                  )}
+                  {(!filePreview || (!isPreviewImage && !isPreviewVideo)) && (
+                    <div className={styles.filePreviewFallback}>
+                      <FontAwesomeIcon icon={faFileSolid} />
+                    </div>
                   )}
                   <div className={styles.fileInfo}>
                     <span className={styles.selectedFileName}>{selectedFile.name}</span>
@@ -2028,7 +2454,9 @@ function ChatsPage() {
                     <p className={styles.replyBarTitle}>Replying to</p>
                     <p className={styles.replyBarText}>
                       {truncateMessage(
-                        replyingToMessage?.content || replyingToMessage?.text || '',
+                        replyingToMessage?.content
+                          || replyingToMessage?.text
+                          || getMessagePreviewText(replyingToMessage),
                         60
                       )}
                     </p>
@@ -2081,7 +2509,7 @@ function ChatsPage() {
                 type="file"
                 style={{ display: 'none' }}
                 onChange={handleFileChange}
-                accept="image/*"
+                accept="image/*,video/*,audio/*"
                 title="Maximum file size is 5MB"
               />
               <div className={styles.composer}>
@@ -2211,6 +2639,20 @@ function ChatsPage() {
                   </div>
                 )}
               </div>
+              {isRecording && (
+                <div className={styles.recordingIndicator}>
+                  <span className={styles.recordingDot} />
+                  <span className={styles.recordingTime}>{formatDuration(recordingDuration)}</span>
+                </div>
+              )}
+              <button
+                type="button"
+                className={`${styles.recordButton} ${isRecording ? styles.recordButtonActive : ''}`}
+                onClick={isRecording ? stopRecording : startRecording}
+                aria-label={isRecording ? 'Stop recording' : 'Record voice'}
+              >
+                <FontAwesomeIcon icon={isRecording ? faStop : faMicrophone} />
+              </button>
               {!editingMessage && (
                 <button type="button" className={styles.sendButton} onClick={handleSendMessage}>
                   <img src={sendIcon} alt="Send" className={styles.sendIcon} />

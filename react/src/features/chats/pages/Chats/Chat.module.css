@@ -159,7 +159,6 @@
     /* Solid background using app theme colors */
     background-color: var(--input-bg);
     transition: background-color 0.2s ease, transform 0.2s ease, box-shadow 0.2s ease;
-    animation: listItemIn 0.25s ease-out;
 }
 
 .chatItem:hover {
@@ -549,6 +548,18 @@
     box-shadow: 0 10px 20px rgba(0, 0, 0, 0.18);
 }
 
+.mediaOnly {
+    padding: 4px;
+    background: transparent !important;
+    box-shadow: none !important;
+}
+
+.mediaOnly.sent,
+.mediaOnly.received {
+    background: transparent !important;
+    box-shadow: none !important;
+}
+
 .emojiOnly {
     background: transparent !important;
     box-shadow: none !important;
@@ -627,6 +638,42 @@
     border-radius: 8px;
     margin-bottom: 4px;
     object-fit: cover;
+}
+
+.messageMedia {
+    max-width: 100%;
+    border-radius: 10px;
+    margin-bottom: 4px;
+    background: rgba(0, 0, 0, 0.15);
+}
+
+.messageMediaImage {
+    max-height: 320px;
+    object-fit: cover;
+}
+
+.messageMediaGif {
+    max-height: 280px;
+    object-fit: contain;
+    background: transparent;
+}
+
+.messageMediaSticker {
+    max-height: 190px;
+    object-fit: contain;
+    background: transparent;
+}
+
+.messageMediaVideo {
+    width: 320px;
+    max-width: 100%;
+    max-height: 320px;
+    object-fit: cover;
+}
+
+.messageMediaAudio {
+    width: 240px;
+    max-width: 100%;
 }
 
 .messageFooter {
@@ -1070,6 +1117,26 @@
     animation: previewPop 0.2s ease-out;
 }
 
+.filePreviewVideo {
+    width: 50px;
+    height: 50px;
+    border-radius: 4px;
+    object-fit: cover;
+}
+
+.filePreviewFallback {
+    width: 50px;
+    height: 50px;
+    border-radius: 4px;
+    background: rgba(255, 255, 255, 0.08);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--text-muted);
+    font-size: 18px;
+}
+
 .fileInfo {
     display: flex;
     flex-direction: column;
@@ -1150,6 +1217,59 @@
     transform: translateY(-1px);
     background: rgba(255, 255, 255, 0.12);
     border-color: rgba(45, 144, 228, 0.35);
+}
+
+.recordingIndicator {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 4px 8px;
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.06);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    color: var(--text-main);
+    font-size: 12px;
+}
+
+.recordingDot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: var(--error-color);
+    box-shadow: 0 0 8px rgba(255, 77, 77, 0.65);
+    animation: recordingPulse 1.1s ease-in-out infinite;
+}
+
+.recordingTime {
+    font-variant-numeric: tabular-nums;
+    letter-spacing: 0.4px;
+}
+
+.recordButton {
+    height: 40px;
+    width: 40px;
+    border-radius: 50%;
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    background: rgba(255, 255, 255, 0.06);
+    color: var(--text-main);
+    font-size: 16px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: transform 0.2s ease, background-color 0.2s ease, border-color 0.2s ease;
+}
+
+.recordButton:hover {
+    transform: translateY(-1px);
+    background: rgba(255, 255, 255, 0.12);
+    border-color: rgba(255, 77, 77, 0.5);
+}
+
+.recordButtonActive {
+    background: rgba(255, 77, 77, 0.18);
+    border-color: rgba(255, 77, 77, 0.55);
+    color: var(--error-color);
 }
 
 .mediaPicker {
@@ -1402,6 +1522,17 @@
     50% { box-shadow: 0 0 12px rgba(45, 144, 228, 0.4); }
 }
 
+@keyframes recordingPulse {
+    0%, 100% {
+        transform: scale(0.9);
+        opacity: 0.8;
+    }
+    50% {
+        transform: scale(1.15);
+        opacity: 1;
+    }
+}
+
 @media (prefers-reduced-motion: reduce) {
     .chatListSidebar,
     .chatMain,
@@ -1417,7 +1548,9 @@
     .progressFill,
     .mediaButton,
     .mediaPicker,
-    .emojiPicker {
+    .emojiPicker,
+    .recordButton,
+    .recordingDot {
         animation: none !important;
         transition: none !important;
     }

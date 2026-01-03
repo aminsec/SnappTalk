@@ -57,11 +57,16 @@ const SocketProvider = ({ children }) => {
       window.dispatchEvent(new CustomEvent('new_pv_conversation', { detail: payload }));
     };
 
+    const handleAnyEvent = (eventName, payload) => {
+      console.log('[socket]', eventName, payload);
+    };
+
     socket.on('connect', handleConnect);
     socket.on('disconnect', handleDisconnect);
     socket.on(SOCKET_EVENTS.AUTH_OK, handleAuthOk);
     socket.on(SOCKET_EVENTS.AUTH_ERROR, handleAuthError);
     socket.on('new_pv_conversation', handleNewPvConversation);
+    socket.onAny(handleAnyEvent);
 
     return () => {
       socket.off('connect', handleConnect);
@@ -69,6 +74,7 @@ const SocketProvider = ({ children }) => {
       socket.off(SOCKET_EVENTS.AUTH_OK, handleAuthOk);
       socket.off(SOCKET_EVENTS.AUTH_ERROR, handleAuthError);
       socket.off('new_pv_conversation', handleNewPvConversation);
+      socket.offAny(handleAnyEvent);
     };
   }, [user]);
 

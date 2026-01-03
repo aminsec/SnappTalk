@@ -1,6 +1,7 @@
 // Entry point of every ws connection
 import { Socket, Server } from "socket.io";
 import { handleNewPvConversationEvent } from "./events/new_pv_conversation.event";
+import { handleMessageSend } from "./events/messag.event";
 
 export function handleSocketConnection(socket: Socket, io: Server, onlineUsers: Map<string, string>): void{
   console.log('New client connected:', socket.id);
@@ -9,9 +10,8 @@ export function handleSocketConnection(socket: Socket, io: Server, onlineUsers: 
   onlineUsers.set(socket.userInfo.id, socket.id);
   
   // Listen for message from the client
-  socket.on('message', (data) => {
-    console.log(socket.rooms);
-    console.log('Message received:', data);
+  socket.on('message:send', (data) => {
+    handleMessageSend(socket, data);
   });
 
   //An event for creating new conversation

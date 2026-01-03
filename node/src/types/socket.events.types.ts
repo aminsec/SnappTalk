@@ -4,3 +4,8 @@ export interface NewPvConversationEVT {
     new_user_id: string,
     date?: Date
 }
+
+export interface MessageSendEVT {
+    message_text: string,
+    conversation_id: string
+}
