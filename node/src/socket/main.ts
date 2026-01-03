@@ -4,7 +4,6 @@ import { handleNewPvConversationEvent } from "./events/new_pv_conversation.event
 import { handleMessageSend } from "./events/messag.event";
 
 export function handleSocketConnection(socket: Socket, io: Server, onlineUsers: Map<string, string>): void{
-  console.log('New client connected:', socket.id);
 
   //Attaching user id as key and socket id as value to online users map to track user because we can not change socket.id
   onlineUsers.set(socket.userInfo.id, socket.id);

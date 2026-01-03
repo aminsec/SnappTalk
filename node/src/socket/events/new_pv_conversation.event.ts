@@ -7,6 +7,7 @@ import { createNewMessage } from "../../services/messages.services";
 export async function handleNewPvConversationEvent(socket: Socket, data: NewPvConversationEVT, onlineUsers: Map<string, string>, io: Server) {
     const requestedUserId = new ObjectId(socket.userInfo.id);
     const contactUserId = new ObjectId(data.new_user_id);
+    
     //Checking if there is a conversation with requested user id
     const [isThereConversation, error] = await checkIsThereConversation(requestedUserId, contactUserId);
 
