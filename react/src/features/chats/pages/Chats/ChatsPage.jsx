@@ -27,7 +27,6 @@ import toast from 'react-hot-toast';
 import { useSocket } from '@/shared/state/useSocket';
 import { SOCKET_EVENTS } from '@/shared/state/socketEvents';
 import sentIcon from "@/shared/assets/icons/sent.svg";
-import seenIcon from "@/shared/assets/icons/seen.svg";
 import sendIcon from "@/shared/assets/icons/sendIcon.svg";
 import bitcoinIcon from '@/shared/assets/images/mono/acn.svg';
 import coconutCocktailIcon from '@/shared/assets/images/mono/bank.svg';
@@ -340,7 +339,6 @@ function ChatsPage() {
       type: 'text',
       content,
       created_at: new Date().toISOString(),
-      seen_by: {},
       edited: false,
       reply_to: replyTo,
       status: 'pending',
@@ -383,7 +381,6 @@ function ChatsPage() {
           type: 'text',
           sender: user?.username || chat?.last_message?.sender || '',
           when: optimisticMessage.created_at,
-          seen: chat?.last_message?.seen ?? null,
         },
       };
 
@@ -790,7 +787,6 @@ function ChatsPage() {
         type: 'text',
         content: messageText,
         created_at: new Date().toISOString(),
-        seen_by: {},
         edited: false,
       };
 
@@ -831,7 +827,6 @@ function ChatsPage() {
             type: 'text',
             sender: payload?.senderUsername || payload?.sender || chat?.last_message?.sender || '',
             when: message.created_at,
-            seen: chat?.last_message?.seen ?? null,
           },
           unread_count: nextUnread,
         };
@@ -941,7 +936,6 @@ function ChatsPage() {
             type: message?.type ?? 'text',
             sender: payload?.senderUsername || payload?.sender || chat?.last_message?.sender || '',
             when: message?.created_at || new Date().toISOString(),
-            seen: chat?.last_message?.seen ?? null,
           },
         };
 
@@ -1019,27 +1013,6 @@ function ChatsPage() {
       setMessages((prev) => prev.filter((m) => getMessageId(m) !== messageId));
     };
 
-    const handleSeenUpdate = (payload) => {
-      const conversationId = payload?.conversationId || payload?.conversation_id;
-      const messageId = payload?.messageId;
-      const seenBy = payload?.seenBy;
-      if (!conversationId || !messageId || !seenBy) return;
-
-      if (activeConversationIdRef.current !== conversationId) {
-        return;
-      }
-
-      setMessages((prev) =>
-        prev.map((m) => {
-          if (getMessageId(m) !== messageId) return m;
-          return {
-            ...m,
-            seen_by: seenBy,
-          };
-        })
-      );
-    };
-
     const handleConversationDeleted = (payload) => {
       const conversationId = payload?.conversationId || payload?.conversation_id;
       if (!conversationId) return;
@@ -1104,7 +1077,6 @@ function ChatsPage() {
     socket.on(SOCKET_EVENTS.MESSAGE_SEND_ACK, handleMessageSendAck);
     socket.on(SOCKET_EVENTS.MESSAGE_UPDATED, handleMessageUpdated);
     socket.on(SOCKET_EVENTS.MESSAGE_DELETED, handleMessageDeleted);
-    socket.on(SOCKET_EVENTS.MESSAGE_SEEN_UPDATE, handleSeenUpdate);
     socket.on(SOCKET_EVENTS.CONVERSATION_DELETED, handleConversationDeleted);
     socket.on('message', handleGenericMessage);
     socket.on('error', handleMessageSendError);
@@ -1117,7 +1089,6 @@ function ChatsPage() {
       socket.off(SOCKET_EVENTS.MESSAGE_SEND_ACK, handleMessageSendAck);
       socket.off(SOCKET_EVENTS.MESSAGE_UPDATED, handleMessageUpdated);
       socket.off(SOCKET_EVENTS.MESSAGE_DELETED, handleMessageDeleted);
-      socket.off(SOCKET_EVENTS.MESSAGE_SEEN_UPDATE, handleSeenUpdate);
       socket.off(SOCKET_EVENTS.CONVERSATION_DELETED, handleConversationDeleted);
       socket.off('message', handleGenericMessage);
       socket.off('error', handleMessageSendError);
@@ -1151,8 +1122,6 @@ function ChatsPage() {
     socket.emit(SOCKET_EVENTS.CONVERSATION_JOIN, { conversationId: nextConversationIdStr });
     setUnreadCount(nextConversationIdStr, 0);
 
-    // Mark conversation as seen when opened (backend should translate to message-level seen updates)
-    socket.emit(SOCKET_EVENTS.MESSAGE_SEEN, { conversationId: nextConversationIdStr });
   }, [selectedChat, setUnreadCount, socket, socketStatus]);
 
   // Close menus when clicking outside
@@ -1531,7 +1500,6 @@ function ChatsPage() {
                 type: lastMessage.type || 'text',
                 content: lastMessage.content || '',
                 created_at: lastMessage.when || new Date().toISOString(),
-                seen_by: {},
                 edited: false,
               };
               setMessages([fallbackMessage]);
@@ -1688,14 +1656,6 @@ function ChatsPage() {
     const distanceFromBottom = container.scrollHeight - container.scrollTop - container.clientHeight;
     isNearBottomRef.current = distanceFromBottom < 120;
     isAtBottomRef.current = distanceFromBottom < 6;
-
-    // When user reaches bottom of active conversation, emit seen.
-    if (isAtBottomRef.current) {
-      const conversationId = activeConversationIdRef.current;
-      if (socket && socket.connected && conversationId) {
-        socket.emit(SOCKET_EVENTS.MESSAGE_SEEN, { conversationId });
-      }
-    }
 
     // if at absolute top, trigger immediately (no throttle) to avoid missing the final event
     const atAbsoluteTop = container.scrollTop <= 2;
@@ -1887,7 +1847,6 @@ function ChatsPage() {
           type: 'text',
           sender: user?.username || '',
           when: "",
-          seen: null,
         },
       };
 
@@ -1986,7 +1945,6 @@ function ChatsPage() {
         type,
         content: caption || '',
         created_at: new Date().toISOString(),
-        seen_by: {},
         edited: false,
         reply_to: replyTo,
         local_preview: previewUrl,
@@ -2353,17 +2311,6 @@ function ChatsPage() {
                       <span className={styles.timestamp}>
                         {convertISOtoLocal(chat.last_message.when)}
                       </span>
-                      {isPrivateChat && isMyMessage && (
-                        <span className={styles.seenIcon}>
-                          {chat.last_message.seen !== null && (
-                          <img 
-                              src={chat.last_message.seen ? seenIcon : sentIcon} 
-                              alt={chat.last_message.seen ? "Seen" : "Sent"}
-                              style={{ width: 16, height: 16 }} 
-                            />
-                          )}
-                        </span>
-                      )}
                       {unreadCount > 0 && (
                         <span className={styles.notificationBadge}>
                           <p>{unreadCount}</p>
@@ -2532,16 +2479,6 @@ function ChatsPage() {
                     ? (senderInfo?.profile_pic || message.sender_info?.profile_pic || null)
                     : null;
                   
-                  // Check seen status - API may provide 'seen' boolean or 'seen_by' object
-                  // For sent messages, check if recipient has seen it
-                  let messageSeen = null;
-                  if (message.seen !== undefined && message.seen !== null) {
-                    messageSeen = message.seen;
-                  } else if (message.seen_by && typeof message.seen_by === 'object') {
-                    // If seen_by is an object, check if it has any entries (someone has seen it)
-                    const seenByKeys = Object.keys(message.seen_by);
-                    messageSeen = seenByKeys.length > 0;
-                  }
                   const deliveryStatus = isMyMessage && isPrivateChat
                     ? (message?.status || 'sent')
                     : null;
@@ -2693,14 +2630,7 @@ function ChatsPage() {
                                   <FontAwesomeIcon icon={faCircleExclamation} />
                                 </button>
                               )}
-                              {deliveryStatus === 'sent' && messageSeen !== null && messageSeen !== undefined && (
-                                <img
-                                  src={messageSeen ? seenIcon : sentIcon}
-                                  alt={messageSeen ? "Seen" : "Sent"}
-                                  className={styles.seenIconImage}
-                                />
-                              )}
-                              {deliveryStatus === 'sent' && (messageSeen === null || messageSeen === undefined) && (
+                              {deliveryStatus === 'sent' && (
                                 <img
                                   src={sentIcon}
                                   alt="Sent"

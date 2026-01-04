@@ -15,9 +15,6 @@ export const SOCKET_EVENTS = {
   MESSAGE_RECEIVE: 'message:receive',
   NEW_PV_CONVERSATION: 'new_pv_conversation',
 
-  MESSAGE_SEEN: 'message:seen',
-  MESSAGE_SEEN_UPDATE: 'message:seen_update',
-
   MESSAGE_EDIT: 'message:edit',
   MESSAGE_UPDATED: 'message:updated',
 
