@@ -261,7 +261,7 @@ function ChatsPage() {
   const pendingSendMapRef = useRef({});
   const pendingAckTimersRef = useRef({});
   const recentReceiveRef = useRef({});
-  const lastSeenByConversationRef = useRef({});
+  const seenSentRef = useRef({});
   const messageAnimationTimeoutRef = useRef(null);
   const mediaRecorderRef = useRef(null);
   const recordedChunksRef = useRef([]);
@@ -718,31 +718,29 @@ function ChatsPage() {
     });
   }, []);
 
-  const emitSeenForLatest = useCallback(
-    (conversationId, messagesList) => {
+  const emitSeenForMessage = useCallback(
+    (message, conversationIdStr) => {
       if (!socket || !socket.connected) return;
-      if (!conversationId || !Array.isArray(messagesList)) return;
       if (selectedChatRef.current?.type !== 'pv') return;
+      if (!message || !conversationIdStr) return;
 
-      const conversationIdStr = conversationId.toString();
-      const lastSeenId = lastSeenByConversationRef.current[conversationIdStr];
+      const messageId = getMessageId(message);
+      if (!messageId) return;
+      if (message?.seen) return;
+
       const currentUserId = userRef.current?.id?.toString();
-      const lastIncoming = [...messagesList]
-        .reverse()
-        .find((msg) => {
-          const senderId = getSenderId(msg)?.toString();
-          return senderId && senderId !== currentUserId;
-        });
-      if (!lastIncoming) return;
+      const senderId = getSenderId(message)?.toString();
+      if (!senderId || senderId === currentUserId) return;
 
-      const messageId = getMessageId(lastIncoming);
-      if (!messageId || messageId === lastSeenId) return;
+      const seenSet = seenSentRef.current[conversationIdStr] || new Set();
+      if (seenSet.has(messageId)) return;
 
       socket.emit(SOCKET_EVENTS.SEEN_SEND, {
         conversation_id: conversationIdStr,
         message_id: messageId,
       });
-      lastSeenByConversationRef.current[conversationIdStr] = messageId;
+      seenSet.add(messageId);
+      seenSentRef.current[conversationIdStr] = seenSet;
     },
     [socket]
   );
@@ -961,6 +959,10 @@ function ChatsPage() {
           getMessageId(m) === messageId ? { ...m, seen: true } : m
         )
       );
+      const conversationIdStr = conversationId.toString();
+      const seenSet = seenSentRef.current[conversationIdStr] || new Set();
+      seenSet.add(messageId);
+      seenSentRef.current[conversationIdStr] = seenSet;
     };
 
     const handleMessageNew = (payload) => {
@@ -1158,7 +1160,7 @@ function ChatsPage() {
         clearTimeout(messageAnimationTimeoutRef.current);
       }
     };
-  }, [emitSeenForLatest, setUnreadCount, socket, refreshContacts]);
+  }, [emitSeenForMessage, setUnreadCount, socket, refreshContacts]);
 
   useEffect(() => {
     const nextConversationId = getConversationId(selectedChat);
@@ -1712,9 +1714,6 @@ function ChatsPage() {
     const distanceFromBottom = container.scrollHeight - container.scrollTop - container.clientHeight;
     isNearBottomRef.current = distanceFromBottom < 120;
     isAtBottomRef.current = distanceFromBottom < 6;
-    if (isAtBottomRef.current) {
-      emitSeenForLatest(activeConversationIdRef.current, messages);
-    }
 
     // if at absolute top, trigger immediately (no throttle) to avoid missing the final event
     const atAbsoluteTop = container.scrollTop <= 2;
@@ -1754,7 +1753,7 @@ function ChatsPage() {
     }
 
     previousTopRef.current = container.scrollTop;
-  }, [emitSeenForLatest, isLoadingMessages, loadOlderMessages, messages]);
+  }, [isLoadingMessages, loadOlderMessages]);
 
   // Handle scroll position after messages update
   useLayoutEffect(() => {
@@ -1783,11 +1782,42 @@ function ChatsPage() {
   useEffect(() => {
     const container = messagesContainerRef.current;
     if (!container) return;
-    const distanceFromBottom = container.scrollHeight - container.scrollTop - container.clientHeight;
-    if (distanceFromBottom < 6) {
-      emitSeenForLatest(activeConversationIdRef.current, messages);
-    }
-  }, [emitSeenForLatest, messages, selectedChat]);
+
+    const conversationIdStr = activeConversationIdRef.current?.toString();
+    if (!conversationIdStr) return;
+
+    const messageById = new Map(
+      messages.map((msg) => [getMessageId(msg)?.toString(), msg]).filter(([id]) => id)
+    );
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((entry) => {
+          if (!entry.isIntersecting) return;
+          const messageId = entry.target.getAttribute('data-message-id');
+          if (!messageId) return;
+          const message = messageById.get(messageId);
+          if (!message) return;
+          emitSeenForMessage(message, conversationIdStr);
+        });
+      },
+      {
+        root: container,
+        threshold: 0.6,
+      }
+    );
+
+    messageRefs.current.forEach((node, key) => {
+      if (node && key) {
+        node.setAttribute('data-message-id', key);
+        observer.observe(node);
+      }
+    });
+
+    return () => {
+      observer.disconnect();
+    };
+  }, [emitSeenForMessage, messages, selectedChat]);
 
   // Filter chats based on search query
   const filteredChats = useMemo(() => {
