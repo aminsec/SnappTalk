@@ -18,9 +18,9 @@ export async function getUserConversations(userInfo: ProtectedUserInfo): Promise
 
         //Attaching contact userinfo for pv types of conversations
         for(let index in conversations){
+            //Extracting contact userid by checking !userid
             var contactId = (conversations[index].members[0]).toString() !== userInfo.id ? conversations[index].members[0].toString() : conversations[index].members[1].toString();
             if(conversations[index].type === "pv" && conversations[index].members){    
-                 //Extracting contact userid by checking !userid
                 const [contactUserInfo, error] = await getUserInfoById(contactId);
                 if(error){
                     console.log(error)

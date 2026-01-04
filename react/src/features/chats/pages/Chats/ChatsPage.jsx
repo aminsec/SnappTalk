@@ -158,6 +158,41 @@ const getSenderId = (message) =>
   || message?.sender
   || message?.user_id
   || message?.from_user_id;
+const getSeenByMap = (message) => {
+  const seenBy = message?.seen_by || message?.seenBy;
+  if (!seenBy || typeof seenBy !== 'object') return null;
+  return seenBy;
+};
+const hasSeenByOtherUser = (seenBy, currentUserId) =>
+  Object.keys(seenBy || {}).some((key) => key && key !== currentUserId && key !== 'sender');
+const resolveMessageSeen = (message, chat, currentUserId) => {
+  if (typeof message?.seen === 'boolean') return message.seen;
+  const seenBy = getSeenByMap(message);
+  if (!seenBy || !currentUserId) return false;
+
+  const senderId = getSenderId(message)?.toString();
+  const isMine = senderId && senderId === currentUserId;
+
+  if (chat?.type === 'pv') {
+    if (isMine) {
+      const contactId = (chat?.contact_info?._id || chat?.contact_info?.id)?.toString();
+      if (contactId && Object.prototype.hasOwnProperty.call(seenBy, contactId)) {
+        return true;
+      }
+      return hasSeenByOtherUser(seenBy, currentUserId);
+    }
+    return Boolean(seenBy[currentUserId]);
+  }
+
+  if (isMine) {
+    return hasSeenByOtherUser(seenBy, currentUserId);
+  }
+  return Boolean(seenBy[currentUserId]);
+};
+const normalizeMessage = (message, chat, currentUserId) => ({
+  ...message,
+  seen: resolveMessageSeen(message, chat, currentUserId),
+});
 
 const fileToBase64 = (file) => new Promise((resolve, reject) => {
   const reader = new FileReader();
@@ -1523,6 +1558,10 @@ function ChatsPage() {
         if (activeConversationId !== conversationId) {
           return;
         }
+        const currentUserId = userRef.current?.id?.toString();
+        const normalizedFetchedMessages = sortedFetchedMessages.map((message) =>
+          normalizeMessage(message, selectedChatRef.current, currentUserId)
+        );
 
         if (append) {
           // Prepend older messages to the beginning
@@ -1531,14 +1570,14 @@ function ChatsPage() {
             const existingIds = new Set(
               prevMessages.map((msg) => (msg._id || msg.id)?.toString()).filter(Boolean)
             );
-            const newMessages = sortedFetchedMessages.filter((msg) => {
+            const newMessages = normalizedFetchedMessages.filter((msg) => {
               const msgId = (msg._id || msg.id)?.toString();
               return msgId && !existingIds.has(msgId);
             });
             return [...newMessages, ...prevMessages];
           });
           flushPendingMessages(conversationId);
-          if (sortedFetchedMessages.length === 0) {
+          if (normalizedFetchedMessages.length === 0) {
             pendingPrependRef.current = false;
             previousScrollHeightRef.current = 0;
             previousScrollTopRef.current = 0;
@@ -1565,7 +1604,7 @@ function ChatsPage() {
               setMessages([]);
             }
           } else {
-            setMessages(sortedFetchedMessages);
+            setMessages(normalizedFetchedMessages);
           }
           flushPendingMessages(conversationId);
           isInitialLoadRef.current = true;

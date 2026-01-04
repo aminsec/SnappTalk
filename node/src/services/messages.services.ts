@@ -63,7 +63,7 @@ export async function createNewMessage(conversationId: ObjectId, sender: ObjectI
     }
 };
 
-export async function seenMessageById(message_id: ObjectId, conversation_id: ObjectId): Promise<[Boolean | null, ErrorResponse | null]> {
+export async function seenMessageById(message_id: ObjectId, conversation_id: ObjectId, userid: string): Promise<[Boolean | null, ErrorResponse | null]> {
     try {
         const messagesCollection = await getMessagesCollection();
         const updateResult = messagesCollection.updateOne({
@@ -71,7 +71,7 @@ export async function seenMessageById(message_id: ObjectId, conversation_id: Obj
             _id: message_id,
         }, {
             $set: {
-                seen: true
+                [`seen_by.${userid}`]: new Date()
             }
         });
     

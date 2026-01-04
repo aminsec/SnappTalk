@@ -47,7 +47,7 @@ export async function handleSeen(socket: Socket, data: MessageSeenEVT) {
 
     //This controls access to conversaion 
     if(socket.rooms.has(conversation_id)){
-        const [_, error] = await seenMessageById(new ObjectId(message_id), new ObjectId(conversation_id));
+        const [_, error] = await seenMessageById(new ObjectId(message_id), new ObjectId(conversation_id), socket.userInfo.id.toString());
         if(error){
             socket.emit("seen:error", error);
             return;
