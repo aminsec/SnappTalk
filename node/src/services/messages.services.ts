@@ -14,6 +14,7 @@ export async function getMessageById(messageId: ObjectId) {
 
 export async function getConversationMessagesByLimitedDate(conversationId: ObjectId, deletedConversationDate: string, limit: number, offset: number): Promise<[Message[] | null, ErrorResponse | null]> {
     try {
+        console.log(deletedConversationDate)
         const messagesCollection = await getMessagesCollection();
         const messages = await messagesCollection.find({
             conversation_id: conversationId,
@@ -45,7 +46,7 @@ export async function createNewMessage(conversationId: ObjectId, sender: ObjectI
             attachments: attachments,
             seen_by: {sender: new Date()},
             edited: false,
-            created_at: new Date().toISOString()
+            created_at: new Date()
         });
 
         if(message.acknowledged === true){

@@ -7,6 +7,7 @@ import { createNewMessage } from "../../services/messages.services";
 export async function handleNewPvConversationEvent(socket: Socket, data: NewPvConversationEVT, onlineUsers: Map<string, string>, io: Server) {
     const requestedUserId = new ObjectId(socket.userInfo.id);
     const contactUserId = new ObjectId(data.new_user_id);
+    const { track_id } = data;
     
     //Checking if there is a conversation with requested user id
     const [isThereConversation, error] = await checkIsThereConversation(requestedUserId, contactUserId);
@@ -21,7 +22,7 @@ export async function handleNewPvConversationEvent(socket: Socket, data: NewPvCo
         return;
     }
 
-    //Creating new conversation                                                                      /*Temporary id for now*/
+    //Creating new conversation                                                                 /*Temporary id for now*/
     const [newPvConversationId, err] = await createNewPvConversation(requestedUserId, contactUserId, new ObjectId());
 
     if(err){
@@ -53,8 +54,9 @@ export async function handleNewPvConversationEvent(socket: Socket, data: NewPvCo
             const targetSocket = io.sockets.sockets.get(targetSocketId) as Socket; 
             targetSocket?.join(newPvConversationId.toString());
             targetSocket?.emit("new_pv_conversation", {conversation_id: newPvConversationId.toString()});
-            socket.to(newPvConversationId.toString()).emit("message", {message_id: newMessageId, content: data.message_text, sender: socket.userInfo.username, when: new Date().toISOString()});
+            socket.to(newPvConversationId.toString()).emit("message:receive", {conversation_id: newPvConversationId.toString(), message_text: data.message_text, sender_info: socket.userInfo, when: Date.now()});
             socket.emit("message", {message: "Conversation created", conversationId: newPvConversationId.toString()});
+            socket.emit("message:send:ack", {message_id: newMessageId, track_id});
         }
     }
     

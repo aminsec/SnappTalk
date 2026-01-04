@@ -15,6 +15,8 @@ import {
   faCheck,
   faXmark,
   faReply,
+  faClock,
+  faCircleExclamation,
   faMicrophone,
   faStop,
 } from '@fortawesome/free-solid-svg-icons';
@@ -244,6 +246,7 @@ function ChatsPage() {
   const [isRecording, setIsRecording] = useState(false);
   const [recordingDuration, setRecordingDuration] = useState(0);
   const [randomIcon, setRandomIcon] = useState(null);
+  const [lastAnimatedMessageId, setLastAnimatedMessageId] = useState(null);
   const optionsMenuRef = useRef(null);
   const chatMenuRef = useRef(null);
   const mediaPickerRef = useRef(null);
@@ -255,12 +258,17 @@ function ChatsPage() {
   const animatedMessageIdsRef = useRef(new Set());
   const pendingPvRef = useRef(null);
   const pendingMessagesRef = useRef({});
+  const pendingSendMapRef = useRef({});
+  const pendingAckTimersRef = useRef({});
+  const recentReceiveRef = useRef({});
+  const messageAnimationTimeoutRef = useRef(null);
   const mediaRecorderRef = useRef(null);
   const recordedChunksRef = useRef([]);
   const recordingTimerRef = useRef(null);
   const recordingStreamRef = useRef(null);
 
   const [unreadCounts, setUnreadCounts] = useState({});
+  const unreadCountsRef = useRef({});
 
   const isAtBottomRef = useRef(false);
   
@@ -335,9 +343,31 @@ function ChatsPage() {
       seen_by: {},
       edited: false,
       reply_to: replyTo,
+      status: 'pending',
     };
 
     animatedMessageIdsRef.current.add(optimisticId);
+    setLastAnimatedMessageId(optimisticId);
+    if (messageAnimationTimeoutRef.current) {
+      clearTimeout(messageAnimationTimeoutRef.current);
+    }
+    messageAnimationTimeoutRef.current = setTimeout(() => {
+      setLastAnimatedMessageId(null);
+    }, 600);
+    pendingSendMapRef.current[optimisticId] = {
+      tempId: optimisticId,
+      conversationId: conversationId.toString(),
+    };
+    if (pendingAckTimersRef.current[optimisticId]) {
+      clearTimeout(pendingAckTimersRef.current[optimisticId]);
+    }
+    pendingAckTimersRef.current[optimisticId] = setTimeout(() => {
+      setMessages((prev) =>
+        prev.map((m) =>
+          getMessageId(m) === optimisticId ? { ...m, status: 'error' } : m
+        )
+      );
+    }, 60000);
 
     const conversationIdStr = conversationId.toString();
     setContacts((prev) => {
@@ -387,6 +417,7 @@ function ChatsPage() {
             new_user_id: contactUserId,
             message_text: content,
             date: new Date().toISOString(),
+            track_id: optimisticId,
           },
           (ack) => {
             if (!ack?.ok) {
@@ -445,6 +476,7 @@ function ChatsPage() {
         {
           conversation_id: conversationId,
           message_text: content,
+          track_id: optimisticId,
         }
       );
     } catch (err) {
@@ -533,6 +565,49 @@ function ChatsPage() {
     setMessageContextMenu(null);
   }, []);
 
+  const handleResendMessage = useCallback((message) => {
+    const conversationId = message?.conversation_id;
+    const content = message?.content || message?.text;
+    if (!conversationId || !content) {
+      toast.error('Unable to resend message.');
+      return;
+    }
+
+    if (!socket || !socket.connected) {
+      toast.error('Not connected.');
+      return;
+    }
+
+    const messageId = getMessageId(message);
+    if (messageId) {
+      setMessages((prev) =>
+        prev.map((m) =>
+          getMessageId(m) === messageId ? { ...m, status: 'pending' } : m
+        )
+      );
+      pendingSendMapRef.current[messageId] = {
+        tempId: messageId,
+        conversationId: conversationId.toString(),
+      };
+      if (pendingAckTimersRef.current[messageId]) {
+        clearTimeout(pendingAckTimersRef.current[messageId]);
+      }
+      pendingAckTimersRef.current[messageId] = setTimeout(() => {
+        setMessages((prev) =>
+          prev.map((m) =>
+            getMessageId(m) === messageId ? { ...m, status: 'error' } : m
+          )
+        );
+      }, 60000);
+    }
+
+    socket.emit(SOCKET_EVENTS.MESSAGE_SEND, {
+      conversation_id: conversationId,
+      message_text: content,
+      track_id: messageId,
+    });
+  }, [socket]);
+
   const handleDeleteConversation = useCallback(() => {
     const conversationId = getConversationId(selectedChat);
     if (!conversationId) return;
@@ -569,8 +644,30 @@ function ChatsPage() {
 
       if (response.ok) {
         const data = await response.json();
-        setContacts(data.conversations || []);
-        return data.conversations || [];
+        const next = (data.conversations || []).map((chat) => {
+          const id = getConversationId(chat)?.toString();
+          const cachedUnread = id ? unreadCountsRef.current[id] : 0;
+          const serverUnread = chat.unread_count || 0;
+          return {
+            ...chat,
+            unread_count: Math.max(serverUnread, cachedUnread),
+          };
+        });
+        setContacts(next);
+        setUnreadCounts(() => {
+          const merged = { ...unreadCountsRef.current };
+          next.forEach((chat) => {
+            const id = getConversationId(chat)?.toString();
+            if (!id) return;
+            const unread = chat.unread_count || 0;
+            if (unread > (merged[id] || 0)) {
+              merged[id] = unread;
+            }
+          });
+          unreadCountsRef.current = merged;
+          return merged;
+        });
+        return next;
       }
     } catch (error) {
       console.error('Failed to refresh conversations:', error);
@@ -602,6 +699,24 @@ function ChatsPage() {
   useEffect(() => {
     hasMoreMessagesRef.current = hasMoreMessages;
   }, [hasMoreMessages]);
+
+  useEffect(() => {
+    unreadCountsRef.current = unreadCounts;
+  }, [unreadCounts]);
+
+  const setUnreadCount = useCallback((conversationIdStr, updater) => {
+    if (!conversationIdStr) return;
+    setUnreadCounts((prev) => {
+      const current = prev[conversationIdStr] || 0;
+      const nextValue = typeof updater === 'function' ? updater(current) : updater;
+      const next = {
+        ...prev,
+        [conversationIdStr]: Math.max(0, nextValue),
+      };
+      unreadCountsRef.current = next;
+      return next;
+    });
+  }, []);
   
   // Cache for sender info in group chats (senderId -> {username, profile_pic})
   const [senderInfoCache, setSenderInfoCache] = useState({});
@@ -627,6 +742,27 @@ function ChatsPage() {
       console.log('[socket]', eventName, payload);
     };
 
+    const storeRecentReceive = (conversationIdStr, messageText) => {
+      if (!conversationIdStr || !messageText) return;
+      const now = Date.now();
+      const list = recentReceiveRef.current[conversationIdStr] || [];
+      recentReceiveRef.current[conversationIdStr] = [...list, { text: messageText, ts: now }]
+        .filter((item) => now - item.ts < 4000);
+    };
+
+    const hasRecentReceive = (conversationIdStr, messageText) => {
+      if (!conversationIdStr || !messageText) return false;
+      const now = Date.now();
+      const list = recentReceiveRef.current[conversationIdStr] || [];
+      const match = list.some((item) => item.text === messageText && now - item.ts < 4000);
+      if (!match) {
+        recentReceiveRef.current[conversationIdStr] = list.filter(
+          (item) => now - item.ts < 4000
+        );
+      }
+      return match;
+    };
+
     const handleMessageReceive = (payload) => {
       const conversationId = payload?.conversation_id || payload?.conversationId;
       const messageText = payload?.message_text || payload?.message || '';
@@ -634,8 +770,12 @@ function ChatsPage() {
         return;
       }
       const conversationIdStr = conversationId?.toString();
+      if (hasRecentReceive(conversationIdStr, messageText)) {
+        return;
+      }
+      storeRecentReceive(conversationIdStr, messageText);
 
-      const messageId = payload?.message_id || `receive-${Date.now()}`;
+    const messageId = payload?.message_id || `receive-${Date.now()}`;
       const messageSender = payload?.sender_id
         || payload?.sender
         || payload?.from_user_id
@@ -654,19 +794,36 @@ function ChatsPage() {
         edited: false,
       };
 
-      pendingMessagesRef.current[conversationIdStr] = [
-        ...(pendingMessagesRef.current[conversationIdStr] || []),
-        message,
-      ];
+    pendingMessagesRef.current[conversationIdStr] = [
+      ...(pendingMessagesRef.current[conversationIdStr] || []),
+      message,
+    ];
+    animatedMessageIdsRef.current.add(messageId);
+    setLastAnimatedMessageId(messageId);
+    if (messageAnimationTimeoutRef.current) {
+      clearTimeout(messageAnimationTimeoutRef.current);
+    }
+    messageAnimationTimeoutRef.current = setTimeout(() => {
+      setLastAnimatedMessageId(null);
+    }, 600);
+
+      const selectedConversationId = getConversationId(selectedChatRef.current);
+      const selectedConversationIdStr = selectedConversationId?.toString();
+      const isActiveConversation = selectedConversationIdStr && selectedConversationIdStr === conversationIdStr;
+      let isMissingInList = false;
 
       setContacts((prev) => {
         const next = [...prev];
         const idx = next.findIndex(
           (c) => getConversationId(c)?.toString() === conversationIdStr
         );
-        if (idx === -1) return prev;
+        if (idx === -1) {
+          isMissingInList = true;
+          return prev;
+        }
 
         const chat = next[idx];
+        const nextUnread = isActiveConversation ? 0 : (chat?.unread_count || 0) + 1;
         next[idx] = {
           ...chat,
           last_message: {
@@ -676,6 +833,7 @@ function ChatsPage() {
             when: message.created_at,
             seen: chat?.last_message?.seen ?? null,
           },
+          unread_count: nextUnread,
         };
 
         const [moved] = next.splice(idx, 1);
@@ -683,21 +841,77 @@ function ChatsPage() {
         return next;
       });
 
-      const selectedConversationId = getConversationId(selectedChatRef.current);
-      const selectedConversationIdStr = selectedConversationId?.toString();
-      if (selectedConversationIdStr && selectedConversationIdStr === conversationIdStr) {
+      if (isMissingInList) {
+        setUnreadCount(conversationIdStr, (count) => count + 1);
+        refreshContacts();
+        return;
+      }
+
+      if (isActiveConversation) {
         setMessagesConversationId(conversationIdStr);
         animatedMessageIdsRef.current.add(messageId);
         flushPendingMessages(conversationIdStr);
         if (isNearBottomRef.current) {
           shouldAutoScrollRef.current = true;
         }
+        setUnreadCount(conversationIdStr, 0);
       } else {
-        setUnreadCounts((prev) => ({
-          ...prev,
-          [conversationIdStr]: (prev[conversationIdStr] || 0) + 1,
-        }));
+        setUnreadCount(conversationIdStr, (count) => count + 1);
       }
+    };
+
+    const handleMessageSendAck = (payload) => {
+      const messageId = payload?.message_id || payload?.messageId;
+      const trackId = payload?.track_id || payload?.trackId;
+      if (!messageId || !trackId) return;
+
+      const pending = pendingSendMapRef.current[trackId];
+      if (!pending?.tempId) return;
+      delete pendingSendMapRef.current[trackId];
+      if (pendingAckTimersRef.current[pending.tempId]) {
+        clearTimeout(pendingAckTimersRef.current[pending.tempId]);
+        delete pendingAckTimersRef.current[pending.tempId];
+      }
+      animatedMessageIdsRef.current.add(messageId);
+      setLastAnimatedMessageId(messageId);
+      if (messageAnimationTimeoutRef.current) {
+        clearTimeout(messageAnimationTimeoutRef.current);
+      }
+      messageAnimationTimeoutRef.current = setTimeout(() => {
+        setLastAnimatedMessageId(null);
+      }, 600);
+
+      setMessages((prev) =>
+        prev.map((m) => {
+          const mid = getMessageId(m);
+          if (mid === pending.tempId) {
+            return {
+              ...m,
+              _id: messageId,
+              id: messageId,
+              status: 'sent',
+            };
+          }
+          return m;
+        })
+      );
+    };
+
+    const handleMessageSendError = (payload) => {
+      const trackId = payload?.track_id || payload?.trackId;
+      if (!trackId) return;
+      const pending = pendingSendMapRef.current[trackId];
+      if (!pending?.tempId) return;
+      delete pendingSendMapRef.current[trackId];
+      if (pendingAckTimersRef.current[pending.tempId]) {
+        clearTimeout(pendingAckTimersRef.current[pending.tempId]);
+        delete pendingAckTimersRef.current[pending.tempId];
+      }
+      setMessages((prev) =>
+        prev.map((m) =>
+          getMessageId(m) === pending.tempId ? { ...m, status: 'error' } : m
+        )
+      );
     };
 
     const handleMessageNew = (payload) => {
@@ -705,6 +919,11 @@ function ChatsPage() {
       const conversationId = payload?.conversationId || payload?.conversation_id || message?.conversation_id;
       const messageId = getMessageId(message);
       if (!message || !conversationId || !messageId) {
+        return;
+      }
+      const conversationIdStr = conversationId?.toString();
+      const messageText = message?.content || message?.text || '';
+      if (hasRecentReceive(conversationIdStr, messageText)) {
         return;
       }
 
@@ -732,21 +951,46 @@ function ChatsPage() {
       });
 
       const activeConversationId = activeConversationIdRef.current;
-      if (activeConversationId && activeConversationId === conversationId) {
+      if (activeConversationId && activeConversationId.toString() === conversationIdStr) {
         animatedMessageIdsRef.current.add(messageId);
         setMessages((prev) => {
           const exists = prev.some((m) => getMessageId(m) === messageId);
           if (exists) return prev;
-          return [...prev, message];
+          const messageSenderId = getSenderId(message)?.toString();
+          const messageTime = new Date(message?.created_at || message?.when || 0).getTime();
+          const replaced = prev.map((m) => {
+            const mid = getMessageId(m)?.toString() || '';
+            if (!mid.startsWith('receive-')) return m;
+            const senderId = getSenderId(m)?.toString();
+            if (!senderId || senderId !== messageSenderId) return m;
+            const content = m?.content || m?.text || '';
+            if (content !== messageText) return m;
+            const mTime = new Date(m?.created_at || m?.when || 0).getTime();
+            if (messageTime && mTime && Math.abs(messageTime - mTime) > 60000) return m;
+            return message;
+          });
+          const didReplace = replaced.some((m) => getMessageId(m) === messageId);
+          return didReplace ? replaced : [...replaced, message];
         });
+        const pending = pendingMessagesRef.current[conversationIdStr] || [];
+        if (pending.length > 0) {
+          pendingMessagesRef.current[conversationIdStr] = pending.filter((m) => {
+            const senderId = getSenderId(m)?.toString();
+            const content = m?.content || m?.text || '';
+            if (!senderId || senderId !== getSenderId(message)?.toString()) return true;
+            if (content !== messageText) return true;
+            const mTime = new Date(m?.created_at || m?.when || 0).getTime();
+            const messageTime = new Date(message?.created_at || message?.when || 0).getTime();
+            if (messageTime && mTime && Math.abs(messageTime - mTime) > 60000) return true;
+            return false;
+          });
+        }
         if (isNearBottomRef.current) {
           shouldAutoScrollRef.current = true;
         }
       } else {
-        setUnreadCounts((prev) => ({
-          ...prev,
-          [conversationId]: (prev[conversationId] || 0) + 1,
-        }));
+        const conversationIdStr = conversationId?.toString();
+        setUnreadCount(conversationIdStr, (count) => count + 1);
       }
     };
 
@@ -857,28 +1101,37 @@ function ChatsPage() {
 
     socket.on(SOCKET_EVENTS.MESSAGE_NEW, handleMessageNew);
     socket.on(SOCKET_EVENTS.MESSAGE_RECEIVE, handleMessageReceive);
+    socket.on(SOCKET_EVENTS.MESSAGE_SEND_ACK, handleMessageSendAck);
     socket.on(SOCKET_EVENTS.MESSAGE_UPDATED, handleMessageUpdated);
     socket.on(SOCKET_EVENTS.MESSAGE_DELETED, handleMessageDeleted);
     socket.on(SOCKET_EVENTS.MESSAGE_SEEN_UPDATE, handleSeenUpdate);
     socket.on(SOCKET_EVENTS.CONVERSATION_DELETED, handleConversationDeleted);
     socket.on('message', handleGenericMessage);
+    socket.on('error', handleMessageSendError);
     socket.on(SOCKET_EVENTS.NEW_PV_CONVERSATION, handleNewPvConversation);
     socket.onAny(handleAnyEvent);
 
     return () => {
       socket.off(SOCKET_EVENTS.MESSAGE_NEW, handleMessageNew);
       socket.off(SOCKET_EVENTS.MESSAGE_RECEIVE, handleMessageReceive);
+      socket.off(SOCKET_EVENTS.MESSAGE_SEND_ACK, handleMessageSendAck);
       socket.off(SOCKET_EVENTS.MESSAGE_UPDATED, handleMessageUpdated);
       socket.off(SOCKET_EVENTS.MESSAGE_DELETED, handleMessageDeleted);
       socket.off(SOCKET_EVENTS.MESSAGE_SEEN_UPDATE, handleSeenUpdate);
       socket.off(SOCKET_EVENTS.CONVERSATION_DELETED, handleConversationDeleted);
       socket.off('message', handleGenericMessage);
+      socket.off('error', handleMessageSendError);
       socket.off(SOCKET_EVENTS.NEW_PV_CONVERSATION, handleNewPvConversation);
       socket.offAny(handleAnyEvent);
       refreshTimeoutsRef.current.forEach((timeoutId) => clearTimeout(timeoutId));
       refreshTimeoutsRef.current = [];
+      Object.values(pendingAckTimersRef.current).forEach((timeoutId) => clearTimeout(timeoutId));
+      pendingAckTimersRef.current = {};
+      if (messageAnimationTimeoutRef.current) {
+        clearTimeout(messageAnimationTimeoutRef.current);
+      }
     };
-  }, [socket, refreshContacts]);
+  }, [setUnreadCount, socket, refreshContacts]);
 
   useEffect(() => {
     const nextConversationId = getConversationId(selectedChat);
@@ -896,11 +1149,11 @@ function ChatsPage() {
     }
 
     socket.emit(SOCKET_EVENTS.CONVERSATION_JOIN, { conversationId: nextConversationIdStr });
-    setUnreadCounts((prev) => ({ ...prev, [nextConversationIdStr]: 0 }));
+    setUnreadCount(nextConversationIdStr, 0);
 
     // Mark conversation as seen when opened (backend should translate to message-level seen updates)
     socket.emit(SOCKET_EVENTS.MESSAGE_SEEN, { conversationId: nextConversationIdStr });
-  }, [selectedChat, socket, socketStatus]);
+  }, [selectedChat, setUnreadCount, socket, socketStatus]);
 
   // Close menus when clicking outside
   useEffect(() => {
@@ -1148,6 +1401,21 @@ function ChatsPage() {
 
     pendingMessagesRef.current[conversationIdStr] = [];
     setMessages((prev) => {
+      const makeSignature = (msg) => {
+        const senderId = getSenderId(msg)?.toString() || '';
+        const content = msg?.content || msg?.text || '';
+        return `${senderId}|${content}`;
+      };
+      const matchesContentOnly = (msg, candidate) => {
+        const content = msg?.content || msg?.text || '';
+        const candidateContent = candidate?.content || candidate?.text || '';
+        if (!content || !candidateContent || content !== candidateContent) return false;
+        const msgTime = new Date(msg?.created_at || msg?.when || 0).getTime();
+        const candidateTime = new Date(candidate?.created_at || candidate?.when || 0).getTime();
+        if (!msgTime || !candidateTime) return true;
+        return Math.abs(msgTime - candidateTime) < 60000;
+      };
+      const existingSignatures = new Set(prev.map(makeSignature));
       const existingIds = new Set(
         prev.map((msg) => getMessageId(msg)?.toString()).filter(Boolean)
       );
@@ -1155,7 +1423,24 @@ function ChatsPage() {
       pending.forEach((msg) => {
         const mid = getMessageId(msg)?.toString();
         if (!mid || existingIds.has(mid)) return;
+        const signature = makeSignature(msg);
+        if (existingSignatures.has(signature)) {
+          const pendingTime = new Date(msg?.created_at || msg?.when || 0).getTime();
+          const hasCloseMatch = prev.some((m) => {
+            const mSignature = makeSignature(m);
+            if (mSignature !== signature) return false;
+            const mTime = new Date(m?.created_at || m?.when || 0).getTime();
+            if (!pendingTime || !mTime) return true;
+            return Math.abs(mTime - pendingTime) < 60000;
+          });
+          if (hasCloseMatch) return;
+        }
+        if (!getSenderId(msg)) {
+          const hasContentMatch = prev.some((m) => matchesContentOnly(m, msg));
+          if (hasContentMatch) return;
+        }
         merged.push(msg);
+        existingSignatures.add(signature);
       });
       return merged;
     });
@@ -2030,11 +2315,13 @@ function ChatsPage() {
               <p>Start a conversation...</p>
             </div>
           ) : (
-            tabbedChats.map((chat) => {
+            tabbedChats.map((chat, index) => {
               const isPrivateChat = chat.type === "pv";
               const isMyMessage = chat.last_message.sender === user?.username;
-              const selectedId = selectedChat?._id || selectedChat?.id;
-              const chatId = chat._id || chat.id;
+              const selectedId = getConversationId(selectedChat);
+              const chatId = getConversationId(chat);
+              const chatIdStr = chatId?.toString();
+              const unreadCount = unreadCounts[chatIdStr] ?? chat.unread_count ?? 0;
               const avatarSrc = isPrivateChat 
                 ? chat.contact_info?.profile_pic 
                 : chat.group_avatar;
@@ -2044,7 +2331,7 @@ function ChatsPage() {
 
               return (
                 <div
-                  key={chat._id || chat.id}
+                  key={chatIdStr || chat._id || chat.id || index}
                   className={`${styles.chatItem} ${selectedId && chatId && selectedId === chatId ? styles.active : ''}`}
                   onClick={() => setSelectedChat(chat)}
                 >
@@ -2077,9 +2364,9 @@ function ChatsPage() {
                           )}
                         </span>
                       )}
-                      {(unreadCounts[chatId] || 0) > 0 && (
+                      {unreadCount > 0 && (
                         <span className={styles.notificationBadge}>
-                          <p>{unreadCounts[chatId]}</p>
+                          <p>{unreadCount}</p>
                         </span>
                       )}
                     </div>
@@ -2255,6 +2542,9 @@ function ChatsPage() {
                     const seenByKeys = Object.keys(message.seen_by);
                     messageSeen = seenByKeys.length > 0;
                   }
+                  const deliveryStatus = isMyMessage && isPrivateChat
+                    ? (message?.status || 'sent')
+                    : null;
                   
                   return (
                     <div
@@ -2266,7 +2556,9 @@ function ChatsPage() {
                       } ${
                         !isMyMessage && isGroupChat ? styles.messageWrapperGroup : ''
                       } ${
-                        animatedMessageIdsRef.current.has(messageId) ? styles.messageEnter : ''
+                        animatedMessageIdsRef.current.has(messageId) || messageId === lastAnimatedMessageId
+                          ? styles.messageEnter
+                          : ''
                       }`}
                       ref={(el) => {
                         const id = messageId?.toString();
@@ -2384,15 +2676,33 @@ function ChatsPage() {
                           </span>
                           {isMyMessage && isPrivateChat && (
                             <span className={styles.seenIcon}>
-                              {messageSeen !== null && messageSeen !== undefined ? (
-                                <img 
-                                  src={messageSeen ? seenIcon : sentIcon} 
+                              {deliveryStatus === 'pending' && (
+                                <span className={styles.deliveryClock} title="Sending">
+                                  <span className={styles.deliveryClockFace} />
+                                  <span className={styles.deliveryClockHandShort} />
+                                  <span className={styles.deliveryClockHandLong} />
+                                </span>
+                              )}
+                              {deliveryStatus === 'error' && (
+                                <button
+                                  type="button"
+                                  className={styles.deliveryErrorButton}
+                                  onClick={() => handleResendMessage(message)}
+                                  title="Message failed. Click to resend."
+                                >
+                                  <FontAwesomeIcon icon={faCircleExclamation} />
+                                </button>
+                              )}
+                              {deliveryStatus === 'sent' && messageSeen !== null && messageSeen !== undefined && (
+                                <img
+                                  src={messageSeen ? seenIcon : sentIcon}
                                   alt={messageSeen ? "Seen" : "Sent"}
                                   className={styles.seenIconImage}
                                 />
-                              ) : (
-                                <img 
-                                  src={sentIcon} 
+                              )}
+                              {deliveryStatus === 'sent' && (messageSeen === null || messageSeen === undefined) && (
+                                <img
+                                  src={sentIcon}
                                   alt="Sent"
                                   className={styles.seenIconImage}
                                 />
@@ -2700,6 +3010,19 @@ function ChatsPage() {
                   >
                     <FontAwesomeIcon icon={faTrash} />
                     <span>Delete</span>
+                  </button>
+                )}
+                {messageContextMenu.isMyMessage && messageContextMenu.message?.status === 'error' && (
+                  <button
+                    type="button"
+                    className={styles.optionsMenuItem}
+                    onClick={() => {
+                      handleResendMessage(messageContextMenu.message);
+                      setMessageContextMenu(null);
+                    }}
+                  >
+                    <FontAwesomeIcon icon={faCircleExclamation} />
+                    <span>Resend</span>
                   </button>
                 )}
               </div>

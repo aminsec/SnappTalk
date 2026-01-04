@@ -771,6 +771,63 @@
     opacity: 0.9;
 }
 
+.deliveryErrorButton {
+    border: none;
+    background: transparent;
+    color: var(--error-color);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 20px;
+    height: 20px;
+    padding: 0;
+    cursor: pointer;
+}
+
+.deliveryErrorButton svg {
+    width: 14px;
+    height: 14px;
+}
+
+.deliveryClock {
+    position: relative;
+    width: 12px;
+    height: 12px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.deliveryClockFace {
+    position: absolute;
+    inset: 0;
+    border-radius: 50%;
+    border: 1.2px solid rgba(255, 255, 255, 0.7);
+    box-sizing: border-box;
+    opacity: 0.85;
+}
+
+.deliveryClockHandShort,
+.deliveryClockHandLong {
+    position: absolute;
+    width: 1.2px;
+    background: rgba(255, 255, 255, 0.8);
+    transform-origin: bottom center;
+    border-radius: 999px;
+}
+
+.deliveryClockHandShort {
+    height: 3.5px;
+    top: 3.5px;
+    animation: clockHandTurn 2.4s linear infinite;
+}
+
+.deliveryClockHandLong {
+    height: 5px;
+    top: 1.5px;
+    animation: clockHandTurn 1.2s linear infinite;
+}
+
 .inputBar {
     display: flex;
     align-items: center;
@@ -1522,6 +1579,15 @@
     50% { box-shadow: 0 0 12px rgba(45, 144, 228, 0.4); }
 }
 
+@keyframes clockHandTurn {
+    from {
+        transform: rotate(0deg);
+    }
+    to {
+        transform: rotate(360deg);
+    }
+}
+
 @keyframes recordingPulse {
     0%, 100% {
         transform: scale(0.9);
@@ -1550,7 +1616,9 @@
     .mediaPicker,
     .emojiPicker,
     .recordButton,
-    .recordingDot {
+    .recordingDot,
+    .deliveryClockHandShort,
+    .deliveryClockHandLong {
         animation: none !important;
         transition: none !important;
     }

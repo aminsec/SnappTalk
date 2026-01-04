@@ -2,10 +2,12 @@
 export interface NewPvConversationEVT {
     message_text: string,
     new_user_id: string,
-    date?: Date
-}
+    date?: Date,
+    track_id: string
+};
 
 export interface MessageSendEVT {
     message_text: string,
-    conversation_id: string
-}
+    conversation_id: string,
+    track_id: string
+};
