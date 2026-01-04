@@ -27,6 +27,7 @@ import toast from 'react-hot-toast';
 import { useSocket } from '@/shared/state/useSocket';
 import { SOCKET_EVENTS } from '@/shared/state/socketEvents';
 import sentIcon from "@/shared/assets/icons/sent.svg";
+import seenIcon from "@/shared/assets/icons/seen.svg";
 import sendIcon from "@/shared/assets/icons/sendIcon.svg";
 import bitcoinIcon from '@/shared/assets/images/mono/acn.svg';
 import coconutCocktailIcon from '@/shared/assets/images/mono/bank.svg';
@@ -253,13 +254,14 @@ function ChatsPage() {
   const refreshTimeoutsRef = useRef([]);
   const messagesEndRef = useRef(null);
   const shouldAutoScrollRef = useRef(false);
-  const isNearBottomRef = useRef(true);
+    const isNearBottomRef = useRef(true);
   const animatedMessageIdsRef = useRef(new Set());
   const pendingPvRef = useRef(null);
   const pendingMessagesRef = useRef({});
   const pendingSendMapRef = useRef({});
   const pendingAckTimersRef = useRef({});
   const recentReceiveRef = useRef({});
+  const lastSeenByConversationRef = useRef({});
   const messageAnimationTimeoutRef = useRef(null);
   const mediaRecorderRef = useRef(null);
   const recordedChunksRef = useRef([]);
@@ -342,6 +344,7 @@ function ChatsPage() {
       edited: false,
       reply_to: replyTo,
       status: 'pending',
+      seen: false,
     };
 
     animatedMessageIdsRef.current.add(optimisticId);
@@ -714,6 +717,35 @@ function ChatsPage() {
       return next;
     });
   }, []);
+
+  const emitSeenForLatest = useCallback(
+    (conversationId, messagesList) => {
+      if (!socket || !socket.connected) return;
+      if (!conversationId || !Array.isArray(messagesList)) return;
+      if (selectedChatRef.current?.type !== 'pv') return;
+
+      const conversationIdStr = conversationId.toString();
+      const lastSeenId = lastSeenByConversationRef.current[conversationIdStr];
+      const currentUserId = userRef.current?.id?.toString();
+      const lastIncoming = [...messagesList]
+        .reverse()
+        .find((msg) => {
+          const senderId = getSenderId(msg)?.toString();
+          return senderId && senderId !== currentUserId;
+        });
+      if (!lastIncoming) return;
+
+      const messageId = getMessageId(lastIncoming);
+      if (!messageId || messageId === lastSeenId) return;
+
+      socket.emit(SOCKET_EVENTS.SEEN_SEND, {
+        conversation_id: conversationIdStr,
+        message_id: messageId,
+      });
+      lastSeenByConversationRef.current[conversationIdStr] = messageId;
+    },
+    [socket]
+  );
   
   // Cache for sender info in group chats (senderId -> {username, profile_pic})
   const [senderInfoCache, setSenderInfoCache] = useState({});
@@ -772,12 +804,16 @@ function ChatsPage() {
       }
       storeRecentReceive(conversationIdStr, messageText);
 
-    const messageId = payload?.message_id || `receive-${Date.now()}`;
-      const messageSender = payload?.sender_id
+      const messageId = payload?.message_id || `receive-${Date.now()}`;
+      const senderInfo = payload?.sender_info || payload?.senderInfo || null;
+      const messageSender = senderInfo?._id
+        || senderInfo?.id
+        || payload?.sender_id
         || payload?.sender
         || payload?.from_user_id
         || payload?.user_id
         || null;
+      const messageWhen = payload?.when ? new Date(payload.when).toISOString() : new Date().toISOString();
 
       const message = {
         _id: messageId,
@@ -786,8 +822,9 @@ function ChatsPage() {
         sender: messageSender,
         type: 'text',
         content: messageText,
-        created_at: new Date().toISOString(),
+        created_at: messageWhen,
         edited: false,
+        sender_info: senderInfo || undefined,
       };
 
     pendingMessagesRef.current[conversationIdStr] = [
@@ -905,6 +942,23 @@ function ChatsPage() {
       setMessages((prev) =>
         prev.map((m) =>
           getMessageId(m) === pending.tempId ? { ...m, status: 'error' } : m
+        )
+      );
+    };
+
+    const handleMessageSeen = (payload) => {
+      const conversationId = payload?.conversation_id || payload?.conversationId;
+      const messageId = payload?.message_id || payload?.messageId;
+      if (!conversationId || !messageId) return;
+
+      const activeConversationId = activeConversationIdRef.current?.toString();
+      if (activeConversationId && activeConversationId !== conversationId.toString()) {
+        return;
+      }
+
+      setMessages((prev) =>
+        prev.map((m) =>
+          getMessageId(m) === messageId ? { ...m, seen: true } : m
         )
       );
     };
@@ -1075,6 +1129,7 @@ function ChatsPage() {
     socket.on(SOCKET_EVENTS.MESSAGE_NEW, handleMessageNew);
     socket.on(SOCKET_EVENTS.MESSAGE_RECEIVE, handleMessageReceive);
     socket.on(SOCKET_EVENTS.MESSAGE_SEND_ACK, handleMessageSendAck);
+    socket.on(SOCKET_EVENTS.MESSAGE_SEEN, handleMessageSeen);
     socket.on(SOCKET_EVENTS.MESSAGE_UPDATED, handleMessageUpdated);
     socket.on(SOCKET_EVENTS.MESSAGE_DELETED, handleMessageDeleted);
     socket.on(SOCKET_EVENTS.CONVERSATION_DELETED, handleConversationDeleted);
@@ -1087,6 +1142,7 @@ function ChatsPage() {
       socket.off(SOCKET_EVENTS.MESSAGE_NEW, handleMessageNew);
       socket.off(SOCKET_EVENTS.MESSAGE_RECEIVE, handleMessageReceive);
       socket.off(SOCKET_EVENTS.MESSAGE_SEND_ACK, handleMessageSendAck);
+      socket.off(SOCKET_EVENTS.MESSAGE_SEEN, handleMessageSeen);
       socket.off(SOCKET_EVENTS.MESSAGE_UPDATED, handleMessageUpdated);
       socket.off(SOCKET_EVENTS.MESSAGE_DELETED, handleMessageDeleted);
       socket.off(SOCKET_EVENTS.CONVERSATION_DELETED, handleConversationDeleted);
@@ -1102,7 +1158,7 @@ function ChatsPage() {
         clearTimeout(messageAnimationTimeoutRef.current);
       }
     };
-  }, [setUnreadCount, socket, refreshContacts]);
+  }, [emitSeenForLatest, setUnreadCount, socket, refreshContacts]);
 
   useEffect(() => {
     const nextConversationId = getConversationId(selectedChat);
@@ -1656,6 +1712,9 @@ function ChatsPage() {
     const distanceFromBottom = container.scrollHeight - container.scrollTop - container.clientHeight;
     isNearBottomRef.current = distanceFromBottom < 120;
     isAtBottomRef.current = distanceFromBottom < 6;
+    if (isAtBottomRef.current) {
+      emitSeenForLatest(activeConversationIdRef.current, messages);
+    }
 
     // if at absolute top, trigger immediately (no throttle) to avoid missing the final event
     const atAbsoluteTop = container.scrollTop <= 2;
@@ -1695,7 +1754,7 @@ function ChatsPage() {
     }
 
     previousTopRef.current = container.scrollTop;
-  }, [isLoadingMessages, loadOlderMessages, socket]);
+  }, [emitSeenForLatest, isLoadingMessages, loadOlderMessages, messages]);
 
   // Handle scroll position after messages update
   useLayoutEffect(() => {
@@ -1720,6 +1779,15 @@ function ChatsPage() {
       previousScrollTopRef.current = 0;
     }
   }, [messages.length]);
+
+  useEffect(() => {
+    const container = messagesContainerRef.current;
+    if (!container) return;
+    const distanceFromBottom = container.scrollHeight - container.scrollTop - container.clientHeight;
+    if (distanceFromBottom < 6) {
+      emitSeenForLatest(activeConversationIdRef.current, messages);
+    }
+  }, [emitSeenForLatest, messages, selectedChat]);
 
   // Filter chats based on search query
   const filteredChats = useMemo(() => {
@@ -2632,8 +2700,8 @@ function ChatsPage() {
                               )}
                               {deliveryStatus === 'sent' && (
                                 <img
-                                  src={sentIcon}
-                                  alt="Sent"
+                                  src={message?.seen ? seenIcon : sentIcon}
+                                  alt={message?.seen ? "Seen" : "Sent"}
                                   className={styles.seenIconImage}
                                 />
                               )}

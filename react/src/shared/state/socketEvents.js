@@ -13,6 +13,8 @@ export const SOCKET_EVENTS = {
   MESSAGE_SEND_ACK: 'message:send:ack',
   MESSAGE_NEW: 'message:new',
   MESSAGE_RECEIVE: 'message:receive',
+  SEEN_SEND: 'seen',
+  MESSAGE_SEEN: 'message:seen',
   NEW_PV_CONVERSATION: 'new_pv_conversation',
 
   MESSAGE_EDIT: 'message:edit',

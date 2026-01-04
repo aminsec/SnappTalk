@@ -54,7 +54,13 @@ export async function handleNewPvConversationEvent(socket: Socket, data: NewPvCo
             const targetSocket = io.sockets.sockets.get(targetSocketId) as Socket; 
             targetSocket?.join(newPvConversationId.toString());
             targetSocket?.emit("new_pv_conversation", {conversation_id: newPvConversationId.toString()});
-            socket.to(newPvConversationId.toString()).emit("message:receive", {conversation_id: newPvConversationId.toString(), message_text: data.message_text, sender_info: socket.userInfo, when: Date.now()});
+            socket.to(newPvConversationId.toString()).emit("message:receive", {
+                conversation_id: newPvConversationId.toString(),
+                message_id: newMessageId.toString(),
+                message_text: data.message_text,
+                sender_info: socket.userInfo,
+                when: Date.now()
+            });
             socket.emit("message", {message: "Conversation created", conversationId: newPvConversationId.toString()});
             socket.emit("message:send:ack", {message_id: newMessageId, track_id});
         }

@@ -11,3 +11,8 @@ export interface MessageSendEVT {
     conversation_id: string,
     track_id: string
 };
+
+export interface MessageSeenEVT{
+    conversation_id: string,
+    message_id: string
+}

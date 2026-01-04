@@ -23,6 +23,8 @@ export function initSocket(server: http.Server){
   const onlineUsers = new Map<string, string>();
   
   io.on('connection', async (socket) => { 
+    console.log("Connected:", socket.id);
+
     //Connecting user to rooms
     const [success, error] = await connectUserToRooms(socket);
     if(error){

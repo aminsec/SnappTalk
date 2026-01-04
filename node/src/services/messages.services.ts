@@ -62,3 +62,29 @@ export async function createNewMessage(conversationId: ObjectId, sender: ObjectI
         return [null, err];
     }
 };
+
+export async function seenMessageById(message_id: ObjectId, conversation_id: ObjectId): Promise<[Boolean | null, ErrorResponse | null]> {
+    try {
+        const messagesCollection = await getMessagesCollection();
+        const updateResult = messagesCollection.updateOne({
+            conversation_id,
+            _id: message_id,
+        }, {
+            $set: {
+                seen: true
+            }
+        });
+    
+        if(updateResult.matchCount === 0){
+            const error: ErrorResponse = {state: "failed", message: "Coulnd't find message", type: "not_found"}; 
+            return [null, error];
+        }
+
+        return [true, null];
+
+    } catch (error) {
+        console.log(error);
+        const err: ErrorResponse = {message: "A system error occurred", state: "failed", type: "system_error"};
+        return [null, err];
+    }
+};

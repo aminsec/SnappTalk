@@ -1,7 +1,7 @@
 // Entry point of every ws connection
 import { Socket, Server } from "socket.io";
 import { handleNewPvConversationEvent } from "./events/new_pv_conversation.event";
-import { handleMessageSend } from "./events/messag.event";
+import { handleMessageSend, handleSeen } from "./events/messag.event";
 
 export function handleSocketConnection(socket: Socket, io: Server, onlineUsers: Map<string, string>): void{
 
@@ -16,6 +16,10 @@ export function handleSocketConnection(socket: Socket, io: Server, onlineUsers: 
   //An event for creating new conversation
   socket.on("new_pv_conversation", (data) => {
     handleNewPvConversationEvent(socket, data, onlineUsers, io);
+  });
+
+  socket.on("seen", (data) => {
+    handleSeen(socket, data);
   });
 
   socket.on('disconnect', () => {
