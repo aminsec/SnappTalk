@@ -419,6 +419,8 @@ function ChatsPage() {
           type: 'text',
           sender: user?.username || chat?.last_message?.sender || '',
           when: optimisticMessage.created_at,
+          message_id: optimisticId,
+          sender_id: user?.id,
         },
       };
 
@@ -890,13 +892,20 @@ function ChatsPage() {
 
         const chat = next[idx];
         const nextUnread = isActiveConversation ? 0 : (chat?.unread_count || 0) + 1;
+        const senderUsername = senderInfo?.username
+          || payload?.senderUsername
+          || payload?.sender_name
+          || chat?.last_message?.sender
+          || '';
         next[idx] = {
           ...chat,
           last_message: {
             content: messageText,
             type: 'text',
-            sender: payload?.senderUsername || payload?.sender || chat?.last_message?.sender || '',
+            sender: senderUsername,
             when: message.created_at,
+            message_id: messageId,
+            sender_id: messageSender || undefined,
           },
           unread_count: nextUnread,
         };
@@ -960,6 +969,23 @@ function ChatsPage() {
           return m;
         })
       );
+      setContacts((prev) =>
+        prev.map((chat) => {
+          const chatId = getConversationId(chat)?.toString();
+          if (chatId !== pending.conversationId) return chat;
+          const lastMessageId = chat?.last_message?.message_id;
+          if (lastMessageId && lastMessageId === pending.tempId) {
+            return {
+              ...chat,
+              last_message: {
+                ...chat.last_message,
+                message_id: messageId,
+              },
+            };
+          }
+          return chat;
+        })
+      );
     };
 
     const handleMessageSendError = (payload) => {
@@ -989,12 +1015,46 @@ function ChatsPage() {
         return;
       }
 
+      let seenMessage = null;
       setMessages((prev) =>
-        prev.map((m) =>
-          getMessageId(m) === messageId ? { ...m, seen: true } : m
-        )
+        prev.map((m) => {
+          if (getMessageId(m) === messageId) {
+            seenMessage = m;
+            return { ...m, seen: true };
+          }
+          return m;
+        })
       );
       const conversationIdStr = conversationId.toString();
+      setContacts((prev) =>
+        prev.map((chat) => {
+          const chatId = getConversationId(chat)?.toString();
+          if (chatId !== conversationIdStr) return chat;
+          const last = chat?.last_message;
+          if (!last) return chat;
+          const lastId = (last.message_id || last._id || last.id)?.toString();
+          const seenId = messageId.toString();
+          const lastText = last?.content || last?.text || '';
+          const seenText = seenMessage?.content || seenMessage?.text || '';
+          const lastTime = new Date(last?.when || last?.created_at || 0).getTime();
+          const seenTime = new Date(seenMessage?.created_at || seenMessage?.when || 0).getTime();
+          const matchesId = lastId && lastId === seenId;
+          const matchesFallback = !matchesId
+            && lastText
+            && seenText
+            && lastText === seenText
+            && (!lastTime || !seenTime || Math.abs(lastTime - seenTime) < 60000);
+          if (!matchesId && !matchesFallback) return chat;
+          return {
+            ...chat,
+            last_message: {
+              ...last,
+              seen: true,
+              message_id: lastId || seenId,
+            },
+          };
+        })
+      );
       const seenSet = seenSentRef.current[conversationIdStr] || new Set();
       seenSet.add(messageId);
       seenSentRef.current[conversationIdStr] = seenSet;
@@ -1025,8 +1085,15 @@ function ChatsPage() {
           last_message: {
             content: getMessagePreviewText(message),
             type: message?.type ?? 'text',
-            sender: payload?.senderUsername || payload?.sender || chat?.last_message?.sender || '',
+            sender: message?.sender_info?.username
+              || payload?.senderUsername
+              || payload?.sender_name
+              || message?.sender_name
+              || chat?.last_message?.sender
+              || '',
             when: message?.created_at || new Date().toISOString(),
+            message_id: messageId,
+            sender_id: getSenderId(message),
           },
         };
 
@@ -2412,7 +2479,15 @@ function ChatsPage() {
           ) : (
             tabbedChats.map((chat, index) => {
               const isPrivateChat = chat.type === "pv";
-              const isMyMessage = chat.last_message.sender === user?.username;
+              const lastMessageSenderId = chat.last_message?.sender_id
+                || chat.last_message?.sender?._id
+                || chat.last_message?.sender?.id;
+              const isMyMessage = lastMessageSenderId
+                ? lastMessageSenderId?.toString() === user?.id?.toString()
+                : chat.last_message?.sender === user?.username;
+              const lastMessageSeen = isMyMessage
+                ? resolveMessageSeen(chat.last_message, chat, user?.id?.toString())
+                : false;
               const selectedId = getConversationId(selectedChat);
               const chatId = getConversationId(chat);
               const chatIdStr = chatId?.toString();
@@ -2435,18 +2510,38 @@ function ChatsPage() {
                     <div className={styles.chatInfoHeader}>
                       <h3>{displayName}</h3>
                       <p className={styles.lastMessage}>
-                        {!isPrivateChat && !isMyMessage && (
-                          <b>{chat.last_message.sender}: </b>
-                        )}
-                        {!isPrivateChat && isMyMessage && (
+                        {isMyMessage && (
                           <span className={styles.youText}>You: </span>
+                        )}
+                        {!isMyMessage && !isPrivateChat && (
+                          <b>{chat.last_message.sender}: </b>
                         )}
                         {truncateMessage(getMessagePreviewText(chat.last_message))}
                       </p>
                     </div>
                     <div className={styles.chatInfoFooter}>
-                      <span className={styles.timestamp}>
-                        {convertISOtoLocal(chat.last_message.when)}
+                      <span className={styles.chatTimestampRow}>
+                        {isMyMessage && (
+                          <span className={styles.chatStatusIcon} aria-hidden="true">
+                            <img
+                              src={sentIcon}
+                              alt="Sent"
+                              className={`${styles.chatStatusIconImage} ${
+                                lastMessageSeen ? '' : styles.chatStatusIconVisible
+                              }`}
+                            />
+                            <img
+                              src={seenIcon}
+                              alt="Seen"
+                              className={`${styles.chatStatusIconImage} ${
+                                lastMessageSeen ? styles.chatStatusIconVisible : ''
+                              }`}
+                            />
+                          </span>
+                        )}
+                        <span className={styles.timestamp}>
+                          {convertISOtoLocal(chat.last_message.when)}
+                        </span>
                       </span>
                       {unreadCount > 0 && (
                         <span className={styles.notificationBadge}>

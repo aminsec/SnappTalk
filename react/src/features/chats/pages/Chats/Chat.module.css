@@ -215,6 +215,35 @@
     gap: 10px;
 }
 
+.chatTimestampRow {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.chatStatusIcon {
+    width: 14px;
+    height: 14px;
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+}
+
+.chatStatusIconImage {
+    position: absolute;
+    inset: 0;
+    width: 14px;
+    height: 14px;
+    opacity: 0;
+    transition: opacity 0.18s ease;
+}
+
+.chatStatusIconVisible {
+    opacity: 0.85;
+}
+
 .chatInfoFooter .timestamp {
     font-size: 11px;
     color: var(--text-muted);
