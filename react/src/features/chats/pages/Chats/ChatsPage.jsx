@@ -684,10 +684,10 @@ function ChatsPage() {
         const next = (data.conversations || []).map((chat) => {
           const id = getConversationId(chat)?.toString();
           const cachedUnread = id ? unreadCountsRef.current[id] : 0;
-          const serverUnread = chat.unread_count || 0;
+          const serverUnread = chat.unread_messages_count ?? chat.unread_count ?? 0;
           return {
             ...chat,
-            unread_count: Math.max(serverUnread, cachedUnread),
+            unread_messages_count: Math.max(serverUnread, cachedUnread),
           };
         });
         setContacts(next);
@@ -696,7 +696,7 @@ function ChatsPage() {
           next.forEach((chat) => {
             const id = getConversationId(chat)?.toString();
             if (!id) return;
-            const unread = chat.unread_count || 0;
+            const unread = chat.unread_messages_count ?? chat.unread_count ?? 0;
             if (unread > (merged[id] || 0)) {
               merged[id] = unread;
             }
@@ -891,7 +891,8 @@ function ChatsPage() {
         }
 
         const chat = next[idx];
-        const nextUnread = isActiveConversation ? 0 : (chat?.unread_count || 0) + 1;
+        const currentUnread = chat?.unread_messages_count ?? chat?.unread_count ?? 0;
+        const nextUnread = isActiveConversation ? 0 : currentUnread + 1;
         const senderUsername = senderInfo?.username
           || payload?.senderUsername
           || payload?.sender_name
@@ -907,7 +908,7 @@ function ChatsPage() {
             message_id: messageId,
             sender_id: messageSender || undefined,
           },
-          unread_count: nextUnread,
+          unread_messages_count: nextUnread,
         };
 
         const [moved] = next.splice(idx, 1);
@@ -2491,7 +2492,10 @@ function ChatsPage() {
               const selectedId = getConversationId(selectedChat);
               const chatId = getConversationId(chat);
               const chatIdStr = chatId?.toString();
-              const unreadCount = unreadCounts[chatIdStr] ?? chat.unread_count ?? 0;
+              const unreadCount = unreadCounts[chatIdStr]
+                ?? chat.unread_messages_count
+                ?? chat.unread_count
+                ?? 0;
               const avatarSrc = isPrivateChat 
                 ? chat.contact_info?.profile_pic 
                 : chat.group_avatar;

@@ -44,7 +44,7 @@ export async function createNewMessage(conversationId: ObjectId, sender: ObjectI
             type: type,
             content: content,
             attachments: attachments,
-            seen_by: {sender: new Date()},
+            seen_by: {[sender.toString()]: new Date()},
             edited: false,
             created_at: new Date()
         });
@@ -82,6 +82,24 @@ export async function seenMessageById(message_id: ObjectId, conversation_id: Obj
 
         return [true, null];
 
+    } catch (error) {
+        console.log(error);
+        const err: ErrorResponse = {message: "A system error occurred", state: "failed", type: "system_error"};
+        return [null, err];
+    }
+};
+
+export async function getUnreadMessagesCount(userId: string, conversationId: ObjectId) {
+    try {
+        const messagesCollection = await getMessagesCollection();
+      
+        const count = await messagesCollection.countDocuments({
+          conversation_id: conversationId,
+          sender: { $ne: new ObjectId(userId) },                 
+          [`seen_by.${userId}`]: { $exists: false }
+        });
+    
+        return [count, null];
     } catch (error) {
         console.log(error);
         const err: ErrorResponse = {message: "A system error occurred", state: "failed", type: "system_error"};

@@ -5,7 +5,7 @@ import { ProtectedUserInfo } from "../types/user.types";
 import { getUserInfoById } from "./info.services";
 import { ObjectId } from "mongodb";
 import { whiteListConversations } from "../utils/operations";
-import { getMessageById } from "./messages.services";
+import { getMessageById, getUnreadMessagesCount } from "./messages.services";
 
 export async function getUserConversations(userInfo: ProtectedUserInfo): Promise<[Conversation[] | null, ErrorResponse | null]> {
     try {
@@ -28,6 +28,11 @@ export async function getUserConversations(userInfo: ProtectedUserInfo): Promise
                 }
 
                 conversations[index].contact_info = contactUserInfo;
+
+                if(contactUserInfo){
+                    const [unreadMessages, err] = await getUnreadMessagesCount(userInfo.id.toString(), conversations[index]._id);
+                    conversations[index].unread_messages_count = unreadMessages;
+                }
             }
 
             //Attaching last messsage to contact

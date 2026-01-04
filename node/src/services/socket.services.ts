@@ -19,4 +19,4 @@ export async function connectUserToRooms(socket: Socket): Promise<[true | false 
         const err: ErrorResponse = {message: "A system error occurred", state: "failed", type: "system_error"};
         return [null, err];
     }
-}
+};

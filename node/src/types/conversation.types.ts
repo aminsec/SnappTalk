@@ -10,5 +10,6 @@ export interface Conversation {
     last_message_id: ObjectId,
     last_message?: Object,
     deleted_for: Record<string, string>,
-    created_at: string
+    created_at: string,
+    unread_messages_count?: Number
 };

@@ -57,6 +57,7 @@ export function whiteListConversations(conversations: Conversation[]): Conversat
         validConversation.contact_info = conv.contact_info;
         validConversation.created_at = conv.created_at;
         validConversation.last_message = conv.last_message;
+        validConversation.unread_messages_count = conv.unread_messages_count;
         validConversations.push(validConversation);
     }
 
