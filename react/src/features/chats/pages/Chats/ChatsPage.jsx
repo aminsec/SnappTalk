@@ -1364,6 +1364,17 @@ function ChatsPage() {
 
     socket.emit(SOCKET_EVENTS.CONVERSATION_JOIN, { conversationId: nextConversationIdStr });
     setUnreadCount(nextConversationIdStr, 0);
+    setContacts((prev) =>
+      prev.map((chat) => {
+        const chatId = getConversationId(chat)?.toString();
+        if (chatId !== nextConversationIdStr) return chat;
+        return {
+          ...chat,
+          unread_messages_count: 0,
+          unread_count: 0,
+        };
+      })
+    );
 
     const contactId = selectedChatRef.current?.type === 'pv'
       ? (selectedChatRef.current?.contact_info?._id || selectedChatRef.current?.contact_info?.id)
