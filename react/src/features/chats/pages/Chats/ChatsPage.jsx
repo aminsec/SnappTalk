@@ -2582,9 +2582,15 @@ function ChatsPage() {
               const lastMessageSenderId = chat.last_message?.sender_id
                 || chat.last_message?.sender?._id
                 || chat.last_message?.sender?.id;
-              const isMyMessage = lastMessageSenderId
-                ? lastMessageSenderId?.toString() === user?.id?.toString()
-                : chat.last_message?.sender === user?.username;
+              const hasLastMessage = Boolean(
+                chat.last_message?.content
+                || chat.last_message?.when
+                || chat.last_message?.message_id
+              );
+              const isMyMessage = hasLastMessage
+                && (lastMessageSenderId
+                  ? lastMessageSenderId?.toString() === user?.id?.toString()
+                  : chat.last_message?.sender === user?.username);
               const lastMessageSeen = isMyMessage
                 ? resolveMessageSeen(chat.last_message, chat, user?.id?.toString())
                 : false;
@@ -2633,7 +2639,7 @@ function ChatsPage() {
                     </div>
                     <div className={styles.chatInfoFooter}>
                       <span className={styles.chatTimestampRow}>
-                        {isMyMessage && (
+                        {hasLastMessage && isMyMessage && (
                           <span className={styles.chatStatusIcon} aria-hidden="true">
                             <img
                               src={sentIcon}
@@ -2651,9 +2657,11 @@ function ChatsPage() {
                             />
                           </span>
                         )}
-                        <span className={styles.timestamp}>
-                          {convertISOtoLocal(chat.last_message.when)}
-                        </span>
+                        {hasLastMessage && (
+                          <span className={styles.timestamp}>
+                            {convertISOtoLocal(chat.last_message.when)}
+                          </span>
+                        )}
                       </span>
                       {unreadCount > 0 && (
                         <span className={styles.notificationBadge}>
