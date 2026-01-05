@@ -45,25 +45,24 @@ export async function handleNewPvConversationEvent(socket: Socket, data: NewPvCo
                 socket.emit("error", {message: "There was a problem in our backend"});
                 return;
             }
-        }
 
-        //Joining users to room
-        socket.join(newPvConversationId.toString());
-        const targetSocketId = onlineUsers.get(contactUserId.toString());
-        if(targetSocketId){ //Checks if user is online
-            const targetSocket = io.sockets.sockets.get(targetSocketId) as Socket; 
-            targetSocket?.join(newPvConversationId.toString());
-            targetSocket?.emit("new_pv_conversation", {conversation_id: newPvConversationId.toString()});
-            socket.to(newPvConversationId.toString()).emit("message:receive", {
-                conversation_id: newPvConversationId.toString(),
-                message_id: newMessageId.toString(),
-                message_text: data.message_text,
-                sender_info: socket.userInfo,
-                when: Date.now()
-            });
-            socket.emit("message", {message: "Conversation created", conversationId: newPvConversationId.toString()});
-            socket.emit("message:send:ack", {message_id: newMessageId, track_id});
+            //Joining users to room
+            socket.join(newPvConversationId.toString());
+            const targetSocketId = onlineUsers.get(contactUserId.toString());
+            if(targetSocketId){ //Checks if user is online
+                const targetSocket = io.sockets.sockets.get(targetSocketId) as Socket; 
+                targetSocket?.join(newPvConversationId.toString());
+                targetSocket?.emit("new_pv_conversation", {conversation_id: newPvConversationId.toString()});
+                socket.to(newPvConversationId.toString()).emit("message:receive", {
+                    conversation_id: newPvConversationId.toString(),
+                    message_id: newMessageId.toString(),
+                    message_text: data.message_text,
+                    sender_info: socket.userInfo,
+                    when: Date.now()
+                });
+                socket.emit("message", {message: "Conversation created", conversationId: newPvConversationId.toString()});
+                socket.emit("message:send:ack", {message_id: newMessageId, track_id});
+            }
         }
     }
-    
 };
