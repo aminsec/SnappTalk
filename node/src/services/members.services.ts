@@ -6,7 +6,10 @@ import { whiteListUserInfo } from "../utils/operations";
 export async function searchMemberByUsername(username: string): Promise<[ProtectedUserInfo[] | null, ErrorResponse | null]> {
     const usersCL = await getUsersCollection();
     try {
-        const foundMembers = await usersCL.find({ username: { $regex: `.*${username}.*`, $options: "i" }}).toArray();
+        const foundMembers = await usersCL.find({ 
+            username: { $regex: `.*${username}.*`, $options: "i" },
+            deleted_account: false
+        }).toArray();
         const protectedMembers: ProtectedUserInfo[] = foundMembers.map((member: RawUserInfo) =>  whiteListUserInfo(member));
         return [protectedMembers, null];
 

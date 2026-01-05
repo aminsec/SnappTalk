@@ -88,11 +88,11 @@ export async function checkUserExistsByUsername(username: string): Promise<[true
     }
 };
 
-export async function updateUsername(userid: string, newUsername: string): Promise<[true | false | null, null | ErrorResponse]> {
+export async function updateUsername(userid: ObjectId, newUsername: string): Promise<[true | false | null, null | ErrorResponse]> {
     try {
         const usersCollection  = await getUsersCollection();
         const result = await usersCollection.updateOne(
-            {_id: new ObjectId(userid)},
+            {_id: userid},
             {$set: {username: newUsername}}
         );
 
@@ -173,11 +173,11 @@ export async function updateBio(userid: string, newBio: string): Promise<[true |
     }
 };
 
-export async function updateProfilePicAddress(userid: string, newProfilePicAddress: string): Promise<[true | false | null, null | ErrorResponse]> {
+export async function updateProfilePicAddress(userid: ObjectId, newProfilePicAddress: string): Promise<[true | false | null, null | ErrorResponse]> {
     try {
         const usersCollection  = await getUsersCollection();
         const result = await usersCollection.updateOne(
-            {_id: new ObjectId(userid)},
+            {_id: userid},
             {$set: {profile_pic: "/statics/images/" + newProfilePicAddress}}
         );
 
@@ -239,6 +239,25 @@ export async function setUserStatus(userId: ObjectId, status: string): Promise<[
         });
 
         return [true, null];
+    } catch (error) {
+        console.log(error);
+        const err: ErrorResponse = {message: "A system error occurred", state: "failed", type: "system_error"};
+        return [null, err];
+    }
+};
+
+export async function setAccountDeleted(userId: ObjectId): Promise<[Boolean | null, null | ErrorResponse]> {
+    try {
+        const usersCollection  = await getUsersCollection();
+        const result = await usersCollection.updateOne({
+            _id: userId
+        }, {
+            $set: {
+                deleted_account: true
+            }
+        });
+
+        return [ true, null];
     } catch (error) {
         console.log(error);
         const err: ErrorResponse = {message: "A system error occurred", state: "failed", type: "system_error"};
