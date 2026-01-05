@@ -17,11 +17,32 @@ export async function getUserConversations(userInfo: ProtectedUserInfo): Promise
         ).toArray();
 
         //Attaching contact userinfo for pv types of conversations
-        for(let conversation of conversations){
-            //Extracting contact userid by checking !userid
+        for(let [index, conversation] of conversations.entries()){
             var contactId = (conversation.members[0]).toString() !== userInfo.id ? conversation.members[0].toString() : conversation.members[1].toString();
+            //Attaching last messsage to contact
+            const lastMessageId = conversation.last_message_id;
+            const lastMessage = await getMessageById(lastMessageId);
+
+            //This check is for checking conversations that deleted last time or not
+            if(conversation.deleted_for[userInfo.id] > lastMessage.created_at){
+                conversations.splice(index, 1);
+                continue;
+            }
+            
+            const [senderOfLastMessage, _] = await getUserInfoById(new ObjectId(lastMessage.sender));
+
+            conversation.last_message = {
+                content: lastMessage.content,
+                type: lastMessage.type,
+                sender: senderOfLastMessage?.username,
+                when: lastMessage.created_at,
+                seen: conversation.type == "group" && Object.keys(lastMessage.seen_by).length > 0 ? true : contactId in lastMessage.seen_by ? true : false
+            };
+
+            //Extracting contact userid by checking !userid
+            
             if(conversation.type === "pv" && conversation.members){    
-                const [contactUserInfo, error] = await getUserInfoById(contactId);
+                const [contactUserInfo, error] = await getUserInfoById(new ObjectId(contactId));
                 if(error){
                     console.log(error)
                     throw new Error();
@@ -34,19 +55,6 @@ export async function getUserConversations(userInfo: ProtectedUserInfo): Promise
                     conversation.unread_messages_count = unreadMessages;
                 }
             }
-
-            //Attaching last messsage to contact
-            const lastMessageId = conversation.last_message_id;
-            const lastMessage = await getMessageById(lastMessageId);
-            const [senderOfLastMessage, _] = await getUserInfoById(lastMessage.sender);
-
-            conversation.last_message = {
-                content: lastMessage.content,
-                type: lastMessage.type,
-                sender: senderOfLastMessage?.username,
-                when: lastMessage.created_at,
-                seen: conversation.type == "group" && lastMessage.seen_by.length > 0 ? true : contactId in lastMessage.seen_by ? true : false
-            };
         }
 
         const validConversations: Conversation[] = whiteListConversations(conversations);

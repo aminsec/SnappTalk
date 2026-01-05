@@ -7,7 +7,7 @@ import { ObjectId } from "mongodb";
 
 export async function showUserInfo(req: Request, resp: Response) {
     const userid = req.userInfo.id;
-    const [userInfo, error] = await getUserInfoById(userid);
+    const [userInfo, error] = await getUserInfoById(new ObjectId(userid));
     if(error){
         showError(error, resp);
         return;
@@ -99,7 +99,7 @@ export async function updateUserInfo(req: Request, resp: Response) {
 
         if(revoked === true){
             //Getting new user info
-            const [newUserInfo, error] = await getUserInfoById(userInfo.id);
+            const [newUserInfo, error] = await getUserInfoById(new ObjectId(userInfo.id));
             if(error){
                 showError(error, resp);
                 return;
@@ -202,7 +202,7 @@ export async function updateUserProfile(req: Request, resp: Response) {
                 }
 
                 if(revoked === true){
-                    const [userData, err] = await getUserInfoById(userInfo.id);
+                    const [userData, err] = await getUserInfoById(new ObjectId(userInfo.id));
                     if(err){
                         showError(err, resp);
                         return;
