@@ -2,10 +2,13 @@ import { ObjectId } from "mongodb";
 import { getConversationsCollection } from "../models/conversatations.model";
 import {ErrorResponse } from "../types/response.types";
 import { Conversation } from "../types/conversation.types";
+import * as jwt from "jsonwebtoken";
+import { ProtectedUserInfo } from "../types/user.types";
+import { getDeadSessionsCollection } from "../models/dead_sessions.model";
 
 export async function checkEmailIsValid(email: string): Promise<[true | false | null,ErrorResponse | null]> {
     try {
-        //Checking email is in correct format
+        // Checking email is in correct format
         const emailCheckRegex = new RegExp("^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$");
 
         if(emailCheckRegex.test(email)){
@@ -43,5 +46,22 @@ export async function checkUserHasAccessToConversation(conversationId: ObjectId,
         console.log(error);
         const err: ErrorResponse = {message: "A system error occurred", state: "failed", type: "system_error"};
         return [null, err];
+    }
+};
+
+export async function validateJWT(token: string): Promise<ProtectedUserInfo | boolean> {
+    // Checking if token is not in dead_sessions list
+    const dead_sessionsCL = await getDeadSessionsCollection();
+    const isTokenIsInDeadSessions = await dead_sessionsCL.findOne({token: token});
+    if(isTokenIsInDeadSessions){
+        return false;
+    }
+
+    // Verifing token in try-catch. If token was not valid, it will go through an error and we handle it with catch
+    try {
+        const userInfo = jwt.verify(token, String(process.env.JWT_SECRET_KEY)) as ProtectedUserInfo;
+        return userInfo;
+    } catch (error) {
+        return false;
     }
 };

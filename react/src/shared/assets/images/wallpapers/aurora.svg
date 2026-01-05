@@ -1,0 +1,29 @@
+<svg width="1600" height="1000" viewBox="0 0 1600 1000" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1600" y2="1000" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#0A0E0F"/>
+      <stop offset="0.45" stop-color="#0E1A26"/>
+      <stop offset="1" stop-color="#0A1214"/>
+    </linearGradient>
+    <radialGradient id="glowBlue" cx="0" cy="0" r="1" gradientUnits="userSpaceOnUse" gradientTransform="translate(420 260) rotate(35) scale(520 320)">
+      <stop stop-color="#2D90E4" stop-opacity="0.55"/>
+      <stop offset="1" stop-color="#2D90E4" stop-opacity="0"/>
+    </radialGradient>
+    <radialGradient id="glowGreen" cx="0" cy="0" r="1" gradientUnits="userSpaceOnUse" gradientTransform="translate(1080 540) rotate(-15) scale(560 360)">
+      <stop stop-color="#00C897" stop-opacity="0.5"/>
+      <stop offset="1" stop-color="#00C897" stop-opacity="0"/>
+    </radialGradient>
+    <linearGradient id="auroraBand" x1="0" y1="0" x2="1600" y2="0" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#2D90E4" stop-opacity="0.12"/>
+      <stop offset="0.45" stop-color="#00C897" stop-opacity="0.24"/>
+      <stop offset="1" stop-color="#2D90E4" stop-opacity="0.08"/>
+    </linearGradient>
+  </defs>
+  <rect width="1600" height="1000" fill="url(#bg)"/>
+  <rect width="1600" height="1000" fill="url(#glowBlue)"/>
+  <rect width="1600" height="1000" fill="url(#glowGreen)"/>
+  <path d="M0 540C220 520 420 560 620 610C820 660 1040 700 1260 660C1400 635 1500 590 1600 560V1000H0V540Z" fill="url(#auroraBand)"/>
+  <path d="M0 660C260 630 460 690 660 740C880 790 1120 820 1320 780C1460 750 1540 700 1600 670V1000H0V660Z" fill="#0B1214"/>
+  <circle cx="1260" cy="230" r="160" fill="#2D90E4" fill-opacity="0.1"/>
+  <circle cx="320" cy="780" r="210" fill="#00C897" fill-opacity="0.08"/>
+</svg>

@@ -1,0 +1,21 @@
+<svg width="1600" height="1000" viewBox="0 0 1600 1000" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="gridBase" x1="0" y1="0" x2="1600" y2="1000" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#0A0E0F"/>
+      <stop offset="1" stop-color="#14191B"/>
+    </linearGradient>
+    <pattern id="fineGrid" width="60" height="60" patternUnits="userSpaceOnUse">
+      <path d="M60 0H0V60" stroke="rgba(255,255,255,0.05)" stroke-width="1"/>
+    </pattern>
+    <linearGradient id="beam" x1="0" y1="0" x2="1600" y2="0" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#2D90E4" stop-opacity="0.12"/>
+      <stop offset="0.5" stop-color="#00C897" stop-opacity="0.08"/>
+      <stop offset="1" stop-color="#2D90E4" stop-opacity="0.12"/>
+    </linearGradient>
+  </defs>
+  <rect width="1600" height="1000" fill="url(#gridBase)"/>
+  <rect width="1600" height="1000" fill="url(#fineGrid)"/>
+  <path d="M0 520C260 520 460 560 680 620C900 680 1120 740 1600 760V1000H0V520Z" fill="url(#beam)"/>
+  <circle cx="1180" cy="240" r="180" fill="#2D90E4" fill-opacity="0.08"/>
+  <circle cx="320" cy="720" r="220" fill="#00C897" fill-opacity="0.06"/>
+</svg>

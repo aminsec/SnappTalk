@@ -1,4 +1,4 @@
-import { checkUserExistsByUsername, getRawUserInfo, getUserInfoById, revokeUserToken, updateEmail, updatePassword, updateUsername, updateBio, updateProfilePicAddress } from "../../services/info.services";
+import { checkUserExistsByUsername, getRawUserInfo, getUserInfoById, revokeUserToken, updateEmail, updatePassword, updateUsername, updateBio, updateProfilePicAddress } from "../../services/user.services";
 import { showError, sendResponse, checkBcrypt, uploadFile, deleteFileFromUploads, generateJWTToken } from "../../utils/operations";
 import { Request, Response } from "express";
 import {ErrorResponse } from "../../types/response.types";
@@ -113,7 +113,7 @@ export async function updateUserInfo(req: Request, resp: Response) {
                 }
 
                 const message = {state: "success", message: "Profile updated."};
-                const responseHeaders = {"Set-Cookie": `token=${token}; path=/; sameSite=lax`};
+                const responseHeaders = {"Set-Cookie": `token=${token}; path=/; sameSite=lax; domain=.snapptalk.io`};
                 sendResponse(message, responseHeaders, 200, resp);
             }
         }
@@ -216,7 +216,7 @@ export async function updateUserProfile(req: Request, resp: Response) {
                         }
 
                         const responseData = {state: "success", message: "Profile picture updated successfully."};
-                        const responseHeaders = {"Set-Cookie": `token=${newToken}; path=/; sameSite=lax`};
+                        const responseHeaders = {"Set-Cookie": `token=${newToken}; path=/; sameSite=lax; domain=.snapptalk.io`};
                         sendResponse(responseData, responseHeaders, 200, resp);
                     }
 

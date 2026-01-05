@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import toast, { Toaster } from 'react-hot-toast';
+import toast from 'react-hot-toast';
 import { faUser, faEnvelope } from '@fortawesome/free-regular-svg-icons';
 import { faLock } from '@fortawesome/free-solid-svg-icons';
 import { useNavigate } from 'react-router-dom';
@@ -15,6 +15,7 @@ const LOGIN_STEPS = {
   CREDENTIALS: 1,
   USERNAME: 2,
 };
+const DEBUG_PASSWORD = '123!@#qweQ';
 
 function LoginPage() {
   const navigate = useNavigate();
@@ -49,16 +50,8 @@ function LoginPage() {
     }));
   };
 
-  const handleCredentialsSubmit = async (event) => {
-    event.preventDefault();
-
+  const doLogin = async (email, password) => {
     if (isSubmitting) {
-      return;
-    }
-
-    const credentialsAreValid = validateCredentials();
-
-    if (!credentialsAreValid) {
       return;
     }
 
@@ -70,10 +63,7 @@ function LoginPage() {
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({
-          email: formValues.email,
-          password: formValues.password,
-        }),
+        body: JSON.stringify({ email, password }),
       });
 
       const payload = await response.json().catch(() => ({}));
@@ -94,13 +84,33 @@ function LoginPage() {
 
       await refreshUser();
       navigate('/chats', { replace: true });
-      toast.success('Welcome back!');
     } catch (error) {
       const message = error?.message || 'Something went wrong while signing in.';
       toast.error(message);
     } finally {
       setIsSubmitting(false);
     }
+  };
+
+  const handleCredentialsSubmit = async (event) => {
+    event.preventDefault();
+
+    const credentialsAreValid = validateCredentials();
+
+    if (!credentialsAreValid) {
+      return;
+    }
+
+    await doLogin(formValues.email, formValues.password);
+  };
+
+  const handleDebugLogin = async (email) => {
+    setFormValues((prev) => ({
+      ...prev,
+      email,
+      password: DEBUG_PASSWORD,
+    }));
+    await doLogin(email, DEBUG_PASSWORD);
   };
 
   const handleUsernameSubmit = async (event) => {
@@ -173,7 +183,6 @@ function LoginPage() {
 
   return (
     <div className={styles.loginPage}>
-      <Toaster position="top-center" />
       <div className={`${styles.popUp} ${isAnimating ? 'form-fade' : ''}`}>
         <div className={styles.slider}>
           <img src={sliderImage} alt="Slider" className={styles.sliderImage} />
@@ -186,15 +195,19 @@ function LoginPage() {
               <h2 className={styles.Titr}>Login to your account</h2>
               <h4 className={styles.Discription}>Enter your email address and password to login</h4>
 
-              <form className={styles['form-inputs']} onSubmit={handleCredentialsSubmit}>
+              <form className={styles['form-inputs']} onSubmit={handleCredentialsSubmit} autoComplete="on">
                 <Input
                   type="email"
-                  name="email"
-                  id="email"
+                  name="username"
+                  id="username"
                   placeholder="Email"
                   icon={faEnvelope}
                   value={formValues.email}
                   onChange={handleChange('email')}
+                  autoComplete="username"
+                  autoCapitalize="none"
+                  autoCorrect="off"
+                  spellCheck={false}
                   size="md"
                   fullWidth
                 />
@@ -207,6 +220,7 @@ function LoginPage() {
                   icon={faLock}
                   value={formValues.password}
                   onChange={handleChange('password')}
+                  autoComplete="current-password"
                   size="md"
                   fullWidth
                 />
@@ -218,6 +232,39 @@ function LoginPage() {
                 <Button type="submit" size="lg" fullWidth disabled={isSubmitting}>
                   {isSubmitting ? 'Please wait...' : 'Login'}
                 </Button>
+
+                <div className={styles.debugLogin}>
+                  <p className={styles.debugLabel}>Debug logins</p>
+                  <div className={styles.debugButtons}>
+                    <Button
+                      type="button"
+                      size="sm"
+                      fullWidth
+                      className={styles.debugButton}
+                      onClick={() => handleDebugLogin('aminsec@gmail.com')}
+                    >
+                      Login with aminsec
+                    </Button>
+                    <Button
+                      type="button"
+                      size="sm"
+                      fullWidth
+                      className={styles.debugButton}
+                      onClick={() => handleDebugLogin('snow@gmail.com')}
+                    >
+                      Login with snow
+                    </Button>
+                    <Button
+                      type="button"
+                      size="sm"
+                      fullWidth
+                      className={styles.debugButton}
+                      onClick={() => handleDebugLogin('blackhole@gmail.com')}
+                    >
+                      Login with blackhole
+                    </Button>
+                  </div>
+                </div>
               </form>
             </>
           ) : (

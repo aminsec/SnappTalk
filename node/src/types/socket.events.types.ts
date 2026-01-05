@@ -1,0 +1,18 @@
+//Every type that ends with EVT means Event Type
+export interface NewPvConversationEVT {
+    message_text: string,
+    new_user_id: string,
+    date?: Date,
+    track_id: string
+};
+
+export interface MessageSendEVT {
+    message_text: string,
+    conversation_id: string,
+    track_id: string
+};
+
+export interface MessageSeenEVT{
+    conversation_id: string,
+    message_id: string
+}

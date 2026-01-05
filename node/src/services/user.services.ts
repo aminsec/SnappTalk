@@ -226,3 +226,22 @@ export async function getUserContacts(userid: string) {
         return [null, err];
     }
 };
+
+export async function setUserStatus(userId: ObjectId, status: string): Promise<[Boolean | null, null | ErrorResponse]> {
+    try {
+        const usersCollection  = await getUsersCollection();
+        const result = await usersCollection.updateOne({
+            _id: userId
+        }, {
+            $set: {
+                status: status
+            }
+        });
+
+        return [true, null];
+    } catch (error) {
+        console.log(error);
+        const err: ErrorResponse = {message: "A system error occurred", state: "failed", type: "system_error"};
+        return [null, err];
+    }
+};

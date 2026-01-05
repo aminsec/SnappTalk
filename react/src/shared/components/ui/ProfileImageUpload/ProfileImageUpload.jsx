@@ -1,7 +1,7 @@
 import { useRef, useState } from "react";
 import styles from "./ProfileImageUpload.module.css";
 import clsx from "clsx";
-import toast, { Toaster } from 'react-hot-toast';
+import toast from 'react-hot-toast';
 
 export default function ProfileImageUpload({
   currentImage,
@@ -55,8 +55,6 @@ export default function ProfileImageUpload({
   };
 
   return (
-    <>
-    <Toaster position="top-center" />
     <div
       className={clsx(styles.wrapper, className)}
       style={{
@@ -84,6 +82,5 @@ export default function ProfileImageUpload({
         className={styles.fileInput}
       />
     </div>
-    </>
   );
 }
