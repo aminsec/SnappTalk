@@ -282,6 +282,10 @@ function ChatsPage() {
   const [recordingDuration, setRecordingDuration] = useState(0);
   const [randomIcon, setRandomIcon] = useState(null);
   const [lastAnimatedMessageId, setLastAnimatedMessageId] = useState(null);
+  const selectedChatIdStr = useMemo(
+    () => getConversationId(selectedChat)?.toString() || null,
+    [selectedChat]
+  );
   const optionsMenuRef = useRef(null);
   const chatMenuRef = useRef(null);
   const mediaPickerRef = useRef(null);
@@ -764,6 +768,7 @@ function ChatsPage() {
         if (chat?.type !== 'pv') return chat;
         const contactId = (chat.contact_info?._id || chat.contact_info?.id)?.toString();
         if (!contactId || contactId !== userIdStr) return chat;
+        if (chat.contact_info?.status === status) return chat;
         return {
           ...chat,
           contact_info: {
@@ -777,6 +782,7 @@ function ChatsPage() {
       if (!prev || prev?.type !== 'pv') return prev;
       const contactId = (prev.contact_info?._id || prev.contact_info?.id)?.toString();
       if (!contactId || contactId !== userIdStr) return prev;
+      if (prev.contact_info?.status === status) return prev;
       return {
         ...prev,
         contact_info: {
@@ -1343,8 +1349,7 @@ function ChatsPage() {
   }, [emitSeenForMessage, setUnreadCount, socket, refreshContacts, updateContactStatus]);
 
   useEffect(() => {
-    const nextConversationId = getConversationId(selectedChat);
-    const nextConversationIdStr = nextConversationId?.toString();
+    const nextConversationIdStr = selectedChatIdStr;
     const prevConversationIdStr = activeConversationIdRef.current;
 
     if (socket && socket.connected && prevConversationIdStr && prevConversationIdStr !== nextConversationIdStr) {
@@ -1360,14 +1365,14 @@ function ChatsPage() {
     socket.emit(SOCKET_EVENTS.CONVERSATION_JOIN, { conversationId: nextConversationIdStr });
     setUnreadCount(nextConversationIdStr, 0);
 
-    const contactId = selectedChat?.type === 'pv'
-      ? (selectedChat.contact_info?._id || selectedChat.contact_info?.id)
+    const contactId = selectedChatRef.current?.type === 'pv'
+      ? (selectedChatRef.current?.contact_info?._id || selectedChatRef.current?.contact_info?.id)
       : null;
     if (contactId) {
       fetchContactStatus(contactId);
     }
 
-  }, [selectedChat, setUnreadCount, socket, socketStatus, fetchContactStatus]);
+  }, [selectedChatIdStr, setUnreadCount, socket, socketStatus, fetchContactStatus]);
 
   // Close menus when clicking outside
   useEffect(() => {
@@ -1814,7 +1819,7 @@ function ChatsPage() {
 
   // Fetch messages when selectedChat changes
   useEffect(() => {
-    if (!selectedChat) {
+    if (!selectedChatIdStr) {
       setMessages([]);
       setMessagesOffset(0);
       setHasMoreMessages(true);
@@ -1824,20 +1829,19 @@ function ChatsPage() {
       return;
     }
 
-    const conversationId = selectedChat._id || selectedChat.id;
-    if (!conversationId) return;
+    const conversationId = selectedChatIdStr;
 
     // Reset state and fetch initial messages (last 10 messages)
     setMessages([]);
     setMessagesOffset(0);
     setHasMoreMessages(true);
-    setMessagesConversationId(conversationId.toString());
+    setMessagesConversationId(conversationId);
     setSenderInfoCache({}); // Clear cache
     isInitialLoadRef.current = true;
     if (!conversationId.toString().startsWith('temp-')) {
       fetchMessages(conversationId, 0, false);
     }
-  }, [selectedChat, fetchMessages]);
+  }, [selectedChatIdStr, fetchMessages]);
 
   // Fetch sender info for group messages
   useEffect(() => {
