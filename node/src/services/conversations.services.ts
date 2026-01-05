@@ -17,35 +17,35 @@ export async function getUserConversations(userInfo: ProtectedUserInfo): Promise
         ).toArray();
 
         //Attaching contact userinfo for pv types of conversations
-        for(let index in conversations){
+        for(let conversation of conversations){
             //Extracting contact userid by checking !userid
-            var contactId = (conversations[index].members[0]).toString() !== userInfo.id ? conversations[index].members[0].toString() : conversations[index].members[1].toString();
-            if(conversations[index].type === "pv" && conversations[index].members){    
+            var contactId = (conversation.members[0]).toString() !== userInfo.id ? conversation.members[0].toString() : conversation.members[1].toString();
+            if(conversation.type === "pv" && conversation.members){    
                 const [contactUserInfo, error] = await getUserInfoById(contactId);
                 if(error){
                     console.log(error)
                     throw new Error();
                 }
 
-                conversations[index].contact_info = contactUserInfo;
+                conversation.contact_info = contactUserInfo;
 
                 if(contactUserInfo){
-                    const [unreadMessages, err] = await getUnreadMessagesCount(userInfo.id.toString(), conversations[index]._id);
-                    conversations[index].unread_messages_count = unreadMessages;
+                    const [unreadMessages, err] = await getUnreadMessagesCount(userInfo.id.toString(), conversation._id);
+                    conversation.unread_messages_count = unreadMessages;
                 }
             }
 
             //Attaching last messsage to contact
-            const lastMessageId = conversations[index].last_message_id;
+            const lastMessageId = conversation.last_message_id;
             const lastMessage = await getMessageById(lastMessageId);
             const [senderOfLastMessage, _] = await getUserInfoById(lastMessage.sender);
 
-            conversations[index].last_message = {
+            conversation.last_message = {
                 content: lastMessage.content,
                 type: lastMessage.type,
                 sender: senderOfLastMessage?.username,
                 when: lastMessage.created_at,
-                seen: conversations[index].type == "group" && lastMessage.seen_by.length > 0 ? true : contactId in lastMessage.seen_by ? true : false
+                seen: conversation.type == "group" && lastMessage.seen_by.length > 0 ? true : contactId in lastMessage.seen_by ? true : false
             };
         }
 
