@@ -2580,10 +2580,10 @@ function ChatsPage() {
               const selectedId = getConversationId(selectedChat);
               const chatId = getConversationId(chat);
               const chatIdStr = chatId?.toString();
-              const unreadCount = unreadCounts[chatIdStr]
-                ?? chat.unread_messages_count
+              const serverUnread = chat.unread_messages_count
                 ?? chat.unread_count
                 ?? 0;
+              const unreadCount = Math.max(unreadCounts[chatIdStr] ?? 0, serverUnread);
               const avatarSrc = isPrivateChat 
                 ? chat.contact_info?.profile_pic 
                 : chat.group_avatar;
