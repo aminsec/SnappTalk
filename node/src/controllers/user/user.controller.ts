@@ -1,8 +1,9 @@
-import { checkUserExistsByUsername, getRawUserInfo, getUserInfoById, revokeUserToken, updateEmail, updatePassword, updateUsername, updateBio, updateProfilePicAddress } from "../../services/user.services";
+import { checkUserExistsByUsername, getRawUserInfo, getUserInfoById, revokeUserToken, updateEmail, updatePassword, updateUsername, updateBio, updateProfilePicAddress, setAccountDeleted } from "../../services/user.services";
 import { showError, sendResponse, checkBcrypt, uploadFile, deleteFileFromUploads, generateJWTToken } from "../../utils/operations";
 import { Request, Response } from "express";
 import {ErrorResponse } from "../../types/response.types";
 import { checkUserExistsByEmail } from "../../services/auth.services";
+import { ObjectId } from "mongodb";
 
 export async function showUserInfo(req: Request, resp: Response) {
     const userid = req.userInfo.id;
@@ -57,7 +58,7 @@ export async function updateUserInfo(req: Request, resp: Response) {
 
     //Updating username if was not equal to the current one
     if(username !== userInfo.username){
-        const [usernameUpdatedResult, usernameUpdateError] = await updateUsername(userInfo.id, username);
+        const [usernameUpdatedResult, usernameUpdateError] = await updateUsername(new ObjectId(userInfo.id), username);
         if(usernameUpdateError){
             showError(usernameUpdateError, resp);
             return;
@@ -186,7 +187,7 @@ export async function updateUserProfile(req: Request, resp: Response) {
 
         if(updateProfileResult){
             //Updating user profilePic address in db
-            const [updateResult, error] = await updateProfilePicAddress(userInfo.id, updateProfileResult);
+            const [updateResult, error] = await updateProfilePicAddress(new ObjectId(userInfo.id), updateProfileResult);
             if(error){
                 showError(error, resp);
                 return;
@@ -239,4 +240,34 @@ export async function updateUserProfile(req: Request, resp: Response) {
         const error:ErrorResponse = {state: "failed", message: "Couldn't update profile", type: "system_error"};
         showError(error, resp);
     }
-}; 
+};
+
+export async function deleteUserAccount(req: Request, resp: Response) {
+    const { userInfo } = req;
+    
+    const [ usernameUpdateResult, error ] = await updateUsername(new ObjectId(userInfo.id), "Deleted Account");
+    if(error){
+        showError(error, resp);
+        return;
+    }
+
+    const [ profilePicUpdateResult, err ] = await updateProfilePicAddress(new ObjectId(userInfo.id), "deleted_account.png");
+    if(err){
+        showError(err, resp);
+        return;
+    }
+
+    const [ statusResult, Error] = await setAccountDeleted(new ObjectId(userInfo.id));
+    if(Error){
+        showError(Error, resp);
+        return;
+    }
+
+    const [revokeResult, revokeError] = await revokeUserToken(req.cookies.token);
+    if(revokeError){
+        showError(revokeError, resp);
+        return;
+    }
+
+    resp.redirect("/login");
+};

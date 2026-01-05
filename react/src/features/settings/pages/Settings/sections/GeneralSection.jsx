@@ -7,6 +7,35 @@ import styles from './GeneralSection.module.css';
 
 function MainSection() {
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
+
+  const handleDeleteAccount = async () => {
+    if (isDeleting) return;
+
+    setIsDeleting(true);
+    try {
+      const response = await fetch('/api/v1/user/info/delete-account', {
+        method: 'DELETE',
+        credentials: 'include',
+      });
+
+      if (response.redirected) {
+        window.location.href = response.url;
+        return;
+      }
+
+      if (!response.ok) {
+        const payload = await response.json().catch(() => ({}));
+        throw new Error(payload?.message || 'Unable to delete account right now.');
+      }
+
+      window.location.href = '/login';
+    } catch (error) {
+      toast.error(error?.message || 'Unable to delete account right now.');
+    } finally {
+      setIsDeleting(false);
+    }
+  };
 
   return (
     <div className={styles.generalContainer}>
@@ -51,10 +80,11 @@ function MainSection() {
                 className={styles.confirmButton}
                 onClick={() => {
                   setShowDeleteConfirm(false);
-                  toast.error('Delete account is not available yet.');
+                  handleDeleteAccount();
                 }}
+                disabled={isDeleting}
               >
-                Delete
+                {isDeleting ? 'Deleting...' : 'Delete'}
               </button>
             </div>
           </div>

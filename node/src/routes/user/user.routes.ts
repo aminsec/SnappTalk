@@ -1,5 +1,5 @@
 import express from "express";
-import * as accountInfoController  from "../../controllers/user/info.controller";
+import * as accountInfoController  from "../../controllers/user/user.controller";
 import { check } from 'express-validator';
 import { checkThereIsAnyError } from "../../middlewares/errors";
 import { globalReg } from "../../utils/regex";
@@ -46,5 +46,7 @@ router.post("/info/profile", [
 
   checkThereIsAnyError
 ], accountInfoController.updateUserProfile);
+
+router.delete("/info/delete-account", accountInfoController.deleteUserAccount);
 
 export default router;

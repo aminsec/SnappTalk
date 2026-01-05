@@ -3,7 +3,7 @@ import bodyParser from "body-parser";
 import cookieParser from "cookie-parser";
 import authRoutes from "./routes/auth/auth.routes";
 import membersRoutes from "./routes/members/info.routes";
-import accountRoutes from "./routes/user/info.routes";
+import accountRoutes from "./routes/user/user.routes";
 import accountConversationsRoutes from "./routes/user/conversations.routes";
 import accountMessagesRoutes from "./routes/user/messages.routes";
 import validateJWT from "./middlewares/jwt";

@@ -16,6 +16,6 @@ router.post("/", [
     checkThereIsAnyError
 ], handleAuth);
 
-router.post("/logout", validateJWT, handleLogout);
+router.post("/logout", handleLogout);
 
 export default router;

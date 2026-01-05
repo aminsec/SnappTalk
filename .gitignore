@@ -147,7 +147,7 @@ dist
 **/*.backup.*
 **/*.back.*
 
-uploads/
+
 node_modules
 
 *.sublime*

@@ -25,7 +25,7 @@ export async function checkUserExistsByEmail(email: string): Promise<[true | fal
 export async function checkCredentials(email: string, password: string): Promise<[true | false | null, null |ErrorResponse]> {
     try {
         const usersCollection  = await getUsersCollection();
-        const user: RawUserInfo = await usersCollection.findOne({email: email});
+        const user: RawUserInfo = await usersCollection.findOne({email: email, deleted_account: false});
         if(user){
             const isPasswordCorrect = await checkBcrypt(password, user.password)
             if(isPasswordCorrect === true){
@@ -78,7 +78,8 @@ export async function createUser(email: string, password: string): Promise<[Prot
                 role: "user",
                 joined_at: Date.now().toString(),
                 bio: "", // Default bio is empty
-                status: "online"
+                status: "online",
+                deleted_account: false
             };
 
             const createdUserInfoResult = await usersCollection.insertOne(userInfoToInsert);

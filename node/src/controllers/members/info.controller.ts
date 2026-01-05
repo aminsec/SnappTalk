@@ -20,7 +20,7 @@ export async function showSearchedMember(req: Request, resp: Response) {
     const { username } = req.params;
     const [members, error] = await searchMemberByUsername(username);
     if(error){
-        console.log(error, "qf02903f09wjef")
+        console.log(error)
         showError(error, resp);
         return;
     }

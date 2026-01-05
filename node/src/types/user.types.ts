@@ -18,7 +18,8 @@ export interface RawUserInfo {
     role: string,
     joined_at: string,
     bio: string,
-    status: "online" | "offline"
+    status: "online" | "offline",
+    deleted_account: Boolean
 };
 
 export interface InsertUserInfo {
@@ -29,5 +30,6 @@ export interface InsertUserInfo {
     role: string,
     joined_at: string,
     bio: string,
-    status: "online" | "offline"
+    status: "online" | "offline",
+    deleted_account: Boolean
 };
