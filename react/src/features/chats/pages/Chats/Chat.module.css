@@ -316,6 +316,41 @@
     align-items: center;
 }
 
+.statusAvatar {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    --status-dot-size: 10px;
+}
+
+.statusAvatarSmall {
+    --status-dot-size: 11px;
+}
+
+.statusAvatarLarge {
+    --status-dot-size: 13px;
+}
+
+.statusDot {
+    position: absolute;
+    right: 2px;
+    bottom: 2px;
+    width: var(--status-dot-size);
+    height: var(--status-dot-size);
+    border-radius: 999px;
+    border: 2px solid var(--bg-panel);
+    box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.25);
+}
+
+.statusDotOnline {
+    background: #2ecc71;
+}
+
+.statusDotOffline {
+    background: #6b7280;
+}
+
 .UserStatus div {
     display: flex;
     flex-direction: column;
@@ -328,8 +363,15 @@
 }
 
 .chatHeader .onlineStatus {
-    color: var(--success-color);
     font-size: 12px;
+}
+
+.statusTextOnline {
+    color: var(--success-color);
+}
+
+.statusTextOffline {
+    color: var(--text-muted);
 }
 
 

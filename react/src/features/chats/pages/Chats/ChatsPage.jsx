@@ -302,6 +302,7 @@ function ChatsPage() {
   const recordedChunksRef = useRef([]);
   const recordingTimerRef = useRef(null);
   const recordingStreamRef = useRef(null);
+  const statusOfflineTimersRef = useRef({});
 
   const [unreadCounts, setUnreadCounts] = useState({});
   const unreadCountsRef = useRef({});
@@ -754,6 +755,54 @@ function ChatsPage() {
       return next;
     });
   }, []);
+
+  const updateContactStatus = useCallback((userId, status) => {
+    if (!userId) return;
+    const userIdStr = userId.toString();
+    setContacts((prev) =>
+      prev.map((chat) => {
+        if (chat?.type !== 'pv') return chat;
+        const contactId = (chat.contact_info?._id || chat.contact_info?.id)?.toString();
+        if (!contactId || contactId !== userIdStr) return chat;
+        return {
+          ...chat,
+          contact_info: {
+            ...chat.contact_info,
+            status,
+          },
+        };
+      })
+    );
+    setSelectedChat((prev) => {
+      if (!prev || prev?.type !== 'pv') return prev;
+      const contactId = (prev.contact_info?._id || prev.contact_info?.id)?.toString();
+      if (!contactId || contactId !== userIdStr) return prev;
+      return {
+        ...prev,
+        contact_info: {
+          ...prev.contact_info,
+          status,
+        },
+      };
+    });
+  }, []);
+
+  const fetchContactStatus = useCallback(async (userId) => {
+    if (!userId) return;
+    try {
+      const response = await fetch(`/api/v1/members/${userId}/info`, {
+        method: 'GET',
+        credentials: 'include',
+      });
+      if (!response.ok) return;
+      const data = await response.json();
+      const status = data?.userInfo?.status || data?.status;
+      if (!status) return;
+      updateContactStatus(userId, status);
+    } catch (error) {
+      console.error('Failed to fetch user status:', error);
+    }
+  }, [updateContactStatus]);
 
   const emitSeenForMessage = useCallback(
     (message, conversationIdStr) => {
@@ -1240,6 +1289,30 @@ function ChatsPage() {
     socket.on(SOCKET_EVENTS.CONVERSATION_DELETED, handleConversationDeleted);
     socket.on('message', handleGenericMessage);
     socket.on('error', handleMessageSendError);
+    const handleStatusOnline = (payload) => {
+      const userId = payload?.user_id;
+      if (!userId) return;
+      const timer = statusOfflineTimersRef.current[userId];
+      if (timer) {
+        clearTimeout(timer);
+        delete statusOfflineTimersRef.current[userId];
+      }
+      updateContactStatus(userId, 'online');
+    };
+    const handleStatusOffline = (payload) => {
+      const userId = payload?.user_id;
+      if (!userId) return;
+      const existing = statusOfflineTimersRef.current[userId];
+      if (existing) {
+        clearTimeout(existing);
+      }
+      statusOfflineTimersRef.current[userId] = setTimeout(() => {
+        updateContactStatus(userId, 'offline');
+        delete statusOfflineTimersRef.current[userId];
+      }, 5000);
+    };
+    socket.on('status:online', handleStatusOnline);
+    socket.on('status:offline', handleStatusOffline);
     socket.on(SOCKET_EVENTS.NEW_PV_CONVERSATION, handleNewPvConversation);
     socket.onAny(handleAnyEvent);
 
@@ -1253,17 +1326,21 @@ function ChatsPage() {
       socket.off(SOCKET_EVENTS.CONVERSATION_DELETED, handleConversationDeleted);
       socket.off('message', handleGenericMessage);
       socket.off('error', handleMessageSendError);
+      socket.off('status:online', handleStatusOnline);
+      socket.off('status:offline', handleStatusOffline);
       socket.off(SOCKET_EVENTS.NEW_PV_CONVERSATION, handleNewPvConversation);
       socket.offAny(handleAnyEvent);
       refreshTimeoutsRef.current.forEach((timeoutId) => clearTimeout(timeoutId));
       refreshTimeoutsRef.current = [];
+      Object.values(statusOfflineTimersRef.current).forEach((timeoutId) => clearTimeout(timeoutId));
+      statusOfflineTimersRef.current = {};
       Object.values(pendingAckTimersRef.current).forEach((timeoutId) => clearTimeout(timeoutId));
       pendingAckTimersRef.current = {};
       if (messageAnimationTimeoutRef.current) {
         clearTimeout(messageAnimationTimeoutRef.current);
       }
     };
-  }, [emitSeenForMessage, setUnreadCount, socket, refreshContacts]);
+  }, [emitSeenForMessage, setUnreadCount, socket, refreshContacts, updateContactStatus]);
 
   useEffect(() => {
     const nextConversationId = getConversationId(selectedChat);
@@ -1283,7 +1360,14 @@ function ChatsPage() {
     socket.emit(SOCKET_EVENTS.CONVERSATION_JOIN, { conversationId: nextConversationIdStr });
     setUnreadCount(nextConversationIdStr, 0);
 
-  }, [selectedChat, setUnreadCount, socket, socketStatus]);
+    const contactId = selectedChat?.type === 'pv'
+      ? (selectedChat.contact_info?._id || selectedChat.contact_info?.id)
+      : null;
+    if (contactId) {
+      fetchContactStatus(contactId);
+    }
+
+  }, [selectedChat, setUnreadCount, socket, socketStatus, fetchContactStatus]);
 
   // Close menus when clicking outside
   useEffect(() => {
@@ -2502,6 +2586,10 @@ function ChatsPage() {
               const displayName = isPrivateChat 
                 ? chat.contact_info?.username 
                 : chat.group_name;
+              const contactStatus = isPrivateChat ? chat.contact_info?.status : null;
+              const statusClass = contactStatus === 'online'
+                ? styles.statusDotOnline
+                : styles.statusDotOffline;
 
               return (
                 <div
@@ -2509,7 +2597,12 @@ function ChatsPage() {
                   className={`${styles.chatItem} ${selectedId && chatId && selectedId === chatId ? styles.active : ''}`}
                   onClick={() => setSelectedChat(chat)}
                 >
-                  <ProfileAvatar size="md" src={avatarSrc} />
+                  <div className={`${styles.statusAvatar} ${styles.statusAvatarSmall}`}>
+                    <ProfileAvatar size="md" src={avatarSrc} />
+                    {isPrivateChat && (
+                      <span className={`${styles.statusDot} ${statusClass}`} />
+                    )}
+                  </div>
                   <div className={styles.chatInfo}>
                     <div className={styles.chatInfoHeader}>
                       <h3>{displayName}</h3>
@@ -2576,18 +2669,41 @@ function ChatsPage() {
           <>
             <div className={styles.chatHeader}>
               <div className={styles.UserStatus}>
-                <ProfileAvatar 
-                  size="md" 
-                  alt={selectedChat.type === "pv" ? selectedChat.contact_info?.username : selectedChat.group_name}
-                  src={selectedChat.type === "pv" ? selectedChat.contact_info?.profile_pic : selectedChat.group_avatar}
-                />
+                <div className={`${styles.statusAvatar} ${styles.statusAvatarLarge}`}>
+                  <ProfileAvatar 
+                    size="md" 
+                    alt={selectedChat.type === "pv" ? selectedChat.contact_info?.username : selectedChat.group_name}
+                    src={selectedChat.type === "pv" ? selectedChat.contact_info?.profile_pic : selectedChat.group_avatar}
+                  />
+                  {selectedChat.type === "pv" && (
+                    <span
+                      className={`${styles.statusDot} ${
+                        selectedChat.contact_info?.status === 'online'
+                          ? styles.statusDotOnline
+                          : styles.statusDotOffline
+                      }`}
+                    />
+                  )}
+                </div>
                 <div>
                   <h2>
                     {selectedChat.type === "pv" 
                       ? selectedChat.contact_info?.username 
                       : selectedChat.group_name}
                   </h2>
-                  <p className={styles.onlineStatus}>Online</p>
+                  {selectedChat.type === "pv" ? (
+                    <p
+                      className={`${styles.onlineStatus} ${
+                        selectedChat.contact_info?.status === 'online'
+                          ? styles.statusTextOnline
+                          : styles.statusTextOffline
+                      }`}
+                    >
+                      {selectedChat.contact_info?.status === 'online' ? 'Online' : 'Offline'}
+                    </p>
+                  ) : (
+                    <p className={styles.onlineStatus}>Group</p>
+                  )}
                 </div>
               </div>
               <div ref={chatMenuRef}>
