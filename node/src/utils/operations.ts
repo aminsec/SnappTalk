@@ -39,7 +39,8 @@ export function whiteListUserInfo(userData: RawUserInfo): ProtectedUserInfo{
         role: userData.role,
         profile_pic: userData.profile_pic,
         joined_at: userData.joined_at,
-        bio: userData.bio || "" // Default bio is empty if not provided
+        bio: userData.bio || "", // Default bio is empty if not provided
+        online: userData.online
     };
 
     return validatedUserData;
