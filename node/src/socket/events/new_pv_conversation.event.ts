@@ -60,9 +60,10 @@ export async function handleNewPvConversationEvent(socket: Socket, data: NewPvCo
                     sender_info: socket.userInfo,
                     when: Date.now()
                 });
-                socket.emit("message", {message: "Conversation created", conversationId: newPvConversationId.toString()});
-                socket.emit("message:send:ack", {message_id: newMessageId, track_id});
             }
+
+            socket.emit("message", {message: "Conversation created", conversationId: newPvConversationId.toString()});
+            socket.emit("message:send:ack", {message_id: newMessageId, track_id});
         }
     }
 };
