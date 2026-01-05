@@ -1,0 +1,144 @@
+.generalContainer {
+  width: 100%;
+  color: var(--text-main);
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  align-items: center;
+}
+
+.sectionHeader {
+  text-align: center;
+}
+
+.sectionHeader h2 {
+  font-size: 20px;
+  margin-bottom: 6px;
+}
+
+.sectionHeader p {
+  color: var(--text-muted);
+  font-size: 14px;
+}
+
+.dangerZone {
+  width: 100%;
+  margin-top: 6px;
+  padding: 16px;
+  border-radius: 12px;
+  background: rgba(255, 92, 92, 0.08);
+  border: 1px solid rgba(255, 92, 92, 0.25);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.dangerCopy h4 {
+  margin: 0 0 4px;
+  font-size: 16px;
+  color: var(--text-main);
+}
+
+.dangerCopy p {
+  margin: 0;
+  font-size: 13px;
+  color: var(--text-muted);
+}
+
+.deleteBtn {
+  min-width: 140px;
+}
+
+.confirmOverlay {
+  animation: fadeIn 0.18s ease-out;
+  position: fixed;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.4);
+  backdrop-filter: blur(1px);
+  z-index: 2000;
+  padding: 20px;
+}
+
+.confirmBox {
+  animation: popIn 0.22s ease-out;
+  width: 100%;
+  max-width: 320px;
+  background: var(--bg-panel);
+  border-radius: 12px;
+  border: 1px solid var(--input-border);
+  padding: 1.25rem;
+  box-shadow: 0 12px 36px rgba(0, 0, 0, 0.25);
+}
+
+.confirmTitle {
+  margin: 0 0 0.35rem;
+  font-weight: 700;
+  font-size: 1rem;
+  color: var(--text-main);
+}
+
+.confirmText {
+  margin: 0 0 1rem;
+  font-size: 0.9rem;
+  color: var(--text-muted);
+}
+
+.confirmActions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.5rem;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes popIn {
+  from { opacity: 0; transform: scale(0.94); }
+  to { opacity: 1; transform: scale(1); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .confirmOverlay,
+  .confirmBox {
+    animation: none !important;
+  }
+}
+
+.cancelButton,
+.confirmButton {
+  padding: 0.45rem 0.9rem;
+  border-radius: 8px;
+  border: 1px solid var(--input-border);
+  background: transparent;
+  color: var(--text-primary);
+  cursor: pointer;
+  transition: background-color 0.2s ease, color 0.2s ease, border-color 0.2s ease;
+}
+
+.cancelButton:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.08);
+  border-color: rgba(255, 255, 255, 0.12);
+}
+
+.confirmButton {
+  background: rgba(255, 18, 18, 0.1);
+  border-color: rgba(255, 18, 18, 0.4);
+  color: var(--text-primary);
+}
+
+.confirmButton:hover:not(:disabled) {
+  background: rgba(255, 18, 18, 0.2);
+  border-color: rgba(255, 18, 18, 0.6);
+}
+
+.cancelButton:disabled,
+.confirmButton:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
