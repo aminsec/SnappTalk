@@ -6,7 +6,7 @@ export interface ProtectedUserInfo {
     role: string,
     joined_at: string,
     bio: string,
-    online: Boolean
+    status: "online" | "offline"
 };
 
 export interface RawUserInfo {
@@ -18,7 +18,7 @@ export interface RawUserInfo {
     role: string,
     joined_at: string,
     bio: string,
-    online: Boolean
+    status: "online" | "offline"
 };
 
 export interface InsertUserInfo {
@@ -29,5 +29,5 @@ export interface InsertUserInfo {
     role: string,
     joined_at: string,
     bio: string,
-    online: Boolean
+    status: "online" | "offline"
 };

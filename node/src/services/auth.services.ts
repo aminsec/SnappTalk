@@ -78,7 +78,7 @@ export async function createUser(email: string, password: string): Promise<[Prot
                 role: "user",
                 joined_at: Date.now().toString(),
                 bio: "", // Default bio is empty
-                online: true
+                status: "online"
             };
 
             const createdUserInfoResult = await usersCollection.insertOne(userInfoToInsert);
@@ -92,7 +92,7 @@ export async function createUser(email: string, password: string): Promise<[Prot
                     role: userInfoToInsert.role,
                     joined_at: userInfoToInsert.joined_at,
                     bio: userInfoToInsert.bio,
-                    online: userInfoToInsert.online
+                    status: userInfoToInsert.status
                 };
                 
                 return [userInfo, null];

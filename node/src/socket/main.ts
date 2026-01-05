@@ -2,12 +2,12 @@
 import { Socket, Server } from "socket.io";
 import { handleNewPvConversationEvent } from "./events/new_pv_conversation.event";
 import { handleMessageSend, handleSeen } from "./events/messag.event";
+import { sendUserStatusToRooms } from "../services/socket.services";
+import { setUserStatus } from "../services/user.services";
+import { ObjectId } from "mongodb";
 
 export function handleSocketConnection(socket: Socket, io: Server, onlineUsers: Map<string, string>): void{
 
-  //Attaching user id as key and socket id as value to online users map to track user because we can not change socket.id
-  onlineUsers.set(socket.userInfo.id, socket.id);
-  
   // Listen for message from the client
   socket.on('message:send', (data) => {
     handleMessageSend(socket, data);
@@ -20,6 +20,12 @@ export function handleSocketConnection(socket: Socket, io: Server, onlineUsers: 
 
   socket.on("seen", (data) => {
     handleSeen(socket, data);
+  });
+
+  socket.on("disconnecting", async () => {
+    sendUserStatusToRooms(socket, "offline");
+    await setUserStatus(new ObjectId(socket.userInfo.id), "offline");
+    onlineUsers.delete(socket.userInfo.id);
   });
 
   socket.on('disconnect', () => {

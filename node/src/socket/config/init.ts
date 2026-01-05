@@ -2,7 +2,9 @@ import { Server } from 'socket.io';
 import { handleSocketConnection } from '../main';
 import http from "http";
 import { authenticateSocket } from "../../middlewares/socket.middlewares";
-import { connectUserToRooms } from '../../services/socket.services';
+import { connectUserToRooms, sendUserStatusToRooms } from '../../services/socket.services';
+import { setUserStatus } from '../../services/user.services';
+import { ObjectId } from "mongodb";
 
 export function initSocket(server: http.Server){
 // Socket Setup
@@ -23,7 +25,6 @@ export function initSocket(server: http.Server){
   const onlineUsers = new Map<string, string>();
   
   io.on('connection', async (socket) => { 
-    console.log("Connected:", socket.id);
 
     //Connecting user to rooms
     const [success, error] = await connectUserToRooms(socket);
@@ -33,7 +34,13 @@ export function initSocket(server: http.Server){
     }
 
     if(success === true){
-      handleSocketConnection(socket, io as Server, onlineUsers);
+      //Attaching user id as key and socket id as value to online users map to track user because we can not change socket.id
+      onlineUsers.set(socket.userInfo.id, socket.id);
+
+      //Sending online status to all rooms
+      sendUserStatusToRooms(socket, "online");
+      await setUserStatus(new ObjectId(socket.userInfo.id), "online");
+      handleSocketConnection(socket, io, onlineUsers);
     }else{
       socket.emit("error", {message: "Couldn't connect to rooms"});
       return;
