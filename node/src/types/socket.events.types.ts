@@ -12,7 +12,12 @@ export interface MessageSendEVT {
     track_id: string
 };
 
-export interface MessageSeenEVT{
+export interface MessageSeenEVT {
     conversation_id: string,
     message_id: string
-}
+};
+
+export interface MessageEditEVT {
+    message_id: string
+    new_message: string
+};

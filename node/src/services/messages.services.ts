@@ -120,3 +120,25 @@ export async function deleteConversationMessages(conversationId: ObjectId): Prom
         return [null, err];
     }
 };
+
+export async function editMessageById(messageId: ObjectId, new_message: string): Promise<[Boolean | null, null | ErrorResponse]> {
+    try {
+        const messagesCollection = await getMessagesCollection();
+        const result = await messagesCollection.updateOne({
+            _id: messageId
+        }, {
+            $set: {
+                content: new_message,
+                edited: true,
+                edited_at: new Date()
+            }
+        });
+
+        return [true, null];
+
+    } catch (error) {
+        console.log(error);
+        const err: ErrorResponse = {message: "A system error occurred", state: "failed", type: "system_error"};
+        return [null, err];
+    }
+};

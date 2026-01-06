@@ -9,5 +9,6 @@ export interface Message {
     content: string,
     seen_by: Object,
     edited: Boolean,
+    edited_at: Date
     created_at: string
 };

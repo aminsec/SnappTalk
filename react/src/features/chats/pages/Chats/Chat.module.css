@@ -812,6 +812,12 @@
     width: 100%;
 }
 
+.editedBadge {
+    font-size: 10px;
+    color: var(--text-main);
+    letter-spacing: 0.04em;
+}
+
 .sent {
     align-self: flex-end;
     background-color: var(--buble-sent);
@@ -1786,6 +1792,12 @@
     flex-shrink: 0;
     transition: var(--transition), transform 0.2s ease, box-shadow 0.2s ease;
     box-shadow: 0 10px 24px rgba(45, 144, 228, 0.25);
+}
+
+.sendButton:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+    box-shadow: none;
 }
 
 .sendButton:hover {

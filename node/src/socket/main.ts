@@ -1,7 +1,7 @@
 // Entry point of every ws connection
 import { Socket, Server } from "socket.io";
-import { handleNewPvConversationEvent } from "./events/new_pv_conversation.event";
-import { handleMessageSend, handleSeen } from "./events/messag.event";
+import { handleNewPvConversationEvent } from "./events/conversation.event";
+import { handleMessageEdit, handleMessageSend, handleSeen } from "./events/messag.event";
 import { sendUserStatusToRooms } from "../services/socket.services";
 import { setUserStatus } from "../services/account.services";
 import { ObjectId } from "mongodb";
@@ -12,6 +12,10 @@ export function handleSocketConnection(socket: Socket, io: Server, onlineUsers: 
   socket.on('message:send', (data) => {
     handleMessageSend(socket, data);
   });
+
+  socket.on("message:edit", (data) => {
+    handleMessageEdit(socket, data);
+  })
 
   //An event for creating new conversation
   socket.on("new_pv_conversation", (data) => {

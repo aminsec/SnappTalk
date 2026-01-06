@@ -73,6 +73,7 @@ const stickerOptions = monoIcons.map((src, index) => ({
 
 const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
 const MESSAGES_LIMIT = 10; // Max number of messages per request
+const MAX_MESSAGE_LENGTH = 255;
 
 // Helper functions
 const convertISOtoLocal = (isoDate) => {
@@ -310,6 +311,7 @@ function ChatsPage() {
   const recentReceiveRef = useRef({});
   const seenSentRef = useRef({});
   const messageAnimationTimeoutRef = useRef(null);
+  const pendingEditRef = useRef(null);
   const mediaRecorderRef = useRef(null);
   const recordedChunksRef = useRef([]);
   const recordingTimerRef = useRef(null);
@@ -368,6 +370,9 @@ function ChatsPage() {
   const handleSendMessage = useCallback(() => {
     const content = messageInput.trim();
     if (!content) {
+      return;
+    }
+    if (content.length > MAX_MESSAGE_LENGTH) {
       return;
     }
 
@@ -567,6 +572,9 @@ function ChatsPage() {
       toast.error('Message cannot be empty.');
       return;
     }
+    if (content.length > MAX_MESSAGE_LENGTH) {
+      return;
+    }
 
     const messageId = getMessageId(msg);
     const conversationId = getConversationId(selectedChat);
@@ -580,19 +588,15 @@ function ChatsPage() {
       prev.map((m) => (getMessageId(m) === messageId ? { ...m, content, edited: true } : m))
     );
 
-    socket.emit(
-      SOCKET_EVENTS.MESSAGE_EDIT,
-      {
-        conversationId,
-        messageId,
-        content,
-      },
-      (ack) => {
-        if (!ack?.ok) {
-          toast.error(ack?.error || 'Unable to edit message.');
-        }
-      }
-    );
+    pendingEditRef.current = {
+      messageId,
+      previousContent: msg?.content || msg?.text || '',
+    };
+
+    socket.emit(SOCKET_EVENTS.MESSAGE_EDIT, {
+      message_id: messageId,
+      new_message: content,
+    });
 
     setEditingMessage(null);
     setMessageInput('');
@@ -794,6 +798,7 @@ function ChatsPage() {
   
   // Messages state
   const [messages, setMessages] = useState([]);
+  const messagesRef = useRef([]);
   const [isLoadingMessages, setIsLoadingMessages] = useState(false);
   const [hasMoreMessages, setHasMoreMessages] = useState(true);
   const [messagesOffset, setMessagesOffset] = useState(0);
@@ -812,6 +817,10 @@ function ChatsPage() {
   useEffect(() => {
     messagesOffsetRef.current = messagesOffset;
   }, [messagesOffset]);
+
+  useEffect(() => {
+    messagesRef.current = messages;
+  }, [messages]);
 
   useEffect(() => {
     hasMoreMessagesRef.current = hasMoreMessages;
@@ -1391,17 +1400,86 @@ function ChatsPage() {
       }
     };
 
-    const handleMessageUpdated = (payload) => {
-      const message = payload?.message;
-      const conversationId = payload?.conversationId || payload?.conversation_id || message?.conversation_id;
-      const messageId = payload?.messageId || getMessageId(message);
-      if (!conversationId || !messageId) return;
-
-      if (activeConversationIdRef.current !== conversationId) {
+    const handleMessageEdited = (payload) => {
+      const messageId = payload?.message_id || payload?.messageId;
+      const newMessage = payload?.new_message || payload?.message?.content;
+      const conversationId = payload?.conversation_id || payload?.conversationId;
+      if (!messageId || typeof newMessage !== 'string') {
         return;
       }
 
-      setMessages((prev) => prev.map((m) => (getMessageId(m) === messageId ? { ...m, ...message } : m)));
+      const conversationIdStr = conversationId?.toString();
+      const messageIdStr = messageId.toString();
+      const activeConversationIdStr = activeConversationIdRef.current?.toString();
+      const isActiveConversation = conversationIdStr
+        && activeConversationIdStr === conversationIdStr;
+      const lastActiveMessage = messagesRef.current[messagesRef.current.length - 1];
+      const isLastActiveMessage = isActiveConversation
+        && lastActiveMessage
+        && getMessageId(lastActiveMessage)?.toString() === messageIdStr;
+      if (
+        !conversationIdStr
+        || isActiveConversation
+      ) {
+        setMessages((prev) =>
+          prev.map((m) =>
+            getMessageId(m) === messageId
+              ? { ...m, content: newMessage, edited: true }
+              : m
+          )
+        );
+      }
+
+      if (conversationIdStr) {
+        setContacts((prev) =>
+          prev.map((chat) => {
+            const chatId = getConversationId(chat)?.toString();
+            if (chatId !== conversationIdStr) {
+              return chat;
+            }
+            const last = chat?.last_message;
+            const lastId = (last?.message_id || last?._id || last?.id)?.toString();
+            const shouldUpdateLast = last && (
+              lastId === messageIdStr || isLastActiveMessage
+            );
+            if (!shouldUpdateLast) {
+              return chat;
+            }
+            return {
+              ...chat,
+              last_message: {
+                ...last,
+                content: newMessage,
+              },
+            };
+          })
+        );
+      }
+    };
+
+    const handleMessageEditAck = () => {
+      pendingEditRef.current = null;
+    };
+
+    const handleMessageEditError = (payload) => {
+      const message = payload?.message || payload?.error || 'Unable to edit message.';
+      const messageId = payload?.message_id || payload?.messageId;
+      toast.error(message);
+      const pending = pendingEditRef.current;
+      const targetId = messageId || pending?.messageId;
+      if (targetId) {
+        const previousContent = pending?.messageId === targetId
+          ? pending?.previousContent
+          : null;
+        setMessages((prev) =>
+          prev.map((m) =>
+            getMessageId(m) === targetId
+              ? { ...m, content: previousContent ?? m.content, edited: false }
+              : m
+          )
+        );
+      }
+      pendingEditRef.current = null;
     };
 
     const handleMessageDeleted = (payload) => {
@@ -1479,7 +1557,9 @@ function ChatsPage() {
     socket.on(SOCKET_EVENTS.MESSAGE_RECEIVE, handleMessageReceive);
     socket.on(SOCKET_EVENTS.MESSAGE_SEND_ACK, handleMessageSendAck);
     socket.on(SOCKET_EVENTS.MESSAGE_SEEN, handleMessageSeen);
-    socket.on(SOCKET_EVENTS.MESSAGE_UPDATED, handleMessageUpdated);
+    socket.on(SOCKET_EVENTS.MESSAGE_EDITED, handleMessageEdited);
+    socket.on('message:edit:ack', handleMessageEditAck);
+    socket.on('message:edit:error', handleMessageEditError);
     socket.on(SOCKET_EVENTS.MESSAGE_DELETED, handleMessageDeleted);
     socket.on(SOCKET_EVENTS.CONVERSATION_DELETED, handleConversationDeleted);
     socket.on('message', handleGenericMessage);
@@ -1516,7 +1596,9 @@ function ChatsPage() {
       socket.off(SOCKET_EVENTS.MESSAGE_RECEIVE, handleMessageReceive);
       socket.off(SOCKET_EVENTS.MESSAGE_SEND_ACK, handleMessageSendAck);
       socket.off(SOCKET_EVENTS.MESSAGE_SEEN, handleMessageSeen);
-      socket.off(SOCKET_EVENTS.MESSAGE_UPDATED, handleMessageUpdated);
+      socket.off(SOCKET_EVENTS.MESSAGE_EDITED, handleMessageEdited);
+      socket.off('message:edit:ack', handleMessageEditAck);
+      socket.off('message:edit:error', handleMessageEditError);
       socket.off(SOCKET_EVENTS.MESSAGE_DELETED, handleMessageDeleted);
       socket.off(SOCKET_EVENTS.CONVERSATION_DELETED, handleConversationDeleted);
       socket.off('message', handleGenericMessage);
@@ -3426,6 +3508,9 @@ function ChatsPage() {
                         )}
                         {messageContent && <p>{messageContent}</p>}
                         <div className={styles.messageFooter}>
+                          {message?.edited && (
+                            <span className={styles.editedBadge}>edited</span>
+                          )}
                           <span className={styles.timestamp}>
                             {convertISOtoLocal(messageTime)}
                           </span>
@@ -3581,9 +3666,13 @@ function ChatsPage() {
                     if (e.key === 'Enter' && !e.shiftKey) {
                       e.preventDefault();
                       if (editingMessage) {
-                        handleEditSubmit();
+                        if (messageInput.trim().length <= MAX_MESSAGE_LENGTH) {
+                          handleEditSubmit();
+                        }
                       } else {
-                        handleSendMessage();
+                        if (messageInput.trim().length <= MAX_MESSAGE_LENGTH) {
+                          handleSendMessage();
+                        }
                       }
                     }
                     if (e.key === 'Escape' && editingMessage) {
@@ -3608,6 +3697,7 @@ function ChatsPage() {
                     className={styles.sendButton}
                     onClick={handleEditSubmit}
                     aria-label="Save edit"
+                    disabled={messageInput.trim().length > MAX_MESSAGE_LENGTH}
                   >
                     <FontAwesomeIcon icon={faCheck} />
                   </button>
@@ -3712,7 +3802,12 @@ function ChatsPage() {
                 <FontAwesomeIcon icon={isRecording ? faStop : faMicrophone} />
               </button>
               {!editingMessage && (
-                <button type="button" className={styles.sendButton} onClick={handleSendMessage}>
+                <button
+                  type="button"
+                  className={styles.sendButton}
+                  onClick={handleSendMessage}
+                  disabled={messageInput.trim().length > MAX_MESSAGE_LENGTH}
+                >
                   <img src={sendIcon} alt="Send" className={styles.sendIcon} />
                 </button>
               )}
