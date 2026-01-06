@@ -320,6 +320,21 @@ function ChatsPage() {
   const hasFetchedContactsRef = useRef(false);
 
   const isAtBottomRef = useRef(false);
+  const deleteTargetName = useMemo(() => {
+    if (!deleteConfirm.open || !deleteConfirm.conversationId) {
+      return '';
+    }
+    const chat = contacts.find(
+      (c) => getConversationId(c)?.toString() === deleteConfirm.conversationId
+    );
+    if (!chat) {
+      return '';
+    }
+    if (chat.type === 'group') {
+      return chat.group_name || 'this group';
+    }
+    return chat.contact_info?.username || 'contact';
+  }, [deleteConfirm.conversationId, deleteConfirm.open, contacts]);
   
   const scrollToBottom = useCallback(() => {
     const el = messagesEndRef.current;
@@ -2894,7 +2909,7 @@ function ChatsPage() {
                     <button
                       type="button"
                       className={styles.optionsMenuItem}
-                      onClick={handleOpenDeleteConversation}
+                      onClick={() => handleOpenDeleteConversation(selectedChat)}
                     >
                       <FontAwesomeIcon icon={faTrash} />
                       <span>Delete conversation</span>
@@ -3483,45 +3498,6 @@ function ChatsPage() {
                 )}
               </div>
             )}
-            {deleteConfirm.open && (
-              <div className={styles.confirmOverlay} role="dialog" aria-modal="true">
-                <div className={styles.confirmBox}>
-                  <p className={styles.confirmTitle}>Delete conversation?</p>
-                  <p className={styles.confirmText}>
-                    Choose whether to delete just for you or for everyone.
-                  </p>
-                  <div className={styles.confirmActions}>
-                    <label className={styles.deleteCheckbox}>
-                      <input
-                        type="checkbox"
-                        checked={deleteForEveryone}
-                        onChange={(event) => setDeleteForEveryone(event.target.checked)}
-                        disabled={isDeletingConversation}
-                      />
-                      <span>Delete for everyone</span>
-                    </label>
-                    <div className={styles.confirmButtons}>
-                      <button
-                        type="button"
-                        className={styles.cancelButton}
-                        onClick={() => setDeleteConfirm({ open: false, conversationId: null })}
-                        disabled={isDeletingConversation}
-                      >
-                        Cancel
-                      </button>
-                      <button
-                        type="button"
-                        className={styles.confirmButton}
-                        onClick={() => handleDeleteConversation(deleteForEveryone ? 'all' : 'me')}
-                        disabled={isDeletingConversation}
-                      >
-                        {isDeletingConversation ? 'Deleting...' : 'Delete'}
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            )}
           </>
         ) : (
           <div className={styles.noChatSelected}>
@@ -3540,14 +3516,55 @@ function ChatsPage() {
             data-conversation-context-menu
             style={{ left: conversationContextMenu.x, top: conversationContextMenu.y }}
           >
-            <button
-              type="button"
-              className={styles.optionsMenuItem}
-              onClick={() => handleOpenDeleteConversation(conversationContextMenu.conversation)}
-            >
-              <FontAwesomeIcon icon={faTrash} />
-              <span>Delete conversation</span>
-            </button>
+                <button
+                  type="button"
+                  className={styles.optionsMenuItem}
+                  onClick={() => handleOpenDeleteConversation(conversationContextMenu.conversation)}
+                >
+                  <FontAwesomeIcon icon={faTrash} />
+                  <span>Delete conversation</span>
+                </button>
+          </div>
+        )}
+        {deleteConfirm.open && (
+          <div className={styles.confirmOverlay} role="dialog" aria-modal="true">
+            <div className={styles.confirmBox}>
+              <p className={styles.confirmTitle}>Delete conversation?</p>
+              <p className={styles.confirmText}>
+                Choose whether to delete just for you or for everyone.
+              </p>
+              <div className={styles.confirmActions}>
+                <label className={styles.deleteCheckbox}>
+                  <input
+                    type="checkbox"
+                    checked={deleteForEveryone}
+                    onChange={(event) => setDeleteForEveryone(event.target.checked)}
+                    disabled={isDeletingConversation}
+                  />
+                  <span>
+                    {deleteTargetName ? `Delete for ${deleteTargetName}` : 'Delete for contact'}
+                  </span>
+                </label>
+                <div className={styles.confirmButtons}>
+                  <button
+                    type="button"
+                    className={styles.cancelButton}
+                    onClick={() => setDeleteConfirm({ open: false, conversationId: null })}
+                    disabled={isDeletingConversation}
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="button"
+                    className={styles.confirmButton}
+                    onClick={() => handleDeleteConversation(deleteForEveryone ? 'all' : 'me')}
+                    disabled={isDeletingConversation}
+                  >
+                    {isDeletingConversation ? 'Deleting...' : 'Delete'}
+                  </button>
+                </div>
+              </div>
+            </div>
           </div>
         )}
       </main>
