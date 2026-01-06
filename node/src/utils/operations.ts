@@ -134,7 +134,7 @@ export function generateJWTToken(userInfo: ProtectedUserInfo): [string | null, E
             joined_at: userInfo.joined_at,
         }
     
-        const token = jwt.sign(userInfoToBeSign, String(process.env.JWT_SECRET_KEY), {expiresIn: "1h"});
+        const token = jwt.sign(userInfoToBeSign, String(process.env.JWT_SECRET_KEY), {expiresIn: "24h"});
         return [token, null];
 
     } catch (error) {
