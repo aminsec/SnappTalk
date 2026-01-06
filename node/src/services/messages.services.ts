@@ -3,7 +3,7 @@ import { getMessagesCollection } from "../models/messages.model";
 import { ErrorResponse } from "../types/response.types";
 import { Message } from "../types/messages.types";
 
-export async function getMessageById(messageId: ObjectId) {
+export async function getMessageById(messageId: ObjectId): Promise<Message> {
     const messagesCollection = await getMessagesCollection();
     const message = await messagesCollection.findOne({
         _id: messageId
@@ -92,7 +92,6 @@ export async function seenMessageById(message_id: ObjectId, conversation_id: Obj
 export async function getUnreadMessagesCount(userId: string, conversationId: ObjectId) {
     try {
         const messagesCollection = await getMessagesCollection();
-      
         const count = await messagesCollection.countDocuments({
           conversation_id: conversationId,
           sender: { $ne: new ObjectId(userId) },                 
@@ -100,6 +99,21 @@ export async function getUnreadMessagesCount(userId: string, conversationId: Obj
         });
     
         return [count, null];
+    } catch (error) {
+        console.log(error);
+        const err: ErrorResponse = {message: "A system error occurred", state: "failed", type: "system_error"};
+        return [null, err];
+    }
+};
+
+export async function deleteConversationMessages(conversationId: ObjectId): Promise<[Boolean | null, ErrorResponse | null]> {
+    try {
+        const messagesCollection = await getMessagesCollection();
+        const result = await messagesCollection.deleteMany({
+            conversation_id: conversationId
+        });
+
+        return [true, null];
     } catch (error) {
         console.log(error);
         const err: ErrorResponse = {message: "A system error occurred", state: "failed", type: "system_error"};

@@ -5,7 +5,7 @@ import { ProtectedUserInfo } from "../types/user.types";
 import { getUserInfoById } from "./account.services";
 import { ObjectId } from "mongodb";
 import { whiteListConversations } from "../utils/operations";
-import { getMessageById, getUnreadMessagesCount } from "./messages.services";
+import { deleteConversationMessages, getMessageById, getUnreadMessagesCount } from "./messages.services";
 
 export async function getUserConversations(userInfo: ProtectedUserInfo): Promise<[Conversation[] | null, ErrorResponse | null]> {
     try {
@@ -136,6 +136,47 @@ export async function updateConversationLastMessageId(conversationId: ObjectId, 
             return [null, err];
         }
 
+    } catch (error) {
+        console.log(error);
+        const err: ErrorResponse = {message: "A system error occurred", state: "failed", type: "system_error"};
+        return [null, err];
+    }
+};
+
+export async function softDeleteConversation(userInfo: ProtectedUserInfo, conversationId: ObjectId): Promise<[Boolean | null, null | ErrorResponse]> {
+    try {
+        const conversationsCollection  = await getConversationsCollection();
+        conversationsCollection.updateOne({
+            _id: conversationId
+        }, {
+            $set: {
+                [`deleted_for.${userInfo.id}`]: new Date()
+            }
+        });
+
+        return [true, null];
+    } catch (error) {
+        console.log(error);
+        const err: ErrorResponse = {message: "A system error occurred", state: "failed", type: "system_error"};
+        return [null, err];
+    }
+};
+
+export async function hardDeleteConversation(conversationId: ObjectId): Promise<[Boolean | null, null | ErrorResponse]> {
+    try {
+        const conversationsCollection  = await getConversationsCollection();
+
+        //Deleting conversation all messages
+        const [messageDeleteResult, error] = await deleteConversationMessages(conversationId);
+        if(error){
+            return [null, error];
+        }
+
+        const [convDeleteResult, err] = await conversationsCollection.deleteOne({
+            _id: conversationId
+        });
+
+        return [true, null]
     } catch (error) {
         console.log(error);
         const err: ErrorResponse = {message: "A system error occurred", state: "failed", type: "system_error"};
