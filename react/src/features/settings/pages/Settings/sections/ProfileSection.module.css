@@ -136,6 +136,69 @@
   transition: box-shadow 0.2s ease, border-color 0.2s ease;
 }
 
+.editInputCart label {
+  display: block;
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--text-muted);
+  margin: 6px 0 6px;
+}
+
+.editFieldInput,
+.editFieldTextarea {
+  width: 100%;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 10px;
+  background: rgba(15, 18, 20, 0.9);
+  color: var(--text-main);
+  padding: 10px 12px;
+  font-size: 14px;
+  font-family: "Vazirmatn", "Outfit", sans-serif;
+  box-shadow: none;
+  transition: border-color 0.2s ease, background 0.2s ease;
+}
+
+.editFieldTextarea {
+  resize: vertical;
+  min-height: 80px;
+  line-height: 1.4;
+}
+
+.charCount {
+  margin-top: 6px;
+  font-size: 12px;
+  color: var(--text-muted);
+  text-align: right;
+}
+
+.charCountOver {
+  color: var(--error-color);
+}
+
+.editFieldInput:focus,
+.editFieldTextarea:focus {
+  outline: none;
+  border-color: rgba(45, 144, 228, 0.5);
+  background: rgba(18, 22, 25, 0.95);
+}
+
+.editButton {
+  border-radius: 10px;
+  border-color: rgba(255, 255, 255, 0.2);
+}
+
+.editButtonPrimary {
+  border-radius: 10px;
+  background: linear-gradient(135deg, rgba(45, 144, 228, 0.9), rgba(38, 120, 196, 0.9));
+  box-shadow: 0 8px 18px rgba(45, 144, 228, 0.25);
+}
+
+.editButtonPrimary:hover:not(:disabled) {
+  box-shadow: 0 12px 22px rgba(45, 144, 228, 0.35);
+  transform: translateY(-1px);
+}
+
 .editInput {
   text-align: left;
   align-items: center;

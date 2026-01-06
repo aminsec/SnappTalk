@@ -1,13 +1,14 @@
 import { useEffect, useState } from 'react';
 import toast from 'react-hot-toast';
 
-import { Button, Input, ProfileAvatar, ProfileImageUpload } from '@/shared/components';
+import { Button, ProfileAvatar, ProfileImageUpload } from '@/shared/components';
 import { useAuth } from '@/shared/state/useAuth';
 
 import styles from './ProfileSection.module.css';
 
 export default function ProfileSection() {
   const { user, refreshUser } = useAuth();
+  const MAX_BIO_LENGTH = 254;
   const [editMode, setEditMode] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [formValues, setFormValues] = useState({
@@ -36,6 +37,10 @@ export default function ProfileSection() {
 
   const handleSave = async () => {
     if (isSaving) {
+      return;
+    }
+    if (formValues.bio.length > MAX_BIO_LENGTH) {
+      toast.error(`Bio must be at most ${MAX_BIO_LENGTH} characters.`);
       return;
     }
 
@@ -105,40 +110,56 @@ export default function ProfileSection() {
           <>
             <div className={styles.editInputCart}>
               <label htmlFor="username">Username:</label>
-              <Input
+              <input
                 name="username"
                 id="username"
                 value={formValues.username}
                 onChange={handleFieldChange('username')}
-                fullWidth
+                className={styles.editFieldInput}
+                autoComplete="username"
               />
             </div>
             <div className={styles.editInputCart}>
               <label htmlFor="email">Email:</label>
-              <Input
+              <input
                 name="email"
                 id="email"
                 value={formValues.email}
                 onChange={handleFieldChange('email')}
-                fullWidth
+                className={styles.editFieldInput}
+                autoComplete="email"
               />
             </div>
             <div className={styles.editInputCart}>
               <label htmlFor="bio">Bio:</label>
-              <Input
+              <textarea
                 name="bio"
                 id="bio"
                 value={formValues.bio}
                 onChange={handleFieldChange('bio')}
-                fullWidth
+                className={styles.editFieldTextarea}
+                rows={3}
               />
+              <div
+                className={`${styles.charCount} ${
+                  formValues.bio.length > MAX_BIO_LENGTH ? styles.charCountOver : ''
+                }`}
+              >
+                {formValues.bio.length}/{MAX_BIO_LENGTH}
+              </div>
             </div>
 
             <div className={styles.actionRow}>
-              <Button size="md" variant="outline" onClick={handleCancel} fullWidth>
+              <Button size="md" variant="outline" onClick={handleCancel} fullWidth className={styles.editButton}>
                 Cancel
               </Button>
-              <Button size="md" onClick={handleSave} fullWidth disabled={isSaving}>
+              <Button
+                size="md"
+                onClick={handleSave}
+                fullWidth
+                disabled={isSaving || formValues.bio.length > MAX_BIO_LENGTH}
+                className={styles.editButtonPrimary}
+              >
                 {isSaving ? 'Saving...' : 'Save'}
               </Button>
             </div>
