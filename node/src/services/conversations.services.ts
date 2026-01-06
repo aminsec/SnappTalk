@@ -16,8 +16,10 @@ export async function getUserConversations(userInfo: ProtectedUserInfo): Promise
             }
         ).toArray();
 
+        let detailedConversations: Conversation[] = [];
+
         //Attaching contact userinfo for pv types of conversations
-        for(let [index, conversation] of conversations.entries()){
+        for(let conversation of conversations){
             var contactId = (conversation.members[0]).toString() !== userInfo.id ? conversation.members[0].toString() : conversation.members[1].toString();
             //Attaching last messsage to contact
             const lastMessageId = conversation.last_message_id;
@@ -25,7 +27,6 @@ export async function getUserConversations(userInfo: ProtectedUserInfo): Promise
 
             //This check is for checking conversations that deleted last time or not
             if(conversation.deleted_for[userInfo.id] > lastMessage.created_at){
-                conversations.splice(index, 1);
                 continue;
             }
             
@@ -40,7 +41,6 @@ export async function getUserConversations(userInfo: ProtectedUserInfo): Promise
             };
 
             //Extracting contact userid by checking !userid
-            
             if(conversation.type === "pv" && conversation.members){    
                 const [contactUserInfo, error] = await getUserInfoById(new ObjectId(contactId));
                 if(error){
@@ -55,9 +55,11 @@ export async function getUserConversations(userInfo: ProtectedUserInfo): Promise
                     conversation.unread_messages_count = unreadMessages;
                 }
             }
+
+            detailedConversations.push(conversation)
         }
 
-        const validConversations: Conversation[] = whiteListConversations(conversations);
+        const validConversations: Conversation[] = whiteListConversations(detailedConversations);
         return [validConversations, null];
 
     } catch (error) {

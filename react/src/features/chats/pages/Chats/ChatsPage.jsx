@@ -310,6 +310,7 @@ function ChatsPage() {
 
   const [unreadCounts, setUnreadCounts] = useState({});
   const unreadCountsRef = useRef({});
+  const hasFetchedContactsRef = useRef(false);
 
   const isAtBottomRef = useRef(false);
   
@@ -1434,6 +1435,11 @@ function ChatsPage() {
 
   // Fetch contacts on mount
   useEffect(() => {
+    if (import.meta.env.DEV && hasFetchedContactsRef.current) {
+      return undefined;
+    }
+
+    hasFetchedContactsRef.current = true;
     const fetchContacts = async () => {
       try {
         const response = await fetch('/api/v1/user/conversations', {
