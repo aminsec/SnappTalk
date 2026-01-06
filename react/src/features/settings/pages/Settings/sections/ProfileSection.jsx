@@ -95,9 +95,6 @@ export default function ProfileSection() {
             <ProfileAvatar src={user?.profile_pic} size={110} className="mb-2" />
             <div>
               <h3>{user?.username ? `@${user.username}` : 'Unknown user'}</h3>
-              <span className={user?.isOnline ? styles.online : styles.offline}>
-                {user?.isOnline ? 'Online' : 'Offline'}
-              </span>
             </div>
           </>
         )}
