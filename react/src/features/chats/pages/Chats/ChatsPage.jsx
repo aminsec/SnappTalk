@@ -252,6 +252,7 @@ function ChatsPage() {
   const { user } = useAuth();
   const { socket, status: socketStatus } = useSocket();
   const [contacts, setContacts] = useState([]);
+  const contactsRef = useRef([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedChat, setSelectedChat] = useState(null);
   const [messageInput, setMessageInput] = useState('');
@@ -263,6 +264,10 @@ function ChatsPage() {
   const [activeTab, setActiveTab] = useState('all');
   const [isOptionsMenuOpen, setIsOptionsMenuOpen] = useState(false);
   const [isChatMenuOpen, setIsChatMenuOpen] = useState(false);
+  const [deleteConfirm, setDeleteConfirm] = useState({ open: false, conversationId: null });
+  const [isDeletingConversation, setIsDeletingConversation] = useState(false);
+  const [deleteForEveryone, setDeleteForEveryone] = useState(false);
+  const [conversationContextMenu, setConversationContextMenu] = useState(null);
   const [isMediaPickerOpen, setIsMediaPickerOpen] = useState(false);
   const [mediaTab, setMediaTab] = useState('gifs');
   const [gifQuery, setGifQuery] = useState('');
@@ -307,9 +312,12 @@ function ChatsPage() {
   const recordingTimerRef = useRef(null);
   const recordingStreamRef = useRef(null);
   const statusOfflineTimersRef = useRef({});
+  const longPressTimeoutRef = useRef(null);
+  const longPressTriggeredRef = useRef(false);
 
   const [unreadCounts, setUnreadCounts] = useState({});
   const unreadCountsRef = useRef({});
+  const hasFetchedContactsRef = useRef(false);
 
   const isAtBottomRef = useRef(false);
   
@@ -650,31 +658,61 @@ function ChatsPage() {
     });
   }, [socket]);
 
-  const handleDeleteConversation = useCallback(() => {
-    const conversationId = getConversationId(selectedChat);
+  const handleOpenDeleteConversation = useCallback((conversationOverride = null) => {
+    const conversationId = conversationOverride
+      ? getConversationId(conversationOverride)
+      : getConversationId(selectedChat);
     if (!conversationId) return;
-
-    // Optimistic remove
-    setContacts((prev) => prev.filter((c) => getConversationId(c) !== conversationId));
-    setSelectedChat(null);
-    setMessages([]);
+    setDeleteConfirm({ open: true, conversationId: conversationId.toString() });
+    setDeleteForEveryone(false);
     setIsChatMenuOpen(false);
+    setConversationContextMenu(null);
+  }, [selectedChat]);
 
-    if (!socket || !socket.connected) {
-      toast.error('Not connected.');
-      return;
-    }
+  const handleDeleteConversation = useCallback(
+    async (scope) => {
+      if (isDeletingConversation) return;
+      const conversationId = deleteConfirm.conversationId;
+      if (!conversationId) return;
 
-    socket.emit(
-      SOCKET_EVENTS.CONVERSATION_DELETE,
-      { conversationId },
-      (ack) => {
-        if (!ack?.ok) {
-          toast.error(ack?.error || 'Unable to delete conversation.');
+      setIsDeletingConversation(true);
+      try {
+        const response = await fetch(
+          `/api/v1/user/conversations/${conversationId}?for=${scope}`,
+          {
+            method: 'DELETE',
+            credentials: 'include',
+          }
+        );
+
+        if (!response.ok) {
+          const payload = await response.json().catch(() => ({}));
+          throw new Error(payload?.message || 'Unable to delete conversation.');
         }
+
+        setContacts((prev) =>
+          prev.filter((c) => getConversationId(c)?.toString() !== conversationId)
+        );
+        setUnreadCounts((prev) => {
+          const next = { ...prev };
+          delete next[conversationId];
+          unreadCountsRef.current = next;
+          return next;
+        });
+        if (selectedChat && getConversationId(selectedChat)?.toString() === conversationId) {
+          setSelectedChat(null);
+          setMessages([]);
+        }
+        toast.success('Conversation deleted.');
+        setDeleteConfirm({ open: false, conversationId: null });
+      } catch (error) {
+        toast.error(error?.message || 'Unable to delete conversation.');
+      } finally {
+        setIsDeletingConversation(false);
       }
-    );
-  }, [selectedChat, socket]);
+    },
+    [deleteConfirm.conversationId, isDeletingConversation, selectedChat]
+  );
 
   // Refresh conversations list
   const refreshContacts = useCallback(async () => {
@@ -853,6 +891,10 @@ function ChatsPage() {
   }, [user]);
 
   useEffect(() => {
+    contactsRef.current = contacts;
+  }, [contacts]);
+
+  useEffect(() => {
     if (!socket) {
       return;
     }
@@ -933,7 +975,73 @@ function ChatsPage() {
       const selectedConversationId = getConversationId(selectedChatRef.current);
       const selectedConversationIdStr = selectedConversationId?.toString();
       const isActiveConversation = selectedConversationIdStr && selectedConversationIdStr === conversationIdStr;
-      let isMissingInList = false;
+      const existsInList = contactsRef.current.some(
+        (c) => getConversationId(c)?.toString() === conversationIdStr
+      );
+
+      if (!existsInList) {
+        setUnreadCount(conversationIdStr, (count) => count + 1);
+        if (conversationIdStr) {
+          const fallbackContactInfo = {
+            _id: messageSender || undefined,
+            id: messageSender || undefined,
+            username: payload?.senderUsername || payload?.sender_name || 'New user',
+            profile_pic: null,
+            status: 'offline',
+          };
+
+          setContacts((prev) => {
+            const exists = prev.some(
+              (c) => getConversationId(c)?.toString() === conversationIdStr
+            );
+            if (exists) return prev;
+            const contactInfo = senderInfo || fallbackContactInfo;
+            const newChat = {
+              _id: conversationIdStr,
+              id: conversationIdStr,
+              type: payload?.type === 'group' ? 'group' : 'pv',
+              contact_info: contactInfo,
+              group_name: payload?.group_name || null,
+              group_avatar: payload?.group_avatar || null,
+              last_message: {
+                content: messageText,
+                type: 'text',
+                sender: contactInfo?.username || '',
+                when: message.created_at,
+                message_id: messageId,
+                sender_id: messageSender || undefined,
+              },
+              unread_messages_count: 1,
+            };
+            return [newChat, ...prev];
+          });
+
+          if (!senderInfo && messageSender) {
+            fetch(`/api/v1/members/${messageSender}/info`, {
+              method: 'GET',
+              credentials: 'include',
+            })
+              .then((response) => (response.ok ? response.json() : null))
+              .then((data) => {
+                const memberInfo = data?.member_info || null;
+                if (!memberInfo) return;
+                setContacts((prev) =>
+                  prev.map((chat) => {
+                    const chatId = getConversationId(chat)?.toString();
+                    if (chatId !== conversationIdStr) return chat;
+                    return {
+                      ...chat,
+                      contact_info: memberInfo,
+                    };
+                  })
+                );
+              })
+              .catch(() => {});
+          }
+        }
+        refreshContacts();
+        return;
+      }
 
       setContacts((prev) => {
         const next = [...prev];
@@ -941,7 +1049,6 @@ function ChatsPage() {
           (c) => getConversationId(c)?.toString() === conversationIdStr
         );
         if (idx === -1) {
-          isMissingInList = true;
           return prev;
         }
 
@@ -970,12 +1077,6 @@ function ChatsPage() {
         next.unshift(moved);
         return next;
       });
-
-      if (isMissingInList) {
-        setUnreadCount(conversationIdStr, (count) => count + 1);
-        refreshContacts();
-        return;
-      }
 
       if (isActiveConversation) {
         setMessagesConversationId(conversationIdStr);
@@ -1388,22 +1489,28 @@ function ChatsPage() {
   // Close menus when clicking outside
   useEffect(() => {
     const handleClickOutside = (event) => {
+      if (event.button === 2) {
+        return;
+      }
       if (chatMenuRef.current && !chatMenuRef.current.contains(event.target)) {
         setIsChatMenuOpen(false);
       }
       if (messageContextMenu && event.target?.closest && event.target.closest('[data-message-context-menu]') === null) {
         setMessageContextMenu(null);
       }
+      if (conversationContextMenu && event.target?.closest && event.target.closest('[data-conversation-context-menu]') === null) {
+        setConversationContextMenu(null);
+      }
     };
 
-    if (isChatMenuOpen || messageContextMenu) {
+    if (isChatMenuOpen || messageContextMenu || conversationContextMenu) {
       document.addEventListener('mousedown', handleClickOutside);
     }
 
     return () => {
       document.removeEventListener('mousedown', handleClickOutside);
     };
-  }, [isChatMenuOpen, messageContextMenu]);
+  }, [isChatMenuOpen, messageContextMenu, conversationContextMenu]);
 
   useLayoutEffect(() => {
     if (!shouldAutoScrollRef.current) {
@@ -1434,6 +1541,11 @@ function ChatsPage() {
 
   // Fetch contacts on mount
   useEffect(() => {
+    if (import.meta.env.DEV && hasFetchedContactsRef.current) {
+      return undefined;
+    }
+
+    hasFetchedContactsRef.current = true;
     const fetchContacts = async () => {
       try {
         const response = await fetch('/api/v1/user/conversations', {
@@ -2616,7 +2728,46 @@ function ChatsPage() {
                 <div
                   key={chatIdStr || chat._id || chat.id || index}
                   className={`${styles.chatItem} ${selectedId && chatId && selectedId === chatId ? styles.active : ''}`}
-                  onClick={() => setSelectedChat(chat)}
+                  onClick={() => {
+                    if (longPressTriggeredRef.current) {
+                      longPressTriggeredRef.current = false;
+                      return;
+                    }
+                    setSelectedChat(chat);
+                  }}
+                  onContextMenu={(event) => {
+                    event.preventDefault();
+                    setConversationContextMenu({
+                      x: event.clientX,
+                      y: event.clientY,
+                      conversation: chat,
+                    });
+                  }}
+                  onTouchStart={(event) => {
+                    if (longPressTimeoutRef.current) {
+                      clearTimeout(longPressTimeoutRef.current);
+                    }
+                    const touch = event.touches?.[0];
+                    if (!touch) return;
+                    longPressTimeoutRef.current = setTimeout(() => {
+                      longPressTriggeredRef.current = true;
+                      setConversationContextMenu({
+                        x: touch.clientX,
+                        y: touch.clientY,
+                        conversation: chat,
+                      });
+                    }, 500);
+                  }}
+                  onTouchEnd={() => {
+                    if (longPressTimeoutRef.current) {
+                      clearTimeout(longPressTimeoutRef.current);
+                    }
+                  }}
+                  onTouchCancel={() => {
+                    if (longPressTimeoutRef.current) {
+                      clearTimeout(longPressTimeoutRef.current);
+                    }
+                  }}
                 >
                   <div className={`${styles.statusAvatar} ${styles.statusAvatarSmall}`}>
                     <ProfileAvatar size="md" src={avatarSrc} />
@@ -2729,7 +2880,7 @@ function ChatsPage() {
                   )}
                 </div>
               </div>
-              <div ref={chatMenuRef}>
+              <div ref={chatMenuRef} className={styles.chatMenuWrapper}>
                 <button
                   type="button"
                   className={styles.optionsButton}
@@ -2739,11 +2890,11 @@ function ChatsPage() {
                   <FontAwesomeIcon icon={faEllipsisVertical} />
                 </button>
                 {isChatMenuOpen && (
-                  <div className={styles.optionsMenu}>
+                  <div className={`${styles.optionsMenu} ${styles.optionsMenuDown}`}>
                     <button
                       type="button"
                       className={styles.optionsMenuItem}
-                      onClick={handleDeleteConversation}
+                      onClick={handleOpenDeleteConversation}
                     >
                       <FontAwesomeIcon icon={faTrash} />
                       <span>Delete conversation</span>
@@ -3332,6 +3483,45 @@ function ChatsPage() {
                 )}
               </div>
             )}
+            {deleteConfirm.open && (
+              <div className={styles.confirmOverlay} role="dialog" aria-modal="true">
+                <div className={styles.confirmBox}>
+                  <p className={styles.confirmTitle}>Delete conversation?</p>
+                  <p className={styles.confirmText}>
+                    Choose whether to delete just for you or for everyone.
+                  </p>
+                  <div className={styles.confirmActions}>
+                    <label className={styles.deleteCheckbox}>
+                      <input
+                        type="checkbox"
+                        checked={deleteForEveryone}
+                        onChange={(event) => setDeleteForEveryone(event.target.checked)}
+                        disabled={isDeletingConversation}
+                      />
+                      <span>Delete for everyone</span>
+                    </label>
+                    <div className={styles.confirmButtons}>
+                      <button
+                        type="button"
+                        className={styles.cancelButton}
+                        onClick={() => setDeleteConfirm({ open: false, conversationId: null })}
+                        disabled={isDeletingConversation}
+                      >
+                        Cancel
+                      </button>
+                      <button
+                        type="button"
+                        className={styles.confirmButton}
+                        onClick={() => handleDeleteConversation(deleteForEveryone ? 'all' : 'me')}
+                        disabled={isDeletingConversation}
+                      >
+                        {isDeletingConversation ? 'Deleting...' : 'Delete'}
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
           </>
         ) : (
           <div className={styles.noChatSelected}>
@@ -3342,6 +3532,22 @@ function ChatsPage() {
               </p>
               <p className={styles.emptyChatSubtitle}>Pick a conversation to start talking</p>
             </div>
+          </div>
+        )}
+        {conversationContextMenu && (
+          <div
+            className={styles.conversationContextMenu}
+            data-conversation-context-menu
+            style={{ left: conversationContextMenu.x, top: conversationContextMenu.y }}
+          >
+            <button
+              type="button"
+              className={styles.optionsMenuItem}
+              onClick={() => handleOpenDeleteConversation(conversationContextMenu.conversation)}
+            >
+              <FontAwesomeIcon icon={faTrash} />
+              <span>Delete conversation</span>
+            </button>
           </div>
         )}
       </main>

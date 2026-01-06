@@ -3,7 +3,7 @@ import { Socket, Server } from "socket.io";
 import { handleNewPvConversationEvent } from "./events/new_pv_conversation.event";
 import { handleMessageSend, handleSeen } from "./events/messag.event";
 import { sendUserStatusToRooms } from "../services/socket.services";
-import { setUserStatus } from "../services/user.services";
+import { setUserStatus } from "../services/account.services";
 import { ObjectId } from "mongodb";
 
 export function handleSocketConnection(socket: Socket, io: Server, onlineUsers: Map<string, string>): void{

@@ -2,10 +2,10 @@ import { Conversation } from "../types/conversation.types";
 import { ErrorResponse } from "../types/response.types";
 import { getConversationsCollection } from "../models/conversatations.model";
 import { ProtectedUserInfo } from "../types/user.types";
-import { getUserInfoById } from "./user.services";
+import { getUserInfoById } from "./account.services";
 import { ObjectId } from "mongodb";
 import { whiteListConversations } from "../utils/operations";
-import { getMessageById, getUnreadMessagesCount } from "./messages.services";
+import { deleteConversationMessages, getMessageById, getUnreadMessagesCount } from "./messages.services";
 
 export async function getUserConversations(userInfo: ProtectedUserInfo): Promise<[Conversation[] | null, ErrorResponse | null]> {
     try {
@@ -16,40 +16,50 @@ export async function getUserConversations(userInfo: ProtectedUserInfo): Promise
             }
         ).toArray();
 
+        let detailedConversations: Conversation[] = [];
+
         //Attaching contact userinfo for pv types of conversations
-        for(let index in conversations){
+        for(let conversation of conversations){
+            var contactId = (conversation.members[0]).toString() !== userInfo.id ? conversation.members[0].toString() : conversation.members[1].toString();
+            //Attaching last messsage to contact
+            const lastMessageId = conversation.last_message_id;
+            const lastMessage = await getMessageById(lastMessageId);
+
+            //This check is for checking conversations that deleted last time or not
+            if(conversation.deleted_for[userInfo.id] > lastMessage.created_at){
+                continue;
+            }
+            
+            const [senderOfLastMessage, _] = await getUserInfoById(new ObjectId(lastMessage.sender));
+
+            conversation.last_message = {
+                content: lastMessage.content,
+                type: lastMessage.type,
+                sender: senderOfLastMessage?.username,
+                when: lastMessage.created_at,
+                seen: conversation.type == "group" && Object.keys(lastMessage.seen_by).length > 0 ? true : contactId in lastMessage.seen_by ? true : false
+            };
+
             //Extracting contact userid by checking !userid
-            var contactId = (conversations[index].members[0]).toString() !== userInfo.id ? conversations[index].members[0].toString() : conversations[index].members[1].toString();
-            if(conversations[index].type === "pv" && conversations[index].members){    
-                const [contactUserInfo, error] = await getUserInfoById(contactId);
+            if(conversation.type === "pv" && conversation.members){    
+                const [contactUserInfo, error] = await getUserInfoById(new ObjectId(contactId));
                 if(error){
                     console.log(error)
                     throw new Error();
                 }
 
-                conversations[index].contact_info = contactUserInfo;
+                conversation.contact_info = contactUserInfo;
 
                 if(contactUserInfo){
-                    const [unreadMessages, err] = await getUnreadMessagesCount(userInfo.id.toString(), conversations[index]._id);
-                    conversations[index].unread_messages_count = unreadMessages;
+                    const [unreadMessages, err] = await getUnreadMessagesCount(userInfo.id.toString(), conversation._id);
+                    conversation.unread_messages_count = unreadMessages;
                 }
             }
 
-            //Attaching last messsage to contact
-            const lastMessageId = conversations[index].last_message_id;
-            const lastMessage = await getMessageById(lastMessageId);
-            const [senderOfLastMessage, _] = await getUserInfoById(lastMessage.sender);
-
-            conversations[index].last_message = {
-                content: lastMessage.content,
-                type: lastMessage.type,
-                sender: senderOfLastMessage?.username,
-                when: lastMessage.created_at,
-                seen: conversations[index].type == "group" && lastMessage.seen_by.length > 0 ? true : contactId in lastMessage.seen_by ? true : false
-            };
+            detailedConversations.push(conversation)
         }
 
-        const validConversations: Conversation[] = whiteListConversations(conversations);
+        const validConversations: Conversation[] = whiteListConversations(detailedConversations);
         return [validConversations, null];
 
     } catch (error) {
@@ -126,6 +136,47 @@ export async function updateConversationLastMessageId(conversationId: ObjectId, 
             return [null, err];
         }
 
+    } catch (error) {
+        console.log(error);
+        const err: ErrorResponse = {message: "A system error occurred", state: "failed", type: "system_error"};
+        return [null, err];
+    }
+};
+
+export async function softDeleteConversation(userInfo: ProtectedUserInfo, conversationId: ObjectId): Promise<[Boolean | null, null | ErrorResponse]> {
+    try {
+        const conversationsCollection  = await getConversationsCollection();
+        conversationsCollection.updateOne({
+            _id: conversationId
+        }, {
+            $set: {
+                [`deleted_for.${userInfo.id}`]: new Date()
+            }
+        });
+
+        return [true, null];
+    } catch (error) {
+        console.log(error);
+        const err: ErrorResponse = {message: "A system error occurred", state: "failed", type: "system_error"};
+        return [null, err];
+    }
+};
+
+export async function hardDeleteConversation(conversationId: ObjectId): Promise<[Boolean | null, null | ErrorResponse]> {
+    try {
+        const conversationsCollection  = await getConversationsCollection();
+
+        //Deleting conversation all messages
+        const [messageDeleteResult, error] = await deleteConversationMessages(conversationId);
+        if(error){
+            return [null, error];
+        }
+
+        const convDeleteResult = await conversationsCollection.deleteOne({
+            _id: conversationId
+        });
+
+        return [true, null]
     } catch (error) {
         console.log(error);
         const err: ErrorResponse = {message: "A system error occurred", state: "failed", type: "system_error"};

@@ -24,7 +24,7 @@ export async function getRawUserInfo(userid: string): Promise<[RawUserInfo | nul
     }
 };
 
-export async function getUserInfoById(id: string): Promise<[ProtectedUserInfo | null, ErrorResponse | null]> {
+export async function getUserInfoById(id: ObjectId): Promise<[ProtectedUserInfo | null, ErrorResponse | null]> {
     try {
         const usersCollection  = await getUsersCollection();
         const user: RawUserInfo = await usersCollection.findOne({_id: new ObjectId(id)});
