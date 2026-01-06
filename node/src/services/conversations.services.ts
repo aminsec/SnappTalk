@@ -2,7 +2,7 @@ import { Conversation } from "../types/conversation.types";
 import { ErrorResponse } from "../types/response.types";
 import { getConversationsCollection } from "../models/conversatations.model";
 import { ProtectedUserInfo } from "../types/user.types";
-import { getUserInfoById } from "./user.services";
+import { getUserInfoById } from "./account.services";
 import { ObjectId } from "mongodb";
 import { whiteListConversations } from "../utils/operations";
 import { getMessageById, getUnreadMessagesCount } from "./messages.services";

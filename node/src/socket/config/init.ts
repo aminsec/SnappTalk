@@ -3,7 +3,7 @@ import { handleSocketConnection } from '../main';
 import http from "http";
 import { authenticateSocket } from "../../middlewares/socket.middlewares";
 import { connectUserToRooms, sendUserStatusToRooms } from '../../services/socket.services';
-import { setUserStatus } from '../../services/user.services';
+import { setUserStatus } from '../../services/account.services';
 import { ObjectId } from "mongodb";
 
 export function initSocket(server: http.Server){

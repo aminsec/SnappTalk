@@ -1,5 +1,5 @@
 import { execSync } from "child_process";
-import { getUserInfoById } from "../../services/user.services";
+import { getUserInfoById } from "../../services/account.services";
 import { searchMemberByUsername } from "../../services/members.services";
 import { sendResponse, showError } from "../../utils/operations";
 import { Request, Response } from "express";

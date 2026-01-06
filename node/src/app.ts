@@ -3,7 +3,7 @@ import bodyParser from "body-parser";
 import cookieParser from "cookie-parser";
 import authRoutes from "./routes/auth/auth.routes";
 import membersRoutes from "./routes/members/info.routes";
-import accountRoutes from "./routes/user/user.routes";
+import accountRoutes from "./routes/user/account.routes";
 import accountConversationsRoutes from "./routes/user/conversations.routes";
 import accountMessagesRoutes from "./routes/user/messages.routes";
 import validateJWT from "./middlewares/jwt";
@@ -29,12 +29,12 @@ app.use(limiter);
 app.use(helmet());
 app.use(bodyParser.json({ limit: "5mb" })); // Increasing body size limit
 app.use(cookieParser()); // Parsing cookies
+app.use("/user", validateJWT);
 
 // Routes
 app.use("/members", membersRoutes);
 app.use("/auth", authRoutes);
-app.use("/user", validateJWT);
-app.use("/user", accountRoutes);
+app.use("/user/info", accountRoutes);
 app.use("/user/conversations", accountConversationsRoutes);
 app.use("/user/messages", accountMessagesRoutes);
 

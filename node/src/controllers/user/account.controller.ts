@@ -1,4 +1,4 @@
-import { checkUserExistsByUsername, getRawUserInfo, getUserInfoById, revokeUserToken, updateEmail, updatePassword, updateUsername, updateBio, updateProfilePicAddress, setAccountDeleted } from "../../services/user.services";
+import { checkUserExistsByUsername, getRawUserInfo, getUserInfoById, revokeUserToken, updateEmail, updatePassword, updateUsername, updateBio, updateProfilePicAddress, setAccountDeleted } from "../../services/account.services";
 import { showError, sendResponse, checkBcrypt, uploadFile, deleteFileFromUploads, generateJWTToken } from "../../utils/operations";
 import { Request, Response } from "express";
 import {ErrorResponse } from "../../types/response.types";

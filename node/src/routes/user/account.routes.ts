@@ -1,12 +1,12 @@
 import express from "express";
-import * as accountInfoController  from "../../controllers/user/user.controller";
+import * as accountInfoController  from "../../controllers/user/account.controller";
 import { check } from 'express-validator';
 import { checkThereIsAnyError } from "../../middlewares/errors";
 import { globalReg } from "../../utils/regex";
 const router = express.Router();
 
-router.get("/info", accountInfoController.showUserInfo);
-router.put("/info", [
+router.get("/", accountInfoController.showUserInfo);
+router.put("/", [
   check("username")
     .isString().withMessage("Username must be a string.")
     .notEmpty().withMessage("Username is required.")
@@ -25,7 +25,7 @@ router.put("/info", [
   checkThereIsAnyError
 ], accountInfoController.updateUserInfo);
 
-router.put("/info/password", [
+router.put("/password", [
   check("old_password")
   .isString().withMessage("Old password must be a string.")
   .notEmpty().withMessage("Old password is required."),
@@ -39,7 +39,7 @@ router.put("/info/password", [
   checkThereIsAnyError
 ], accountInfoController.updateUserPassword);
 
-router.post("/info/profile", [
+router.post("/profile", [
   check("content")
   .notEmpty().withMessage("Content parameter is required")
   .isString().withMessage("Content must be a string"),
@@ -47,6 +47,6 @@ router.post("/info/profile", [
   checkThereIsAnyError
 ], accountInfoController.updateUserProfile);
 
-router.delete("/info/delete-account", accountInfoController.deleteUserAccount);
+router.delete("/delete-account", accountInfoController.deleteUserAccount);
 
 export default router;
