@@ -18,7 +18,7 @@ export const SOCKET_EVENTS = {
   NEW_PV_CONVERSATION: 'new_pv_conversation',
 
   MESSAGE_EDIT: 'message:edit',
-  MESSAGE_UPDATED: 'message:updated',
+  MESSAGE_EDITED: 'message:edited',
 
   MESSAGE_DELETE: 'message:delete',
   MESSAGE_DELETED: 'message:deleted',

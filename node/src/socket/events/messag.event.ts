@@ -1,6 +1,6 @@
 import { Socket } from "socket.io";
-import { MessageSeenEVT, MessageSendEVT } from "../../types/socket.events.types";
-import { createNewMessage, seenMessageById } from "../../services/messages.services";
+import { MessageEditEVT, MessageSeenEVT, MessageSendEVT } from "../../types/socket.events.types";
+import { createNewMessage, editMessageById, getMessageById, seenMessageById } from "../../services/messages.services";
 import { ObjectId } from "mongodb";
 import { updateConversationLastMessageId } from "../../services/conversations.services";
 
@@ -58,4 +58,39 @@ export async function handleSeen(socket: Socket, data: MessageSeenEVT) {
         socket.emit("seen:error", {message: "Coulnd't seen message"});
         return;
     }
-}
+};
+
+export async function handleMessageEdit(socket: Socket, data: MessageEditEVT) {
+    const { message_id, new_message } = data;
+    const { userInfo } = socket;
+
+    //Checking user is sender of the message
+    const message = await getMessageById(new ObjectId(message_id));
+
+    if(message.sender.toString() !== userInfo.id){
+        const error = {message: "Access denied"};
+        socket.emit("message:edit:error", error);
+        return;
+    }
+
+    if(new_message.length > 255) { 
+        const error = {message: "Message is too long"};
+        socket.emit("message:edit:error", error);
+        return;
+    }
+
+    //Editing message
+    const [editResult, err] = await editMessageById(new ObjectId(message._id), new_message);
+
+    if(err){
+        socket.emit("message:edit:error", {message_id, error: err.message});
+        return;
+    }
+
+    //Sending success and new message to room of message
+    socket.emit("message:edit:ack", {message: "Message edited successfully"});
+
+    const conversationOfMessage = message.conversation_id;
+    socket.to(conversationOfMessage.toString()).emit("message:edited", {message_id, new_message, conversation_id: message.conversation_id});
+    return;
+};
