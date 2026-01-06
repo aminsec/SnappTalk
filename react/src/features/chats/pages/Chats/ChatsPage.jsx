@@ -267,6 +267,7 @@ function ChatsPage() {
   const [deleteConfirm, setDeleteConfirm] = useState({ open: false, conversationId: null });
   const [isDeletingConversation, setIsDeletingConversation] = useState(false);
   const [deleteForEveryone, setDeleteForEveryone] = useState(false);
+  const [conversationContextMenu, setConversationContextMenu] = useState(null);
   const [isMediaPickerOpen, setIsMediaPickerOpen] = useState(false);
   const [mediaTab, setMediaTab] = useState('gifs');
   const [gifQuery, setGifQuery] = useState('');
@@ -311,6 +312,8 @@ function ChatsPage() {
   const recordingTimerRef = useRef(null);
   const recordingStreamRef = useRef(null);
   const statusOfflineTimersRef = useRef({});
+  const longPressTimeoutRef = useRef(null);
+  const longPressTriggeredRef = useRef(false);
 
   const [unreadCounts, setUnreadCounts] = useState({});
   const unreadCountsRef = useRef({});
@@ -655,12 +658,15 @@ function ChatsPage() {
     });
   }, [socket]);
 
-  const handleOpenDeleteConversation = useCallback(() => {
-    const conversationId = getConversationId(selectedChat);
+  const handleOpenDeleteConversation = useCallback((conversationOverride = null) => {
+    const conversationId = conversationOverride
+      ? getConversationId(conversationOverride)
+      : getConversationId(selectedChat);
     if (!conversationId) return;
     setDeleteConfirm({ open: true, conversationId: conversationId.toString() });
     setDeleteForEveryone(false);
     setIsChatMenuOpen(false);
+    setConversationContextMenu(null);
   }, [selectedChat]);
 
   const handleDeleteConversation = useCallback(
@@ -1483,22 +1489,28 @@ function ChatsPage() {
   // Close menus when clicking outside
   useEffect(() => {
     const handleClickOutside = (event) => {
+      if (event.button === 2) {
+        return;
+      }
       if (chatMenuRef.current && !chatMenuRef.current.contains(event.target)) {
         setIsChatMenuOpen(false);
       }
       if (messageContextMenu && event.target?.closest && event.target.closest('[data-message-context-menu]') === null) {
         setMessageContextMenu(null);
       }
+      if (conversationContextMenu && event.target?.closest && event.target.closest('[data-conversation-context-menu]') === null) {
+        setConversationContextMenu(null);
+      }
     };
 
-    if (isChatMenuOpen || messageContextMenu) {
+    if (isChatMenuOpen || messageContextMenu || conversationContextMenu) {
       document.addEventListener('mousedown', handleClickOutside);
     }
 
     return () => {
       document.removeEventListener('mousedown', handleClickOutside);
     };
-  }, [isChatMenuOpen, messageContextMenu]);
+  }, [isChatMenuOpen, messageContextMenu, conversationContextMenu]);
 
   useLayoutEffect(() => {
     if (!shouldAutoScrollRef.current) {
@@ -2716,7 +2728,46 @@ function ChatsPage() {
                 <div
                   key={chatIdStr || chat._id || chat.id || index}
                   className={`${styles.chatItem} ${selectedId && chatId && selectedId === chatId ? styles.active : ''}`}
-                  onClick={() => setSelectedChat(chat)}
+                  onClick={() => {
+                    if (longPressTriggeredRef.current) {
+                      longPressTriggeredRef.current = false;
+                      return;
+                    }
+                    setSelectedChat(chat);
+                  }}
+                  onContextMenu={(event) => {
+                    event.preventDefault();
+                    setConversationContextMenu({
+                      x: event.clientX,
+                      y: event.clientY,
+                      conversation: chat,
+                    });
+                  }}
+                  onTouchStart={(event) => {
+                    if (longPressTimeoutRef.current) {
+                      clearTimeout(longPressTimeoutRef.current);
+                    }
+                    const touch = event.touches?.[0];
+                    if (!touch) return;
+                    longPressTimeoutRef.current = setTimeout(() => {
+                      longPressTriggeredRef.current = true;
+                      setConversationContextMenu({
+                        x: touch.clientX,
+                        y: touch.clientY,
+                        conversation: chat,
+                      });
+                    }, 500);
+                  }}
+                  onTouchEnd={() => {
+                    if (longPressTimeoutRef.current) {
+                      clearTimeout(longPressTimeoutRef.current);
+                    }
+                  }}
+                  onTouchCancel={() => {
+                    if (longPressTimeoutRef.current) {
+                      clearTimeout(longPressTimeoutRef.current);
+                    }
+                  }}
                 >
                   <div className={`${styles.statusAvatar} ${styles.statusAvatarSmall}`}>
                     <ProfileAvatar size="md" src={avatarSrc} />
@@ -2829,7 +2880,7 @@ function ChatsPage() {
                   )}
                 </div>
               </div>
-              <div ref={chatMenuRef}>
+              <div ref={chatMenuRef} className={styles.chatMenuWrapper}>
                 <button
                   type="button"
                   className={styles.optionsButton}
@@ -3481,6 +3532,22 @@ function ChatsPage() {
               </p>
               <p className={styles.emptyChatSubtitle}>Pick a conversation to start talking</p>
             </div>
+          </div>
+        )}
+        {conversationContextMenu && (
+          <div
+            className={styles.conversationContextMenu}
+            data-conversation-context-menu
+            style={{ left: conversationContextMenu.x, top: conversationContextMenu.y }}
+          >
+            <button
+              type="button"
+              className={styles.optionsMenuItem}
+              onClick={() => handleOpenDeleteConversation(conversationContextMenu.conversation)}
+            >
+              <FontAwesomeIcon icon={faTrash} />
+              <span>Delete conversation</span>
+            </button>
           </div>
         )}
       </main>

@@ -1061,6 +1061,18 @@
     padding: 6px;
 }
 
+.conversationContextMenu {
+    position: fixed;
+    z-index: 1000;
+    min-width: 200px;
+    background-color: var(--bg-panel);
+    border: 1px solid var(--input-border);
+    box-shadow: 0 12px 40px rgba(0, 0, 0, 0.45);
+    border-radius: 12px;
+    overflow: hidden;
+    padding: 6px;
+}
+
 .confirmOverlay {
     animation: fadeIn 0.18s ease-out;
     position: fixed;
@@ -1244,10 +1256,19 @@
 }
 
 .optionsMenuDown {
-    top: calc(100% + 8px);
+    top: 50%;
     bottom: auto;
-    right: 0;
+    right: 100%;
     left: auto;
+    transform: translate(-8px, -50%);
+    min-width: 200px;
+    animation: menuFade 0.18s ease-out;
+}
+
+.chatMenuWrapper {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
 }
 
 @keyframes slideDown {
@@ -1749,6 +1770,11 @@
 @keyframes fadeInUp {
     from { opacity: 0; transform: translateY(10px); }
     to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes menuFade {
+    from { opacity: 0; }
+    to { opacity: 1; }
 }
 
 @keyframes previewPop {
