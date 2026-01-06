@@ -1183,20 +1183,20 @@ function ChatsPage() {
       if (!conversationId || !messageId) return;
 
       const activeConversationId = activeConversationIdRef.current?.toString();
-      if (activeConversationId && activeConversationId !== conversationId.toString()) {
-        return;
-      }
+      const isActiveConversation = activeConversationId === conversationId.toString();
 
       let seenMessage = null;
-      setMessages((prev) =>
-        prev.map((m) => {
-          if (getMessageId(m) === messageId) {
-            seenMessage = m;
-            return { ...m, seen: true };
-          }
-          return m;
-        })
-      );
+      if (isActiveConversation) {
+        setMessages((prev) =>
+          prev.map((m) => {
+            if (getMessageId(m) === messageId) {
+              seenMessage = m;
+              return { ...m, seen: true };
+            }
+            return m;
+          })
+        );
+      }
       const conversationIdStr = conversationId.toString();
       setContacts((prev) =>
         prev.map((chat) => {
@@ -1216,7 +1216,9 @@ function ChatsPage() {
             && seenText
             && lastText === seenText
             && (!lastTime || !seenTime || Math.abs(lastTime - seenTime) < 60000);
-          if (!matchesId && !matchesFallback) return chat;
+          const isMineLast = last?.sender && last.sender === userRef.current?.username;
+          const shouldMarkSeen = matchesId || matchesFallback || (!lastId && isMineLast);
+          if (!shouldMarkSeen) return chat;
           return {
             ...chat,
             last_message: {
