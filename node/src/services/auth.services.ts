@@ -76,7 +76,7 @@ export async function createUser(email: string, password: string): Promise<[Prot
                 username: Date.now().toString(),
                 profile_pic: '/statics/images/default.png',
                 role: "user",
-                joined_at: Date.now().toString(),
+                joined_at: new Date(),
                 bio: "", // Default bio is empty
                 status: "online",
                 deleted_account: false
