@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef, useLayoutEffect } from 'react';
 import { useCallback, useMemo } from 'react';
+import { useLocation, useNavigate } from 'react-router-dom';
 import EmojiPicker from 'emoji-picker-react';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import {
@@ -249,6 +250,8 @@ const getMediaTypeFromMime = (mimeType) => {
 };
 
 function ChatsPage() {
+  const location = useLocation();
+  const navigate = useNavigate();
   const { user } = useAuth();
   const { socket, status: socketStatus } = useSocket();
   const [contacts, setContacts] = useState([]);
@@ -320,6 +323,7 @@ function ChatsPage() {
   const hasFetchedContactsRef = useRef(false);
 
   const isAtBottomRef = useRef(false);
+  const startConversationRef = useRef(null);
   const deleteTargetName = useMemo(() => {
     if (!deleteConfirm.open || !deleteConfirm.conversationId) {
       return '';
@@ -475,7 +479,12 @@ function ChatsPage() {
       }
 
       if (isPendingPv && contactUserId) {
-        pendingPvRef.current = { tempId: conversationId };
+        pendingPvRef.current = {
+          tempId: conversationId,
+          contactUserId,
+          trackId: optimisticId,
+          messageText: content,
+        };
         socket.emit(
           SOCKET_EVENTS.NEW_PV_CONVERSATION,
           {
@@ -739,7 +748,7 @@ function ChatsPage() {
 
       if (response.ok) {
         const data = await response.json();
-        const next = (data.conversations || []).map((chat) => {
+        const serverChats = (data.conversations || []).map((chat) => {
           const id = getConversationId(chat)?.toString();
           const cachedUnread = id ? unreadCountsRef.current[id] : 0;
           const serverUnread = chat.unread_messages_count ?? chat.unread_count ?? 0;
@@ -748,10 +757,23 @@ function ChatsPage() {
             unread_messages_count: Math.max(serverUnread, cachedUnread),
           };
         });
-        setContacts(next);
+        setContacts((prev) => {
+          const serverIds = new Set(
+            serverChats.map((chat) => getConversationId(chat)?.toString()).filter(Boolean)
+          );
+          const tempChats = prev.filter((chat) => {
+            const id = getConversationId(chat)?.toString();
+            if (!id) return false;
+            const isTemp = id.startsWith('temp-');
+            const missingOnServer = !serverIds.has(id);
+            const isEmpty = !chat.last_message?.content;
+            return (isTemp || missingOnServer) && isEmpty;
+          });
+          return [...tempChats, ...serverChats];
+        });
         setUnreadCounts(() => {
           const merged = { ...unreadCountsRef.current };
-          next.forEach((chat) => {
+          serverChats.forEach((chat) => {
             const id = getConversationId(chat)?.toString();
             if (!id) return;
             const unread = chat.unread_messages_count ?? chat.unread_count ?? 0;
@@ -762,7 +784,7 @@ function ChatsPage() {
           unreadCountsRef.current = merged;
           return merged;
         });
-        return next;
+        return serverChats;
       }
     } catch (error) {
       console.error('Failed to refresh conversations:', error);
@@ -1162,6 +1184,55 @@ function ChatsPage() {
 
     const handleMessageSendError = (payload) => {
       const trackId = payload?.track_id || payload?.trackId;
+      const errorMessage = payload?.message || payload?.error || '';
+      const errorConversationId = payload?.conversation_id || payload?.conversationId;
+      const pendingPv = pendingPvRef.current;
+      const isAlreadyExistsError = typeof errorMessage === 'string'
+        && errorMessage.toLowerCase().includes('already have conversation');
+
+      if (isAlreadyExistsError && pendingPv?.trackId && pendingPv?.messageText) {
+        const pendingTrackId = pendingPv.trackId;
+        const resolvedConversationId = errorConversationId?.toString();
+
+        const tempId = pendingPv.tempId?.toString();
+        if (resolvedConversationId && tempId) {
+          setContacts((prev) =>
+            prev.map((chat) =>
+              getConversationId(chat)?.toString() === tempId
+                ? { ...chat, _id: resolvedConversationId, id: resolvedConversationId }
+                : chat
+            )
+          );
+          setSelectedChat((prev) =>
+            prev && getConversationId(prev)?.toString() === tempId
+              ? { ...prev, _id: resolvedConversationId, id: resolvedConversationId }
+              : prev
+          );
+          setMessages((prev) =>
+            prev.map((m) =>
+              m.conversation_id?.toString() === tempId
+                ? { ...m, conversation_id: resolvedConversationId }
+                : m
+            )
+          );
+          setMessagesConversationId(resolvedConversationId);
+          if (pendingSendMapRef.current[pendingTrackId]) {
+            pendingSendMapRef.current[pendingTrackId].conversationId = resolvedConversationId;
+          }
+        }
+
+        if (socket && socket.connected && resolvedConversationId) {
+          socket.emit(SOCKET_EVENTS.MESSAGE_SEND, {
+            conversation_id: resolvedConversationId,
+            message_text: pendingPv.messageText,
+            track_id: pendingTrackId,
+          });
+        }
+
+        pendingPvRef.current = null;
+        return;
+      }
+
       if (!trackId) return;
       const pending = pendingSendMapRef.current[trackId];
       if (!pending?.tempId) return;
@@ -1572,7 +1643,21 @@ function ChatsPage() {
 
         if (response.ok) {
           const data = await response.json();
-          setContacts(data.conversations || []);
+          const serverChats = data.conversations || [];
+          setContacts((prev) => {
+            const serverIds = new Set(
+              serverChats.map((chat) => getConversationId(chat)?.toString()).filter(Boolean)
+            );
+            const tempChats = prev.filter((chat) => {
+              const id = getConversationId(chat)?.toString();
+              if (!id) return false;
+              const isTemp = id.startsWith('temp-');
+              const missingOnServer = !serverIds.has(id);
+              const isEmpty = !chat.last_message?.content;
+              return (isTemp || missingOnServer) && isEmpty;
+            });
+            return [...tempChats, ...serverChats];
+          });
         }
       } catch (error) {
         console.error('Failed to fetch conversations:', error);
@@ -2290,6 +2375,105 @@ function ChatsPage() {
     [contacts, user]
   );
 
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    const startUserId = params.get('startUser');
+    if (!startUserId) {
+      startConversationRef.current = null;
+      return;
+    }
+    if (startConversationRef.current === startUserId) {
+      return;
+    }
+    startConversationRef.current = startUserId;
+
+    const findExisting = (list) =>
+      list.find((chat) => {
+        if (chat.type !== 'pv') return false;
+        const contactId = (chat.contact_info?._id || chat.contact_info?.id)?.toString();
+        return contactId && contactId === startUserId;
+      });
+
+    const existingChat = findExisting(contacts);
+    if (existingChat) {
+      setSelectedChat(existingChat);
+      params.delete('startUser');
+      navigate('/chats', { replace: true });
+      return;
+    }
+
+    refreshContacts().then((serverChats) => {
+      const serverChat = findExisting(serverChats || []);
+      if (serverChat) {
+        setSelectedChat(serverChat);
+        params.delete('startUser');
+        navigate('/chats', { replace: true });
+        return;
+      }
+
+      const tempId = `temp-${Date.now()}`;
+      const optimisticChat = {
+        id: tempId,
+        _id: tempId,
+        type: 'pv',
+        contact_info: {
+          id: startUserId,
+          _id: startUserId,
+          username: 'New user',
+          profile_pic: null,
+        },
+        last_message: {
+          content: '',
+          type: 'text',
+          sender: user?.username || '',
+          when: '',
+        },
+      };
+
+      setContacts((prev) => {
+        const exists = findExisting(prev);
+        if (exists) return prev;
+        return [optimisticChat, ...prev];
+      });
+      setSelectedChat(optimisticChat);
+
+      fetch(`/api/v1/members/${startUserId}/info`, {
+        method: 'GET',
+        credentials: 'include',
+      })
+        .then((response) => (response.ok ? response.json() : null))
+        .then((data) => {
+          const memberInfo = data?.member_info;
+          if (memberInfo) {
+            setContacts((prev) =>
+              prev.map((chat) => {
+                const contactId = (chat.contact_info?._id || chat.contact_info?.id)?.toString();
+                if (contactId !== startUserId) return chat;
+                return {
+                  ...chat,
+                  contact_info: memberInfo,
+                };
+              })
+            );
+            setSelectedChat((prev) => {
+              const prevContactId = (prev?.contact_info?._id || prev?.contact_info?.id)?.toString();
+              if (prevContactId !== startUserId) {
+                return prev;
+              }
+              return {
+                ...prev,
+                contact_info: memberInfo,
+              };
+            });
+          }
+        })
+        .finally(() => {
+          params.delete('startUser');
+          navigate('/chats', { replace: true });
+        });
+    });
+  }, [contacts, location.search, navigate, refreshContacts, user?.username]);
+
   // Handle options menu toggle
   const handleOptionsMenuToggle = useCallback(() => {
     setIsOptionsMenuOpen((prev) => !prev);
@@ -2787,7 +2971,23 @@ function ChatsPage() {
                   }}
                 >
                   <div className={`${styles.statusAvatar} ${styles.statusAvatarSmall}`}>
-                    <ProfileAvatar size="md" src={avatarSrc} />
+                    {isPrivateChat ? (
+                      <button
+                        type="button"
+                        className={styles.profileAvatarButton}
+                        onClick={(event) => {
+                          event.stopPropagation();
+                          const contactId = chat.contact_info?._id || chat.contact_info?.id;
+                          if (contactId) {
+                            navigate(`/members/${contactId}`);
+                          }
+                        }}
+                      >
+                        <ProfileAvatar size="md" src={avatarSrc} />
+                      </button>
+                    ) : (
+                      <ProfileAvatar size="md" src={avatarSrc} />
+                    )}
                     {isPrivateChat && (
                       <span className={`${styles.statusDot} ${statusClass}`} />
                     )}
@@ -2805,7 +3005,29 @@ function ChatsPage() {
                         {truncateMessage(getMessagePreviewText(chat.last_message))}
                       </p>
                     </div>
-                    <div className={styles.chatInfoFooter}>
+                    <div
+                      className={styles.chatInfoFooter}
+                      onClick={(event) => {
+                        event.stopPropagation();
+                        if (!isPrivateChat) return;
+                        const contactId = chat.contact_info?._id || chat.contact_info?.id;
+                        if (contactId) {
+                          navigate(`/members/${contactId}`);
+                        }
+                      }}
+                      role={isPrivateChat ? 'button' : undefined}
+                      tabIndex={isPrivateChat ? 0 : undefined}
+                      onKeyDown={(event) => {
+                        if (!isPrivateChat) return;
+                        if (event.key === 'Enter') {
+                          event.stopPropagation();
+                          const contactId = chat.contact_info?._id || chat.contact_info?.id;
+                          if (contactId) {
+                            navigate(`/members/${contactId}`);
+                          }
+                        }
+                      }}
+                    >
                       <span className={styles.chatTimestampRow}>
                         {hasLastMessage && isMyMessage && (
                           <span className={styles.chatStatusIcon} aria-hidden="true">
@@ -2861,11 +3083,30 @@ function ChatsPage() {
             <div className={styles.chatHeader}>
               <div className={styles.UserStatus}>
                 <div className={`${styles.statusAvatar} ${styles.statusAvatarLarge}`}>
-                  <ProfileAvatar 
-                    size="md" 
-                    alt={selectedChat.type === "pv" ? selectedChat.contact_info?.username : selectedChat.group_name}
-                    src={selectedChat.type === "pv" ? selectedChat.contact_info?.profile_pic : selectedChat.group_avatar}
-                  />
+                  {selectedChat.type === "pv" ? (
+                    <button
+                      type="button"
+                      className={styles.profileAvatarButton}
+                      onClick={() => {
+                        const contactId = selectedChat.contact_info?._id || selectedChat.contact_info?.id;
+                        if (contactId) {
+                          navigate(`/members/${contactId}`);
+                        }
+                      }}
+                    >
+                      <ProfileAvatar
+                        size="md"
+                        alt={selectedChat.contact_info?.username}
+                        src={selectedChat.contact_info?.profile_pic}
+                      />
+                    </button>
+                  ) : (
+                    <ProfileAvatar
+                      size="md"
+                      alt={selectedChat.group_name}
+                      src={selectedChat.group_avatar}
+                    />
+                  )}
                   {selectedChat.type === "pv" && (
                     <span
                       className={`${styles.statusDot} ${
@@ -2878,9 +3119,22 @@ function ChatsPage() {
                 </div>
                 <div>
                   <h2>
-                    {selectedChat.type === "pv" 
-                      ? selectedChat.contact_info?.username 
-                      : selectedChat.group_name}
+                    {selectedChat.type === "pv" ? (
+                      <button
+                        type="button"
+                        className={styles.profileLink}
+                        onClick={() => {
+                          const contactId = selectedChat.contact_info?._id || selectedChat.contact_info?.id;
+                          if (contactId) {
+                            navigate(`/members/${contactId}`);
+                          }
+                        }}
+                      >
+                        {selectedChat.contact_info?.username}
+                      </button>
+                    ) : (
+                      selectedChat.group_name
+                    )}
                   </h2>
                   {selectedChat.type === "pv" ? (
                     <p
@@ -3063,12 +3317,22 @@ function ChatsPage() {
                       {/* Avatar for received messages in groups - positioned on the left */}
                       {shouldShowSenderMeta && (
                         <div className={styles.messageAvatar}>
-                          <ProfileAvatar 
-                            src={senderAvatar} 
-                            size={36}
-                            alt={senderName || 'Member'}
-                            borderWidth={0}
-                          />
+                          <button
+                            type="button"
+                            className={styles.profileAvatarButton}
+                            onClick={() => {
+                              if (senderIdStr) {
+                                navigate(`/members/${senderIdStr}`);
+                              }
+                            }}
+                          >
+                            <ProfileAvatar
+                              src={senderAvatar}
+                              size={36}
+                              alt={senderName || 'Member'}
+                              borderWidth={0}
+                            />
+                          </button>
                         </div>
                       )}
                       
@@ -3100,8 +3364,19 @@ function ChatsPage() {
                         )}
                         {/* Username inside message bubble for group chats */}
                         {shouldShowSenderMeta && (
-                          <div className={styles.messageSenderName}>
-                            <span className={styles.senderUsername}>{senderName}</span>
+                      <div className={styles.messageSenderName}>
+                            <button
+                              type="button"
+                              className={styles.profileLinkInline}
+                              onClick={() => {
+                                const senderId = messageSenderId;
+                                if (senderId) {
+                                  navigate(`/members/${senderId}`);
+                                }
+                              }}
+                            >
+                              {senderName}
+                            </button>
                           </div>
                         )}
                         

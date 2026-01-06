@@ -69,7 +69,7 @@ export async function getUserConversations(userInfo: ProtectedUserInfo): Promise
     }
 };
 
-export async function checkIsThereConversation(firstUserId: ObjectId, secondUserId: ObjectId): Promise<[Boolean | null, null | ErrorResponse]> {
+export async function checkIsThereConversation(firstUserId: ObjectId, secondUserId: ObjectId): Promise<[ObjectId | null, null | ErrorResponse]> {
     try {
         const conversationsCollection  = await getConversationsCollection();
         const conversation: Conversation = await conversationsCollection.findOne(
@@ -82,10 +82,10 @@ export async function checkIsThereConversation(firstUserId: ObjectId, secondUser
         );
     
         if(conversation){
-            return [true, null];
+            return [conversation._id, null];
 
         }else{
-            return [false, null];
+            return [null, null];
         }
 
     } catch (error) {

@@ -10,15 +10,15 @@ export async function handleNewPvConversationEvent(socket: Socket, data: NewPvCo
     const { track_id } = data;
     
     //Checking if there is a conversation with requested user id
-    const [isThereConversation, error] = await checkIsThereConversation(requestedUserId, contactUserId);
+    const [conversationId, error] = await checkIsThereConversation(requestedUserId, contactUserId);
 
     if(error){
         socket.emit("error", {message: "There was a problem in our backend"});
         return;
     }
 
-    if(isThereConversation === true){
-        socket.emit("error", {message: "You already have conversation with this user"});
+    if(conversationId){
+        socket.emit("error", {message: "You already have conversation with this user", conversation_id: conversationId});
         return;
     }
 

@@ -362,6 +362,62 @@
     font-size: 16px;
 }
 
+.profileLink {
+    background: none;
+    border: none;
+    color: var(--text-main);
+    font-size: 16px;
+    font-weight: 600;
+    cursor: pointer;
+    padding: 0;
+    transition: color 0.15s ease, text-decoration-color 0.15s ease;
+}
+
+.profileLink:hover {
+    color: var(--text-main);
+    opacity: 0.85;
+}
+
+.profileLinkInline {
+    background: none;
+    border: none;
+    color: var(--text-main);
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    padding: 0;
+    transition: color 0.15s ease, text-decoration-color 0.15s ease;
+}
+
+.profileLinkInline:hover {
+    color: var(--text-main);
+    opacity: 0.85;
+}
+
+.chatInfoFooter {
+    cursor: pointer;
+}
+
+.chatInfoFooter:hover .timestamp {
+    color: var(--text-main);
+}
+
+.chatInfoFooter:hover .chatStatusIconImage {
+    opacity: 1;
+}
+
+.profileAvatarButton {
+    background: none;
+    border: none;
+    padding: 0;
+    cursor: pointer;
+    display: inline-flex;
+}
+
+.profileAvatarButton:hover {
+    opacity: 0.9;
+}
+
 .chatHeader .onlineStatus {
     font-size: 12px;
 }
