@@ -1061,6 +1061,115 @@
     padding: 6px;
 }
 
+.confirmOverlay {
+    animation: fadeIn 0.18s ease-out;
+    position: fixed;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(0, 0, 0, 0.4);
+    backdrop-filter: blur(1px);
+    z-index: 2000;
+    padding: 20px;
+}
+
+.confirmBox {
+    animation: popIn 0.22s ease-out;
+    width: 100%;
+    max-width: 340px;
+    padding: 1.25rem;
+    border-radius: 12px;
+    background: var(--bg-panel);
+    border: 1px solid var(--input-border);
+    box-shadow: 0 12px 36px rgba(0, 0, 0, 0.25);
+    color: var(--text-primary);
+}
+
+.confirmTitle {
+    margin: 0 0 0.35rem;
+    font-weight: 700;
+    font-size: 1rem;
+}
+
+.confirmText {
+    margin: 0 0 1rem;
+    color: var(--text-muted);
+    font-size: 0.9rem;
+}
+
+.confirmActions {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.confirmButtons {
+    display: flex;
+    justify-content: flex-end;
+    gap: 0.5rem;
+}
+
+.cancelButton,
+.confirmButton {
+    padding: 0.45rem 0.9rem;
+    border-radius: 8px;
+    border: 1px solid var(--input-border);
+    background: transparent;
+    color: var(--text-primary);
+    cursor: pointer;
+    transition: background-color 0.2s ease, color 0.2s ease, border-color 0.2s ease;
+}
+
+.cancelButton:hover:not(:disabled) {
+    background: rgba(255, 255, 255, 0.08);
+    border-color: rgba(255, 255, 255, 0.12);
+}
+
+.confirmButton {
+    background: rgba(255, 18, 18, 0.1);
+    border-color: rgba(255, 18, 18, 0.4);
+    color: var(--text-primary);
+}
+
+.confirmButton:hover:not(:disabled) {
+    background: rgba(255, 18, 18, 0.2);
+    border-color: rgba(255, 18, 18, 0.6);
+}
+
+.cancelButton:disabled,
+.confirmButton:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+}
+
+.deleteCheckbox {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    color: var(--text-muted);
+    font-size: 0.9rem;
+}
+
+.deleteCheckbox input {
+    width: 18px;
+    height: 18px;
+    accent-color: rgba(255, 18, 18, 0.7);
+    border-radius: 4px;
+}
+
+@media (max-width: 640px) {
+    .confirmButtons {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .cancelButton,
+    .confirmButton {
+        width: 100%;
+    }
+}
+
 .messageContextMenu .optionsMenuItem {
     border-radius: 10px;
     padding: 10px 12px;
@@ -1132,6 +1241,13 @@
     z-index: 1000;
     overflow: hidden;
     animation: slideDown 0.2s ease-out;
+}
+
+.optionsMenuDown {
+    top: calc(100% + 8px);
+    bottom: auto;
+    right: 0;
+    left: auto;
 }
 
 @keyframes slideDown {
@@ -1689,7 +1805,9 @@
     .recordButton,
     .recordingDot,
     .deliveryClockHandShort,
-    .deliveryClockHandLong {
+    .deliveryClockHandLong,
+    .confirmOverlay,
+    .confirmBox {
         animation: none !important;
         transition: none !important;
     }

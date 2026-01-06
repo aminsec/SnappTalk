@@ -172,7 +172,7 @@ export async function hardDeleteConversation(conversationId: ObjectId): Promise<
             return [null, error];
         }
 
-        const [convDeleteResult, err] = await conversationsCollection.deleteOne({
+        const convDeleteResult = await conversationsCollection.deleteOne({
             _id: conversationId
         });
 
