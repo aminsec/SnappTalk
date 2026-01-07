@@ -26,7 +26,8 @@ function ProfilePage() {
 
     const loadProfile = async () => {
       try {
-        const response = await fetch(`/api/v1/members/${userId}/info`, {
+        const cacheBuster = `cb=${Date.now()}`;
+        const response = await fetch(`/api/v1/members/${userId}/info?${cacheBuster}`, {
           method: 'GET',
           credentials: 'include',
         });

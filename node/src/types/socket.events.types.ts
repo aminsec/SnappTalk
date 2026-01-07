@@ -6,6 +6,11 @@ export interface NewPvConversationEVT {
     track_id: string
 };
 
+export interface pvConversationDeleteEVT {
+    conversation_id: string,
+    delete_for: "me" | "all"
+};
+
 export interface MessageSendEVT {
     message_text: string,
     conversation_id: string,
@@ -24,4 +29,4 @@ export interface MessageEditEVT {
 
 export interface MessageDeleteEVT {
     message_id: string
-}
+};

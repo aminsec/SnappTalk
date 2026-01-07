@@ -313,6 +313,7 @@ function ChatsPage() {
   const messageAnimationTimeoutRef = useRef(null);
   const pendingEditRef = useRef(null);
   const pendingDeleteRef = useRef(new Map());
+  const deleteConversationTimeoutRef = useRef(null);
   const mediaRecorderRef = useRef(null);
   const recordedChunksRef = useRef([]);
   const recordingTimerRef = useRef(null);
@@ -738,48 +739,32 @@ function ChatsPage() {
   }, [selectedChat]);
 
   const handleDeleteConversation = useCallback(
-    async (scope) => {
+    (scope) => {
       if (isDeletingConversation) return;
       const conversationId = deleteConfirm.conversationId;
       if (!conversationId) return;
 
       setIsDeletingConversation(true);
-      try {
-        const response = await fetch(
-          `/api/v1/user/conversations/${conversationId}?for=${scope}`,
-          {
-            method: 'DELETE',
-            credentials: 'include',
-          }
-        );
-
-        if (!response.ok) {
-          const payload = await response.json().catch(() => ({}));
-          throw new Error(payload?.message || 'Unable to delete conversation.');
-        }
-
-        setContacts((prev) =>
-          prev.filter((c) => getConversationId(c)?.toString() !== conversationId)
-        );
-        setUnreadCounts((prev) => {
-          const next = { ...prev };
-          delete next[conversationId];
-          unreadCountsRef.current = next;
-          return next;
-        });
-        if (selectedChat && getConversationId(selectedChat)?.toString() === conversationId) {
-          setSelectedChat(null);
-          setMessages([]);
-        }
-        toast.success('Conversation deleted.');
-        setDeleteConfirm({ open: false, conversationId: null });
-      } catch (error) {
-        toast.error(error?.message || 'Unable to delete conversation.');
-      } finally {
+      if (!socket || !socket.connected) {
+        toast.error('Not connected.');
         setIsDeletingConversation(false);
+        return;
       }
+
+      if (deleteConversationTimeoutRef.current) {
+        clearTimeout(deleteConversationTimeoutRef.current);
+      }
+      deleteConversationTimeoutRef.current = setTimeout(() => {
+        setIsDeletingConversation(false);
+        toast.error('Delete request timed out. Please try again.');
+      }, 8000);
+
+      socket.emit(SOCKET_EVENTS.CONVERSATION_PV_DELETE, {
+        conversation_id: conversationId,
+        delete_for: scope,
+      });
     },
-    [deleteConfirm.conversationId, isDeletingConversation, selectedChat]
+    [deleteConfirm.conversationId, isDeletingConversation, socket]
   );
 
   // Refresh conversations list
@@ -981,7 +966,8 @@ function ChatsPage() {
   const fetchContactStatus = useCallback(async (userId) => {
     if (!userId) return;
     try {
-      const response = await fetch(`/api/v1/members/${userId}/info`, {
+    const cacheBuster = `cb=${Date.now()}`;
+    const response = await fetch(`/api/v1/members/${userId}/info?${cacheBuster}`, {
         method: 'GET',
         credentials: 'include',
       });
@@ -1164,7 +1150,8 @@ function ChatsPage() {
           });
 
           if (!senderInfo && messageSender) {
-            fetch(`/api/v1/members/${messageSender}/info`, {
+            const cacheBuster = `cb=${Date.now()}`;
+            fetch(`/api/v1/members/${messageSender}/info?${cacheBuster}`, {
               method: 'GET',
               credentials: 'include',
             })
@@ -1783,6 +1770,33 @@ function ChatsPage() {
       }
     };
 
+    const handleConversationDeleteAck = (payload) => {
+      const conversationId = payload?.conversation_id || payload?.conversationId;
+      const message = payload?.message;
+      if (!conversationId) {
+        setIsDeletingConversation(false);
+        return;
+      }
+      if (deleteConversationTimeoutRef.current) {
+        clearTimeout(deleteConversationTimeoutRef.current);
+        deleteConversationTimeoutRef.current = null;
+      }
+      handleConversationDeleted({ conversation_id: conversationId });
+      toast.success(message || 'Conversation deleted.');
+      setDeleteConfirm({ open: false, conversationId: null });
+      setIsDeletingConversation(false);
+    };
+
+    const handleConversationDeleteError = (payload) => {
+      const message = payload?.message || payload?.error || 'Unable to delete conversation.';
+      toast.error(message);
+      if (deleteConversationTimeoutRef.current) {
+        clearTimeout(deleteConversationTimeoutRef.current);
+        deleteConversationTimeoutRef.current = null;
+      }
+      setIsDeletingConversation(false);
+    };
+
     const handleGenericMessage = (payload) => {
       const messageText = payload?.message;
       const newConversationId = payload?.conversationId || payload?.conversation_id;
@@ -1839,7 +1853,9 @@ function ChatsPage() {
     socket.on(SOCKET_EVENTS.MESSAGE_DELETED, handleMessageDeleted);
     socket.on('message:delete:ack', handleMessageDeleteAck);
     socket.on('message:delete:error', handleMessageDeleteError);
-    socket.on(SOCKET_EVENTS.CONVERSATION_DELETED, handleConversationDeleted);
+    socket.on(SOCKET_EVENTS.CONVERSATION_PV_DELETED, handleConversationDeleted);
+    socket.on(SOCKET_EVENTS.CONVERSATION_PV_DELETE_ACK, handleConversationDeleteAck);
+    socket.on(SOCKET_EVENTS.CONVERSATION_PV_DELETE_ERROR, handleConversationDeleteError);
     socket.on('message', handleGenericMessage);
     socket.on('error', handleMessageSendError);
     const handleStatusOnline = (payload) => {
@@ -1880,7 +1896,9 @@ function ChatsPage() {
       socket.off(SOCKET_EVENTS.MESSAGE_DELETED, handleMessageDeleted);
       socket.off('message:delete:ack', handleMessageDeleteAck);
       socket.off('message:delete:error', handleMessageDeleteError);
-      socket.off(SOCKET_EVENTS.CONVERSATION_DELETED, handleConversationDeleted);
+      socket.off(SOCKET_EVENTS.CONVERSATION_PV_DELETED, handleConversationDeleted);
+      socket.off(SOCKET_EVENTS.CONVERSATION_PV_DELETE_ACK, handleConversationDeleteAck);
+      socket.off(SOCKET_EVENTS.CONVERSATION_PV_DELETE_ERROR, handleConversationDeleteError);
       socket.off('message', handleGenericMessage);
       socket.off('error', handleMessageSendError);
       socket.off('status:online', handleStatusOnline);
@@ -1895,6 +1913,10 @@ function ChatsPage() {
       pendingAckTimersRef.current = {};
       if (messageAnimationTimeoutRef.current) {
         clearTimeout(messageAnimationTimeoutRef.current);
+      }
+      if (deleteConversationTimeoutRef.current) {
+        clearTimeout(deleteConversationTimeoutRef.current);
+        deleteConversationTimeoutRef.current = null;
       }
     };
   }, [
@@ -2563,7 +2585,8 @@ function ChatsPage() {
       }
 
       // Fetch member info using sender ID directly
-      fetch(`/api/v1/members/${senderIdStr}/info`, {
+      const cacheBuster = `cb=${Date.now()}`;
+      fetch(`/api/v1/members/${senderIdStr}/info?${cacheBuster}`, {
         method: 'GET',
         credentials: 'include',
       })
@@ -2906,7 +2929,8 @@ function ChatsPage() {
       });
       setSelectedChat(optimisticChat);
 
-      fetch(`/api/v1/members/${startUserId}/info`, {
+      const cacheBuster = `cb=${Date.now()}`;
+      fetch(`/api/v1/members/${startUserId}/info?${cacheBuster}`, {
         method: 'GET',
         credentials: 'include',
       })
