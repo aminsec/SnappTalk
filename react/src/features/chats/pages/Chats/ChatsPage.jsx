@@ -278,6 +278,11 @@ function ChatsPage() {
   const [giphyGifs, setGiphyGifs] = useState([]);
   const [isGiphyLoading, setIsGiphyLoading] = useState(false);
   const [giphyError, setGiphyError] = useState('');
+  const [deleteLastMessageAlert, setDeleteLastMessageAlert] = useState({
+    open: false,
+    message: null,
+    contactName: '',
+  });
   const [wallpaperId, setWallpaperId] = useState(() => {
     if (typeof window === 'undefined') {
       return 'aurora';
@@ -636,7 +641,7 @@ function ChatsPage() {
     setMessageInput('');
   }, []);
 
-  const handleDeleteMessage = useCallback(
+  const performDeleteMessage = useCallback(
     (message) => {
       const messageId = getMessageId(message);
       if (!messageId) return;
@@ -678,6 +683,48 @@ function ChatsPage() {
     },
     [selectedChat, socket]
   );
+
+  const handleDeleteMessage = useCallback(
+    (message) => {
+      if (!message) return;
+      const activeConversationIdStr = activeConversationIdRef.current?.toString();
+      const messageConversationId = (message?.conversation_id || message?.conversationId)?.toString();
+      const conversationIdStr = messageConversationId || activeConversationIdStr;
+      const isActiveConversation = conversationIdStr
+        && activeConversationIdStr
+        && conversationIdStr === activeConversationIdStr;
+      const totalMessages = isActiveConversation ? messagesRef.current.length : 0;
+      const isOnlyMessage = isActiveConversation && totalMessages === 1;
+      const contactName = selectedChatRef.current?.type === 'pv'
+        ? (selectedChatRef.current?.contact_info?.username || 'contact')
+        : (selectedChatRef.current?.group_name || 'this conversation');
+
+      if (isOnlyMessage) {
+        setDeleteLastMessageAlert({
+          open: true,
+          message,
+          contactName,
+        });
+        setMessageContextMenu(null);
+        return;
+      }
+
+      performDeleteMessage(message);
+      setMessageContextMenu(null);
+    },
+    [performDeleteMessage]
+  );
+
+  const handleConfirmDeleteLastMessage = useCallback(() => {
+    if (deleteLastMessageAlert?.message) {
+      performDeleteMessage(deleteLastMessageAlert.message);
+    }
+    setDeleteLastMessageAlert({ open: false, message: null, contactName: '' });
+  }, [deleteLastMessageAlert, performDeleteMessage]);
+
+  const handleCancelDeleteLastMessage = useCallback(() => {
+    setDeleteLastMessageAlert({ open: false, message: null, contactName: '' });
+  }, []);
 
   const handleReplyToMessage = useCallback((message) => {
     setReplyingToMessage(message);
@@ -4320,6 +4367,32 @@ function ChatsPage() {
                     {isDeletingConversation ? 'Deleting...' : 'Delete'}
                   </button>
                 </div>
+              </div>
+            </div>
+          </div>
+        )}
+        {deleteLastMessageAlert.open && (
+          <div className={styles.confirmOverlay} role="dialog" aria-modal="true">
+            <div className={styles.confirmBox}>
+              <p className={styles.confirmTitle}>Attention</p>
+              <p className={styles.confirmText}>
+                By deleting this message the conversation will be gone
+              </p>
+              <div className={styles.confirmButtons}>
+                <button
+                  type="button"
+                  className={styles.cancelButton}
+                  onClick={handleCancelDeleteLastMessage}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  className={styles.confirmButton}
+                  onClick={handleConfirmDeleteLastMessage}
+                >
+                  Anyway
+                </button>
               </div>
             </div>
           </div>
