@@ -278,6 +278,11 @@ function ChatsPage() {
   const [giphyGifs, setGiphyGifs] = useState([]);
   const [isGiphyLoading, setIsGiphyLoading] = useState(false);
   const [giphyError, setGiphyError] = useState('');
+  const [deleteLastMessageAlert, setDeleteLastMessageAlert] = useState({
+    open: false,
+    message: null,
+    contactName: '',
+  });
   const [wallpaperId, setWallpaperId] = useState(() => {
     if (typeof window === 'undefined') {
       return 'aurora';
@@ -313,6 +318,7 @@ function ChatsPage() {
   const messageAnimationTimeoutRef = useRef(null);
   const pendingEditRef = useRef(null);
   const pendingDeleteRef = useRef(new Map());
+  const deleteConversationTimeoutRef = useRef(null);
   const mediaRecorderRef = useRef(null);
   const recordedChunksRef = useRef([]);
   const recordingTimerRef = useRef(null);
@@ -321,6 +327,8 @@ function ChatsPage() {
   const longPressTimeoutRef = useRef(null);
   const longPressTriggeredRef = useRef(false);
   const messageContextMenuRef = useRef(null);
+  const conversationAliasRef = useRef(new Map());
+  const previousSelectedChatIdRef = useRef(null);
 
   const [unreadCounts, setUnreadCounts] = useState({});
   const unreadCountsRef = useRef({});
@@ -369,6 +377,15 @@ function ChatsPage() {
     }
   }, []);
 
+  const setConversationAlias = useCallback((tempId, realId) => {
+    if (!tempId || !realId) return;
+    const tempStr = tempId.toString();
+    const realStr = realId.toString();
+    if (!tempStr || !realStr) return;
+    conversationAliasRef.current.set(tempStr, realStr);
+    conversationAliasRef.current.set(realStr, realStr);
+  }, []);
+
   const handleSendMessage = useCallback(() => {
     const content = messageInput.trim();
     if (!content) {
@@ -410,6 +427,7 @@ function ChatsPage() {
     const optimisticMessage = {
       _id: optimisticId,
       id: optimisticId,
+      client_id: optimisticId,
       conversation_id: conversationId,
       sender: user?.id,
       type: 'text',
@@ -508,10 +526,16 @@ function ChatsPage() {
 
             const newConversationId = ack?.conversationId || ack?.conversation?._id || ack?.conversation?.id;
             if (newConversationId) {
+              setConversationAlias(conversationId, newConversationId);
               setContacts((prev) =>
                 prev.map((chat) =>
                   getConversationId(chat) === conversationId
-                    ? { ...chat, _id: newConversationId, id: newConversationId }
+                    ? {
+                        ...chat,
+                        _id: newConversationId,
+                        id: newConversationId,
+                        client_id: chat.client_id || getConversationId(chat),
+                      }
                     : chat
                 )
               );
@@ -542,7 +566,7 @@ function ChatsPage() {
               prev.map((m) => {
                 const mid = getMessageId(m);
                 if (mid === optimisticId) {
-                  return serverMessage;
+                  return { ...serverMessage, client_id: m.client_id || optimisticId };
                 }
                 return m;
               })
@@ -564,7 +588,15 @@ function ChatsPage() {
       console.error('Failed to emit socket message:', err);
       toast.error('Unable to send message right now.');
     }
-  }, [messageInput, replyingToMessage, scrollToBottom, selectedChat, socket, user?.id]);
+  }, [
+    messageInput,
+    replyingToMessage,
+    scrollToBottom,
+    selectedChat,
+    setConversationAlias,
+    socket,
+    user?.id,
+  ]);
 
   const handleEditSubmit = useCallback(() => {
     const content = messageInput.trim();
@@ -609,7 +641,7 @@ function ChatsPage() {
     setMessageInput('');
   }, []);
 
-  const handleDeleteMessage = useCallback(
+  const performDeleteMessage = useCallback(
     (message) => {
       const messageId = getMessageId(message);
       if (!messageId) return;
@@ -651,6 +683,48 @@ function ChatsPage() {
     },
     [selectedChat, socket]
   );
+
+  const handleDeleteMessage = useCallback(
+    (message) => {
+      if (!message) return;
+      const activeConversationIdStr = activeConversationIdRef.current?.toString();
+      const messageConversationId = (message?.conversation_id || message?.conversationId)?.toString();
+      const conversationIdStr = messageConversationId || activeConversationIdStr;
+      const isActiveConversation = conversationIdStr
+        && activeConversationIdStr
+        && conversationIdStr === activeConversationIdStr;
+      const totalMessages = isActiveConversation ? messagesRef.current.length : 0;
+      const isOnlyMessage = isActiveConversation && totalMessages === 1;
+      const contactName = selectedChatRef.current?.type === 'pv'
+        ? (selectedChatRef.current?.contact_info?.username || 'contact')
+        : (selectedChatRef.current?.group_name || 'this conversation');
+
+      if (isOnlyMessage) {
+        setDeleteLastMessageAlert({
+          open: true,
+          message,
+          contactName,
+        });
+        setMessageContextMenu(null);
+        return;
+      }
+
+      performDeleteMessage(message);
+      setMessageContextMenu(null);
+    },
+    [performDeleteMessage]
+  );
+
+  const handleConfirmDeleteLastMessage = useCallback(() => {
+    if (deleteLastMessageAlert?.message) {
+      performDeleteMessage(deleteLastMessageAlert.message);
+    }
+    setDeleteLastMessageAlert({ open: false, message: null, contactName: '' });
+  }, [deleteLastMessageAlert, performDeleteMessage]);
+
+  const handleCancelDeleteLastMessage = useCallback(() => {
+    setDeleteLastMessageAlert({ open: false, message: null, contactName: '' });
+  }, []);
 
   const handleReplyToMessage = useCallback((message) => {
     setReplyingToMessage(message);
@@ -712,48 +786,32 @@ function ChatsPage() {
   }, [selectedChat]);
 
   const handleDeleteConversation = useCallback(
-    async (scope) => {
+    (scope) => {
       if (isDeletingConversation) return;
       const conversationId = deleteConfirm.conversationId;
       if (!conversationId) return;
 
       setIsDeletingConversation(true);
-      try {
-        const response = await fetch(
-          `/api/v1/user/conversations/${conversationId}?for=${scope}`,
-          {
-            method: 'DELETE',
-            credentials: 'include',
-          }
-        );
-
-        if (!response.ok) {
-          const payload = await response.json().catch(() => ({}));
-          throw new Error(payload?.message || 'Unable to delete conversation.');
-        }
-
-        setContacts((prev) =>
-          prev.filter((c) => getConversationId(c)?.toString() !== conversationId)
-        );
-        setUnreadCounts((prev) => {
-          const next = { ...prev };
-          delete next[conversationId];
-          unreadCountsRef.current = next;
-          return next;
-        });
-        if (selectedChat && getConversationId(selectedChat)?.toString() === conversationId) {
-          setSelectedChat(null);
-          setMessages([]);
-        }
-        toast.success('Conversation deleted.');
-        setDeleteConfirm({ open: false, conversationId: null });
-      } catch (error) {
-        toast.error(error?.message || 'Unable to delete conversation.');
-      } finally {
+      if (!socket || !socket.connected) {
+        toast.error('Not connected.');
         setIsDeletingConversation(false);
+        return;
       }
+
+      if (deleteConversationTimeoutRef.current) {
+        clearTimeout(deleteConversationTimeoutRef.current);
+      }
+      deleteConversationTimeoutRef.current = setTimeout(() => {
+        setIsDeletingConversation(false);
+        toast.error('Delete request timed out. Please try again.');
+      }, 8000);
+
+      socket.emit(SOCKET_EVENTS.CONVERSATION_PV_DELETE, {
+        conversation_id: conversationId,
+        delete_for: scope,
+      });
     },
-    [deleteConfirm.conversationId, isDeletingConversation, selectedChat]
+    [deleteConfirm.conversationId, isDeletingConversation, socket]
   );
 
   // Refresh conversations list
@@ -770,24 +828,85 @@ function ChatsPage() {
           const id = getConversationId(chat)?.toString();
           const cachedUnread = id ? unreadCountsRef.current[id] : 0;
           const serverUnread = chat.unread_messages_count ?? chat.unread_count ?? 0;
+          const existing = id
+            ? contactsRef.current.find(
+                (c) => getConversationId(c)?.toString() === id
+              )
+            : null;
+          const existingByContact = !existing && chat.type === 'pv'
+            ? contactsRef.current.find((c) => {
+                if (c.type !== 'pv') return false;
+                const contactId = (c.contact_info?._id || c.contact_info?.id)?.toString();
+                const serverContactId = (chat.contact_info?._id || chat.contact_info?.id)?.toString();
+                return contactId && serverContactId && contactId === serverContactId;
+              })
+            : null;
+          const mergedExisting = existing || existingByContact;
+          const serverLast = chat?.last_message;
+          const existingLast = mergedExisting?.last_message;
+          const serverHasLast = Boolean(
+            serverLast?.content || serverLast?.text || serverLast?.when || serverLast?.message_id || serverLast?._id || serverLast?.id
+          );
+          const existingHasLast = Boolean(
+            existingLast?.content || existingLast?.text || existingLast?.when || existingLast?.message_id || existingLast?._id || existingLast?.id
+          );
+          const serverText = serverLast?.content || serverLast?.text || '';
+          const existingText = existingLast?.content || existingLast?.text || '';
+          const serverTime = new Date(serverLast?.when || serverLast?.created_at || 0).getTime();
+          const existingTime = new Date(existingLast?.when || existingLast?.created_at || 0).getTime();
+          const keepExistingWhen = serverHasLast
+            && existingHasLast
+            && serverText
+            && existingText
+            && serverText === existingText
+            && existingTime
+            && serverTime
+            && existingTime > serverTime;
+          const mergedLast = keepExistingWhen
+            ? {
+                ...serverLast,
+                ...existingLast,
+                when: existingLast?.when || serverLast?.when,
+                message_id: serverLast?.message_id || serverLast?._id || serverLast?.id || existingLast?.message_id,
+              }
+            : serverLast;
           return {
-            ...chat,
+            ...(serverHasLast || !existingHasLast
+              ? { ...chat, last_message: mergedLast }
+              : { ...chat, last_message: existingLast }),
             unread_messages_count: Math.max(serverUnread, cachedUnread),
+            client_id: mergedExisting?.client_id || chat.client_id,
           };
         });
         setContacts((prev) => {
           const serverIds = new Set(
             serverChats.map((chat) => getConversationId(chat)?.toString()).filter(Boolean)
           );
+          const selectedId = getConversationId(selectedChatRef.current)?.toString();
           const tempChats = prev.filter((chat) => {
             const id = getConversationId(chat)?.toString();
             if (!id) return false;
             const isTemp = id.startsWith('temp-');
             const missingOnServer = !serverIds.has(id);
+            const isSelected = selectedId && selectedId === id;
+            const hasPending = (pendingMessagesRef.current[id] || []).length > 0;
             const isEmpty = !chat.last_message?.content;
-            return (isTemp || missingOnServer) && isEmpty;
+            return isTemp
+              || (missingOnServer && (isEmpty || isSelected || hasPending));
           });
-          return [...tempChats, ...serverChats];
+          const tempContactIds = new Set(
+            tempChats
+              .map((chat) => (chat.contact_info?._id || chat.contact_info?.id)?.toString())
+              .filter(Boolean)
+          );
+          const filteredServerChats = tempContactIds.size === 0
+            ? serverChats
+            : serverChats.filter((chat) => {
+                if (chat.type !== 'pv') return true;
+                const contactId = (chat.contact_info?._id || chat.contact_info?.id)?.toString();
+                return !contactId || !tempContactIds.has(contactId);
+              });
+          return [...tempChats, ...filteredServerChats];
         });
         setUnreadCounts(() => {
           const merged = { ...unreadCountsRef.current };
@@ -894,7 +1013,8 @@ function ChatsPage() {
   const fetchContactStatus = useCallback(async (userId) => {
     if (!userId) return;
     try {
-      const response = await fetch(`/api/v1/members/${userId}/info`, {
+    const cacheBuster = `cb=${Date.now()}`;
+    const response = await fetch(`/api/v1/members/${userId}/info?${cacheBuster}`, {
         method: 'GET',
         credentials: 'include',
       });
@@ -1077,7 +1197,8 @@ function ChatsPage() {
           });
 
           if (!senderInfo && messageSender) {
-            fetch(`/api/v1/members/${messageSender}/info`, {
+            const cacheBuster = `cb=${Date.now()}`;
+            fetch(`/api/v1/members/${messageSender}/info?${cacheBuster}`, {
               method: 'GET',
               credentials: 'include',
             })
@@ -1163,14 +1284,17 @@ function ChatsPage() {
         clearTimeout(pendingAckTimersRef.current[pending.tempId]);
         delete pendingAckTimersRef.current[pending.tempId];
       }
-      animatedMessageIdsRef.current.add(messageId);
-      setLastAnimatedMessageId(messageId);
-      if (messageAnimationTimeoutRef.current) {
-        clearTimeout(messageAnimationTimeoutRef.current);
+      const isOptimisticAck = pending?.tempId?.toString().startsWith('optimistic-');
+      if (!isOptimisticAck) {
+        animatedMessageIdsRef.current.add(messageId);
+        setLastAnimatedMessageId(messageId);
+        if (messageAnimationTimeoutRef.current) {
+          clearTimeout(messageAnimationTimeoutRef.current);
+        }
+        messageAnimationTimeoutRef.current = setTimeout(() => {
+          setLastAnimatedMessageId(null);
+        }, 600);
       }
-      messageAnimationTimeoutRef.current = setTimeout(() => {
-        setLastAnimatedMessageId(null);
-      }, 600);
 
       setMessages((prev) =>
         prev.map((m) => {
@@ -1180,6 +1304,7 @@ function ChatsPage() {
               ...m,
               _id: messageId,
               id: messageId,
+              client_id: m.client_id || pending.tempId,
               status: 'sent',
             };
           }
@@ -1219,6 +1344,7 @@ function ChatsPage() {
 
         const tempId = pendingPv.tempId?.toString();
         if (resolvedConversationId && tempId) {
+          setConversationAlias(tempId, resolvedConversationId);
           setContacts((prev) =>
             prev.map((chat) =>
               getConversationId(chat)?.toString() === tempId
@@ -1347,11 +1473,25 @@ function ChatsPage() {
         if (idx === -1) return prev;
 
         const chat = next[idx];
+        const existingLast = chat?.last_message;
+        const existingText = existingLast?.content || existingLast?.text || '';
+        const incomingText = getMessagePreviewText(message);
+        const existingTime = new Date(existingLast?.when || existingLast?.created_at || 0).getTime();
+        const incomingTime = new Date(message?.created_at || message?.when || 0).getTime();
+        const shouldPreserveWhen = existingText
+          && incomingText
+          && existingText === incomingText
+          && existingTime
+          && incomingTime
+          && existingTime > incomingTime;
+        const resolvedWhen = shouldPreserveWhen
+          ? existingLast?.when
+          : (message?.created_at || new Date().toISOString());
 
         next[idx] = {
           ...chat,
           last_message: {
-            content: getMessagePreviewText(message),
+            content: incomingText,
             type: message?.type ?? 'text',
             sender: message?.sender_info?.username
               || payload?.senderUsername
@@ -1359,7 +1499,7 @@ function ChatsPage() {
               || message?.sender_name
               || chat?.last_message?.sender
               || '',
-            when: message?.created_at || new Date().toISOString(),
+            when: resolvedWhen,
             message_id: messageId,
             sender_id: getSenderId(message),
           },
@@ -1372,26 +1512,67 @@ function ChatsPage() {
 
       const activeConversationId = activeConversationIdRef.current;
       if (activeConversationId && activeConversationId.toString() === conversationIdStr) {
-        animatedMessageIdsRef.current.add(messageId);
+        const incomingSenderId = getSenderId(message)?.toString();
+        const currentUserId = userRef.current?.id?.toString();
+        const isFromMe = currentUserId && incomingSenderId && currentUserId === incomingSenderId;
+        const incomingTime = new Date(message?.created_at || message?.when || 0).getTime();
+        let matchedTempId = null;
+        let wasExisting = false;
         setMessages((prev) => {
           const exists = prev.some((m) => getMessageId(m) === messageId);
-          if (exists) return prev;
-          const messageSenderId = getSenderId(message)?.toString();
-          const messageTime = new Date(message?.created_at || message?.when || 0).getTime();
-          const replaced = prev.map((m) => {
+          if (exists) {
+            wasExisting = true;
+            return prev;
+          }
+
+          let replaced = false;
+          const replacedList = prev.map((m) => {
             const mid = getMessageId(m)?.toString() || '';
+            const content = m?.content || m?.text || '';
+            const mTime = new Date(m?.created_at || m?.when || 0).getTime();
+            const sameConv = m?.conversation_id?.toString() === conversationIdStr;
+            if (!replaced && isFromMe && sameConv && content === messageText) {
+              const isOptimistic = mid.startsWith('optimistic-') || m?.status === 'pending';
+              const closeInTime = !incomingTime || !mTime || Math.abs(incomingTime - mTime) <= 60000;
+              if (isOptimistic && closeInTime) {
+                matchedTempId = mid;
+                replaced = true;
+                return { ...message, client_id: mid };
+              }
+            }
+
             if (!mid.startsWith('receive-')) return m;
             const senderId = getSenderId(m)?.toString();
-            if (!senderId || senderId !== messageSenderId) return m;
-            const content = m?.content || m?.text || '';
+            if (!senderId || senderId !== incomingSenderId) return m;
             if (content !== messageText) return m;
-            const mTime = new Date(m?.created_at || m?.when || 0).getTime();
-            if (messageTime && mTime && Math.abs(messageTime - mTime) > 60000) return m;
+            if (incomingTime && mTime && Math.abs(incomingTime - mTime) > 60000) return m;
+            replaced = true;
             return message;
           });
-          const didReplace = replaced.some((m) => getMessageId(m) === messageId);
-          return didReplace ? replaced : [...replaced, message];
+
+          return replaced ? replacedList : [...replacedList, message];
         });
+        if (matchedTempId) {
+          if (pendingSendMapRef.current[matchedTempId]) {
+            delete pendingSendMapRef.current[matchedTempId];
+          }
+          if (pendingAckTimersRef.current[matchedTempId]) {
+            clearTimeout(pendingAckTimersRef.current[matchedTempId]);
+            delete pendingAckTimersRef.current[matchedTempId];
+          }
+        }
+        if (matchedTempId || wasExisting) {
+          // Skip re-animating when we already rendered this message.
+        } else {
+          animatedMessageIdsRef.current.add(messageId);
+          setLastAnimatedMessageId(messageId);
+          if (messageAnimationTimeoutRef.current) {
+            clearTimeout(messageAnimationTimeoutRef.current);
+          }
+          messageAnimationTimeoutRef.current = setTimeout(() => {
+            setLastAnimatedMessageId(null);
+          }, 600);
+        }
         const pending = pendingMessagesRef.current[conversationIdStr] || [];
         if (pending.length > 0) {
           pendingMessagesRef.current[conversationIdStr] = pending.filter((m) => {
@@ -1636,6 +1817,33 @@ function ChatsPage() {
       }
     };
 
+    const handleConversationDeleteAck = (payload) => {
+      const conversationId = payload?.conversation_id || payload?.conversationId;
+      const message = payload?.message;
+      if (!conversationId) {
+        setIsDeletingConversation(false);
+        return;
+      }
+      if (deleteConversationTimeoutRef.current) {
+        clearTimeout(deleteConversationTimeoutRef.current);
+        deleteConversationTimeoutRef.current = null;
+      }
+      handleConversationDeleted({ conversation_id: conversationId });
+      toast.success(message || 'Conversation deleted.');
+      setDeleteConfirm({ open: false, conversationId: null });
+      setIsDeletingConversation(false);
+    };
+
+    const handleConversationDeleteError = (payload) => {
+      const message = payload?.message || payload?.error || 'Unable to delete conversation.';
+      toast.error(message);
+      if (deleteConversationTimeoutRef.current) {
+        clearTimeout(deleteConversationTimeoutRef.current);
+        deleteConversationTimeoutRef.current = null;
+      }
+      setIsDeletingConversation(false);
+    };
+
     const handleGenericMessage = (payload) => {
       const messageText = payload?.message;
       const newConversationId = payload?.conversationId || payload?.conversation_id;
@@ -1645,10 +1853,16 @@ function ChatsPage() {
       }
 
       const tempId = pending.tempId;
+      setConversationAlias(tempId, newConversationId);
       setContacts((prev) =>
         prev.map((chat) =>
           getConversationId(chat) === tempId
-            ? { ...chat, _id: newConversationId, id: newConversationId }
+            ? {
+                ...chat,
+                _id: newConversationId,
+                id: newConversationId,
+                client_id: chat.client_id || getConversationId(chat),
+              }
             : chat
         )
       );
@@ -1674,8 +1888,6 @@ function ChatsPage() {
         return;
       }
       refreshContacts();
-      refreshTimeoutsRef.current.push(setTimeout(refreshContacts, 600));
-      refreshTimeoutsRef.current.push(setTimeout(refreshContacts, 1500));
     };
 
     socket.on(SOCKET_EVENTS.MESSAGE_NEW, handleMessageNew);
@@ -1688,7 +1900,9 @@ function ChatsPage() {
     socket.on(SOCKET_EVENTS.MESSAGE_DELETED, handleMessageDeleted);
     socket.on('message:delete:ack', handleMessageDeleteAck);
     socket.on('message:delete:error', handleMessageDeleteError);
-    socket.on(SOCKET_EVENTS.CONVERSATION_DELETED, handleConversationDeleted);
+    socket.on(SOCKET_EVENTS.CONVERSATION_PV_DELETED, handleConversationDeleted);
+    socket.on(SOCKET_EVENTS.CONVERSATION_PV_DELETE_ACK, handleConversationDeleteAck);
+    socket.on(SOCKET_EVENTS.CONVERSATION_PV_DELETE_ERROR, handleConversationDeleteError);
     socket.on('message', handleGenericMessage);
     socket.on('error', handleMessageSendError);
     const handleStatusOnline = (payload) => {
@@ -1729,7 +1943,9 @@ function ChatsPage() {
       socket.off(SOCKET_EVENTS.MESSAGE_DELETED, handleMessageDeleted);
       socket.off('message:delete:ack', handleMessageDeleteAck);
       socket.off('message:delete:error', handleMessageDeleteError);
-      socket.off(SOCKET_EVENTS.CONVERSATION_DELETED, handleConversationDeleted);
+      socket.off(SOCKET_EVENTS.CONVERSATION_PV_DELETED, handleConversationDeleted);
+      socket.off(SOCKET_EVENTS.CONVERSATION_PV_DELETE_ACK, handleConversationDeleteAck);
+      socket.off(SOCKET_EVENTS.CONVERSATION_PV_DELETE_ERROR, handleConversationDeleteError);
       socket.off('message', handleGenericMessage);
       socket.off('error', handleMessageSendError);
       socket.off('status:online', handleStatusOnline);
@@ -1745,8 +1961,19 @@ function ChatsPage() {
       if (messageAnimationTimeoutRef.current) {
         clearTimeout(messageAnimationTimeoutRef.current);
       }
+      if (deleteConversationTimeoutRef.current) {
+        clearTimeout(deleteConversationTimeoutRef.current);
+        deleteConversationTimeoutRef.current = null;
+      }
     };
-  }, [emitSeenForMessage, setUnreadCount, socket, refreshContacts, updateContactStatus]);
+  }, [
+    emitSeenForMessage,
+    refreshContacts,
+    setConversationAlias,
+    setUnreadCount,
+    socket,
+    updateContactStatus,
+  ]);
 
   useEffect(() => {
     const nextConversationIdStr = selectedChatIdStr;
@@ -1893,7 +2120,68 @@ function ChatsPage() {
               const isEmpty = !chat.last_message?.content;
               return (isTemp || missingOnServer) && isEmpty;
             });
-            return [...tempChats, ...serverChats];
+            const tempContactIds = new Set(
+              tempChats
+                .map((chat) => (chat.contact_info?._id || chat.contact_info?.id)?.toString())
+                .filter(Boolean)
+            );
+            const filteredServerChats = tempContactIds.size === 0
+              ? serverChats
+              : serverChats.filter((chat) => {
+                  if (chat.type !== 'pv') return true;
+                  const contactId = (chat.contact_info?._id || chat.contact_info?.id)?.toString();
+                  return !contactId || !tempContactIds.has(contactId);
+                });
+            const mergedServerChats = filteredServerChats.map((chat) => {
+              const id = getConversationId(chat)?.toString();
+              const existing = id
+                ? prev.find((c) => getConversationId(c)?.toString() === id)
+                : null;
+              const existingByContact = !existing && chat.type === 'pv'
+                ? prev.find((c) => {
+                    if (c.type !== 'pv') return false;
+                    const contactId = (c.contact_info?._id || c.contact_info?.id)?.toString();
+                    const serverContactId = (chat.contact_info?._id || chat.contact_info?.id)?.toString();
+                    return contactId && serverContactId && contactId === serverContactId;
+                  })
+                : null;
+              const mergedExisting = existing || existingByContact;
+              const serverLast = chat?.last_message;
+              const existingLast = mergedExisting?.last_message;
+              const serverHasLast = Boolean(
+                serverLast?.content || serverLast?.text || serverLast?.when || serverLast?.message_id || serverLast?._id || serverLast?.id
+              );
+              const existingHasLast = Boolean(
+                existingLast?.content || existingLast?.text || existingLast?.when || existingLast?.message_id || existingLast?._id || existingLast?.id
+              );
+              const serverText = serverLast?.content || serverLast?.text || '';
+              const existingText = existingLast?.content || existingLast?.text || '';
+              const serverTime = new Date(serverLast?.when || serverLast?.created_at || 0).getTime();
+              const existingTime = new Date(existingLast?.when || existingLast?.created_at || 0).getTime();
+              const keepExistingWhen = serverHasLast
+                && existingHasLast
+                && serverText
+                && existingText
+                && serverText === existingText
+                && existingTime
+                && serverTime
+                && existingTime > serverTime;
+              const mergedLast = keepExistingWhen
+                ? {
+                    ...serverLast,
+                    ...existingLast,
+                    when: existingLast?.when || serverLast?.when,
+                    message_id: serverLast?.message_id || serverLast?._id || serverLast?.id || existingLast?.message_id,
+                  }
+                : serverLast;
+              return {
+                ...(serverHasLast || !existingHasLast
+                  ? { ...chat, last_message: mergedLast }
+                  : { ...chat, last_message: existingLast }),
+                client_id: mergedExisting?.client_id || chat.client_id,
+              };
+            });
+            return [...tempChats, ...mergedServerChats];
           });
         }
       } catch (error) {
@@ -1907,8 +2195,6 @@ function ChatsPage() {
   useEffect(() => {
     const handleNewPvEvent = () => {
       refreshContacts();
-      refreshTimeoutsRef.current.push(setTimeout(refreshContacts, 600));
-      refreshTimeoutsRef.current.push(setTimeout(refreshContacts, 1500));
     };
 
     window.addEventListener('new_pv_conversation', handleNewPvEvent);
@@ -2288,21 +2574,34 @@ function ChatsPage() {
       setMessagesConversationId(null);
       setSenderInfoCache({}); // Clear cache when chat changes
       isInitialLoadRef.current = true;
+      previousSelectedChatIdRef.current = null;
       return;
     }
 
     const conversationId = selectedChatIdStr;
+    const prevId = previousSelectedChatIdRef.current;
+    const resolvedPrev = prevId
+      ? (conversationAliasRef.current.get(prevId) || prevId)
+      : null;
+    const resolvedNext = conversationAliasRef.current.get(conversationId) || conversationId;
+    const isSameConversation = resolvedPrev && resolvedNext && resolvedPrev === resolvedNext;
 
-    // Reset state and fetch initial messages (last 10 messages)
-    setMessages([]);
-    setMessagesOffset(0);
-    setHasMoreMessages(true);
-    setMessagesConversationId(conversationId);
-    setSenderInfoCache({}); // Clear cache
-    isInitialLoadRef.current = true;
-    if (!conversationId.toString().startsWith('temp-')) {
-      fetchMessages(conversationId, 0, false);
+    if (!isSameConversation) {
+      // Reset state and fetch initial messages (last 10 messages)
+      setMessages([]);
+      setMessagesOffset(0);
+      setHasMoreMessages(true);
+      setMessagesConversationId(conversationId);
+      setSenderInfoCache({}); // Clear cache
+      isInitialLoadRef.current = true;
+      if (!conversationId.toString().startsWith('temp-')) {
+        fetchMessages(conversationId, 0, false);
+      }
+    } else {
+      // Keep messages when temp id is replaced by real id.
+      setMessagesConversationId(resolvedNext);
     }
+    previousSelectedChatIdRef.current = conversationId;
   }, [selectedChatIdStr, fetchMessages]);
 
   // Fetch sender info for group messages
@@ -2333,7 +2632,8 @@ function ChatsPage() {
       }
 
       // Fetch member info using sender ID directly
-      fetch(`/api/v1/members/${senderIdStr}/info`, {
+      const cacheBuster = `cb=${Date.now()}`;
+      fetch(`/api/v1/members/${senderIdStr}/info?${cacheBuster}`, {
         method: 'GET',
         credentials: 'include',
       })
@@ -2593,6 +2893,7 @@ function ChatsPage() {
       const optimisticChat = {
         id: tempId,
         _id: tempId,
+        client_id: tempId,
         type: 'pv',
         contact_info: {
           ...(selectedUser || {}),
@@ -2652,6 +2953,7 @@ function ChatsPage() {
       const optimisticChat = {
         id: tempId,
         _id: tempId,
+        client_id: tempId,
         type: 'pv',
         contact_info: {
           id: startUserId,
@@ -2674,7 +2976,8 @@ function ChatsPage() {
       });
       setSelectedChat(optimisticChat);
 
-      fetch(`/api/v1/members/${startUserId}/info`, {
+      const cacheBuster = `cb=${Date.now()}`;
+      fetch(`/api/v1/members/${startUserId}/info?${cacheBuster}`, {
         method: 'GET',
         credentials: 'include',
       })
@@ -3063,7 +3366,13 @@ function ChatsPage() {
   const activeChatId = getConversationId(selectedChat);
   const activeChatIdStr = activeChatId?.toString();
   const messagesConversationIdStr = messagesConversationId?.toString();
-  const shouldRenderMessages = activeChatIdStr && activeChatIdStr === messagesConversationIdStr;
+  const resolvedActiveId = activeChatIdStr
+    ? (conversationAliasRef.current.get(activeChatIdStr) || activeChatIdStr)
+    : null;
+  const resolvedMessagesId = messagesConversationIdStr
+    ? (conversationAliasRef.current.get(messagesConversationIdStr) || messagesConversationIdStr)
+    : null;
+  const shouldRenderMessages = resolvedActiveId && resolvedMessagesId && resolvedActiveId === resolvedMessagesId;
   const visibleMessages = shouldRenderMessages ? messages : [];
   const isActiveGroup = selectedChat?.type === 'group';
   const missingSenderInfo = isActiveGroup
@@ -3077,6 +3386,7 @@ function ChatsPage() {
   const shouldHoldGroupMessages = isActiveGroup && missingSenderInfo;
   const isPreviewImage = selectedFile?.type?.startsWith('image/');
   const isPreviewVideo = selectedFile?.type?.startsWith('video/');
+
 
   return (
     <div className={styles.chatsPageContainer}>
@@ -3147,6 +3457,7 @@ function ChatsPage() {
               const selectedId = getConversationId(selectedChat);
               const chatId = getConversationId(chat);
               const chatIdStr = chatId?.toString();
+              const chatKey = chat.client_id || chatIdStr || chat._id || chat.id || index;
               const serverUnread = chat.unread_messages_count
                 ?? chat.unread_count
                 ?? 0;
@@ -3164,7 +3475,7 @@ function ChatsPage() {
 
               return (
                 <div
-                  key={chatIdStr || chat._id || chat.id || index}
+                  key={chatKey}
                   className={`${styles.chatItem} ${selectedId && chatId && selectedId === chatId ? styles.active : ''}`}
                   onClick={() => {
                     if (longPressTriggeredRef.current) {
@@ -3478,10 +3789,12 @@ function ChatsPage() {
                   const deliveryStatus = isMyMessage && isPrivateChat
                     ? (message?.status || 'sent')
                     : null;
-                  
+
+                  const messageRenderKey = message?.client_id || messageId;
+                  const messageAnimKey = (message?.client_id || messageId)?.toString();
                   return (
                     <div
-                      key={messageId}
+                      key={messageRenderKey}
                       className={`${
                         styles.messageWrapper
                       } ${
@@ -3489,7 +3802,8 @@ function ChatsPage() {
                       } ${
                         !isMyMessage && isGroupChat ? styles.messageWrapperGroup : ''
                       } ${
-                        animatedMessageIdsRef.current.has(messageId) || messageId === lastAnimatedMessageId
+                        (messageAnimKey && animatedMessageIdsRef.current.has(messageAnimKey))
+                          || messageAnimKey === lastAnimatedMessageId
                           ? styles.messageEnter
                           : ''
                       }`}
@@ -4053,6 +4367,32 @@ function ChatsPage() {
                     {isDeletingConversation ? 'Deleting...' : 'Delete'}
                   </button>
                 </div>
+              </div>
+            </div>
+          </div>
+        )}
+        {deleteLastMessageAlert.open && (
+          <div className={styles.confirmOverlay} role="dialog" aria-modal="true">
+            <div className={styles.confirmBox}>
+              <p className={styles.confirmTitle}>Attention</p>
+              <p className={styles.confirmText}>
+                By deleting this message the conversation will be gone
+              </p>
+              <div className={styles.confirmButtons}>
+                <button
+                  type="button"
+                  className={styles.cancelButton}
+                  onClick={handleCancelDeleteLastMessage}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  className={styles.confirmButton}
+                  onClick={handleConfirmDeleteLastMessage}
+                >
+                  Anyway
+                </button>
               </div>
             </div>
           </div>

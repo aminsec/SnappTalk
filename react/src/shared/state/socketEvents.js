@@ -5,8 +5,10 @@ export const SOCKET_EVENTS = {
 
   CONVERSATION_JOIN: 'conversation:join',
   CONVERSATION_LEAVE: 'conversation:leave',
-  CONVERSATION_DELETE: 'conversation:delete',
-  CONVERSATION_DELETED: 'conversation:deleted',
+  CONVERSATION_PV_DELETE: 'conversation:pv:delete',
+  CONVERSATION_PV_DELETE_ACK: 'conversation:pv:delete:ack',
+  CONVERSATION_PV_DELETE_ERROR: 'conversation:pv:delete:error',
+  CONVERSATION_PV_DELETED: 'conversation:pv:deleted',
 
   MESSAGE_SEND: 'message:send',
   MESSAGE_SENT: 'message:sent',

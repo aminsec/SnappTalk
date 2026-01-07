@@ -13,6 +13,7 @@ export async function showMemberInfo(req: Request, resp: Response) {
         return;
     }
 
+    console.log(memberInfo)
     const responseData = {state: "success", member_info: memberInfo};
     sendResponse(responseData, {}, 200, resp);
 };
@@ -21,7 +22,7 @@ export async function showSearchedMember(req: Request, resp: Response) {
     const { username } = req.params;
     const [members, error] = await searchMemberByUsername(username);
     if(error){
-        console.log(error)
+        console.log(error);
         showError(error, resp);
         return;
     }
