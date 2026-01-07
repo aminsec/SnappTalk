@@ -320,6 +320,7 @@ function ChatsPage() {
   const statusOfflineTimersRef = useRef({});
   const longPressTimeoutRef = useRef(null);
   const longPressTriggeredRef = useRef(false);
+  const messageContextMenuRef = useRef(null);
 
   const [unreadCounts, setUnreadCounts] = useState({});
   const unreadCountsRef = useRef({});
@@ -1745,6 +1746,32 @@ function ChatsPage() {
 
     shouldAutoScrollRef.current = false;
   }, [messages.length, scrollToBottom, selectedChat]);
+
+  useLayoutEffect(() => {
+    if (!messageContextMenu || !messageContextMenuRef.current) {
+      return;
+    }
+
+    const menuEl = messageContextMenuRef.current;
+    const { innerWidth, innerHeight } = window;
+    const margin = 8;
+    const menuWidth = menuEl.offsetWidth || 0;
+    const menuHeight = menuEl.offsetHeight || 0;
+    const nextX = Math.min(
+      Math.max(messageContextMenu.x, margin),
+      Math.max(margin, innerWidth - menuWidth - margin)
+    );
+    const nextY = Math.min(
+      Math.max(messageContextMenu.y, margin),
+      Math.max(margin, innerHeight - menuHeight - margin)
+    );
+
+    if (nextX !== messageContextMenu.x || nextY !== messageContextMenu.y) {
+      setMessageContextMenu((prev) =>
+        prev ? { ...prev, x: nextX, y: nextY } : prev
+      );
+    }
+  }, [messageContextMenu]);
 
   useEffect(() => {
     if (animatedMessageIdsRef.current.size === 0) {
@@ -3831,6 +3858,7 @@ function ChatsPage() {
                 className={styles.messageContextMenu}
                 data-message-context-menu
                 style={{ left: messageContextMenu.x, top: messageContextMenu.y }}
+                ref={messageContextMenuRef}
               >
                 <button
                   type="button"
