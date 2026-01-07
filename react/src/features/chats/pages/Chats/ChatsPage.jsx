@@ -618,9 +618,22 @@ function ChatsPage() {
       setMessages((prev) => {
         const index = prev.findIndex((m) => getMessageId(m) === messageId);
         if (index !== -1) {
+          const isLastMessage = index === prev.length - 1;
+          const nextLastMessage = isLastMessage ? prev[prev.length - 2] : null;
+          const conversationId = (prev[index]?.conversation_id || prev[index]?.conversationId)?.toString()
+            || getConversationId(selectedChatRef.current)?.toString();
+          const previousLastMessage = conversationId
+            ? contactsRef.current.find(
+                (chat) => getConversationId(chat)?.toString() === conversationId
+              )?.last_message
+            : null;
           pendingDeleteRef.current.set(messageId.toString(), {
             message: prev[index],
             index,
+            conversationId,
+            wasLast: isLastMessage,
+            nextLastMessage,
+            previousLastMessage,
           });
         }
         return prev.filter((m) => getMessageId(m) !== messageId);
@@ -1520,9 +1533,60 @@ function ChatsPage() {
 
     const handleMessageDeleteAck = (payload) => {
       const messageId = payload?.message_id || payload?.messageId;
-      if (messageId) {
-        pendingDeleteRef.current.delete(messageId.toString());
+      if (!messageId) {
+        return;
       }
+      const pending = pendingDeleteRef.current.get(messageId.toString());
+      const conversationIdStr = pending?.conversationId
+        || payload?.conversation_id?.toString()
+        || payload?.conversationId?.toString();
+      if (conversationIdStr) {
+        const lastIsDeleted = contactsRef.current.some((chat) => {
+          const chatId = getConversationId(chat)?.toString();
+          if (chatId !== conversationIdStr) return false;
+          const lastId = (chat.last_message?.message_id || chat.last_message?._id || chat.last_message?.id)?.toString();
+          return lastId === messageId.toString();
+        });
+        if (lastIsDeleted || pending?.wasLast) {
+          const activeConversationIdStr = activeConversationIdRef.current?.toString();
+          if (activeConversationIdStr && activeConversationIdStr === conversationIdStr) {
+            const lastMessage = pending?.nextLastMessage
+              || messagesRef.current[messagesRef.current.length - 1];
+            setContacts((prev) =>
+              prev.map((chat) => {
+                const chatId = getConversationId(chat)?.toString();
+                if (chatId !== conversationIdStr) return chat;
+                if (!lastMessage) {
+                  return {
+                    ...chat,
+                    last_message: {
+                      content: '',
+                      type: 'text',
+                      sender: chat?.last_message?.sender || '',
+                      when: '',
+                      message_id: null,
+                    },
+                  };
+                }
+                return {
+                  ...chat,
+                  last_message: {
+                    content: lastMessage?.content || lastMessage?.text || '',
+                    type: lastMessage?.type || 'text',
+                    sender: lastMessage?.sender_username || lastMessage?.sender_name || lastMessage?.sender || chat?.last_message?.sender || '',
+                    when: lastMessage?.created_at || lastMessage?.when || '',
+                    message_id: getMessageId(lastMessage),
+                    sender_id: lastMessage?.sender || lastMessage?.sender_id || lastMessage?.from_user_id,
+                  },
+                };
+              })
+            );
+          } else {
+            refreshContacts();
+          }
+        }
+      }
+      pendingDeleteRef.current.delete(messageId.toString());
     };
 
     const handleMessageDeleteError = (payload) => {
@@ -1538,6 +1602,19 @@ function ChatsPage() {
           next.splice(insertIndex, 0, pending.message);
           return next;
         });
+        if (pending?.wasLast && pending?.conversationId) {
+          setContacts((prev) =>
+            prev.map((chat) => {
+              const chatId = getConversationId(chat)?.toString();
+              if (chatId !== pending.conversationId) return chat;
+              if (!pending.previousLastMessage) return chat;
+              return {
+                ...chat,
+                last_message: pending.previousLastMessage,
+              };
+            })
+          );
+        }
         pendingDeleteRef.current.delete(messageId.toString());
       }
     };
