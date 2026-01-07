@@ -13,6 +13,7 @@ export async function showMemberInfo(req: Request, resp: Response) {
         return;
     }
 
+    console.log(memberInfo)
     const responseData = {state: "success", member_info: memberInfo};
     sendResponse(responseData, {}, 200, resp);
 };
