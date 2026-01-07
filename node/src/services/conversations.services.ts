@@ -44,7 +44,7 @@ export async function getUserConversations(userInfo: ProtectedUserInfo): Promise
             if(conversation.type === "pv" && conversation.members){    
                 const [contactUserInfo, error] = await getUserInfoById(new ObjectId(contactId));
                 if(error){
-                    console.log(error)
+                    console.log(error);
                     throw new Error();
                 }
 
@@ -177,6 +177,27 @@ export async function hardDeleteConversation(conversationId: ObjectId): Promise<
         });
 
         return [true, null]
+    } catch (error) {
+        console.log(error);
+        const err: ErrorResponse = {message: "A system error occurred", state: "failed", type: "system_error"};
+        return [null, err];
+    }
+};
+
+export async function getConversationById(convId: ObjectId): Promise<[Conversation | null, ErrorResponse | null]> {
+    try {
+        const conversationsCollection  = await getConversationsCollection();
+        const conversation = await conversationsCollection.findOne({
+            _id: convId
+        });
+    
+        if(conversation){
+            return [conversation, null];
+    
+        }else{
+            return [null, null];
+        }
+
     } catch (error) {
         console.log(error);
         const err: ErrorResponse = {message: "A system error occurred", state: "failed", type: "system_error"};

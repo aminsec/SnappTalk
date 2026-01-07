@@ -21,3 +21,7 @@ export interface MessageEditEVT {
     message_id: string
     new_message: string
 };
+
+export interface MessageDeleteEVT {
+    message_id: string
+}

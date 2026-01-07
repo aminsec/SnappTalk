@@ -312,6 +312,7 @@ function ChatsPage() {
   const seenSentRef = useRef({});
   const messageAnimationTimeoutRef = useRef(null);
   const pendingEditRef = useRef(null);
+  const pendingDeleteRef = useRef(new Map());
   const mediaRecorderRef = useRef(null);
   const recordedChunksRef = useRef([]);
   const recordingTimerRef = useRef(null);
@@ -319,6 +320,7 @@ function ChatsPage() {
   const statusOfflineTimersRef = useRef({});
   const longPressTimeoutRef = useRef(null);
   const longPressTriggeredRef = useRef(false);
+  const messageContextMenuRef = useRef(null);
 
   const [unreadCounts, setUnreadCounts] = useState({});
   const unreadCountsRef = useRef({});
@@ -610,11 +612,32 @@ function ChatsPage() {
   const handleDeleteMessage = useCallback(
     (message) => {
       const messageId = getMessageId(message);
-      const conversationId = getConversationId(selectedChat);
-      if (!messageId || !conversationId) return;
+      if (!messageId) return;
 
       // Optimistic remove
-      setMessages((prev) => prev.filter((m) => getMessageId(m) !== messageId));
+      setMessages((prev) => {
+        const index = prev.findIndex((m) => getMessageId(m) === messageId);
+        if (index !== -1) {
+          const isLastMessage = index === prev.length - 1;
+          const nextLastMessage = isLastMessage ? prev[prev.length - 2] : null;
+          const conversationId = (prev[index]?.conversation_id || prev[index]?.conversationId)?.toString()
+            || getConversationId(selectedChatRef.current)?.toString();
+          const previousLastMessage = conversationId
+            ? contactsRef.current.find(
+                (chat) => getConversationId(chat)?.toString() === conversationId
+              )?.last_message
+            : null;
+          pendingDeleteRef.current.set(messageId.toString(), {
+            message: prev[index],
+            index,
+            conversationId,
+            wasLast: isLastMessage,
+            nextLastMessage,
+            previousLastMessage,
+          });
+        }
+        return prev.filter((m) => getMessageId(m) !== messageId);
+      });
       setMessageContextMenu(null);
 
       if (!socket || !socket.connected) {
@@ -622,18 +645,9 @@ function ChatsPage() {
         return;
       }
 
-      socket.emit(
-        SOCKET_EVENTS.MESSAGE_DELETE,
-        {
-          conversationId,
-          messageId,
-        },
-        (ack) => {
-          if (!ack?.ok) {
-            toast.error(ack?.error || 'Unable to delete message.');
-          }
-        }
-      );
+      socket.emit(SOCKET_EVENTS.MESSAGE_DELETE, {
+        message_id: messageId,
+      });
     },
     [selectedChat, socket]
   );
@@ -1484,14 +1498,125 @@ function ChatsPage() {
 
     const handleMessageDeleted = (payload) => {
       const conversationId = payload?.conversationId || payload?.conversation_id;
-      const messageId = payload?.messageId;
+      const messageId = payload?.message_id || payload?.messageId;
+      const isLastMessage = payload?.is_last_message ?? payload?.isLastMessage;
       if (!conversationId || !messageId) return;
-
-      if (activeConversationIdRef.current !== conversationId) {
-        return;
+      const conversationIdStr = conversationId.toString();
+      const isActive = activeConversationIdRef.current === conversationIdStr;
+      setMessages((prev) => prev.filter((m) => getMessageId(m) !== messageId));
+      if (pendingMessagesRef.current[conversationIdStr]) {
+        pendingMessagesRef.current[conversationIdStr] = pendingMessagesRef.current[
+          conversationIdStr
+        ].filter((m) => getMessageId(m) !== messageId);
       }
 
-      setMessages((prev) => prev.filter((m) => getMessageId(m) !== messageId));
+      if (!isActive && (unreadCountsRef.current[conversationIdStr] || 0) > 0) {
+        setUnreadCount(conversationIdStr, (count) => Math.max(0, count - 1));
+        setContacts((prev) =>
+          prev.map((chat) => {
+            const chatId = getConversationId(chat)?.toString();
+            if (chatId !== conversationIdStr) return chat;
+            const currentUnread = chat?.unread_messages_count ?? chat?.unread_count ?? 0;
+            if (!currentUnread) return chat;
+            return {
+              ...chat,
+              unread_messages_count: Math.max(0, currentUnread - 1),
+            };
+          })
+        );
+      }
+
+      if (isLastMessage) {
+        refreshContacts();
+      }
+    };
+
+    const handleMessageDeleteAck = (payload) => {
+      const messageId = payload?.message_id || payload?.messageId;
+      if (!messageId) {
+        return;
+      }
+      const pending = pendingDeleteRef.current.get(messageId.toString());
+      const conversationIdStr = pending?.conversationId
+        || payload?.conversation_id?.toString()
+        || payload?.conversationId?.toString();
+      if (conversationIdStr) {
+        const lastIsDeleted = contactsRef.current.some((chat) => {
+          const chatId = getConversationId(chat)?.toString();
+          if (chatId !== conversationIdStr) return false;
+          const lastId = (chat.last_message?.message_id || chat.last_message?._id || chat.last_message?.id)?.toString();
+          return lastId === messageId.toString();
+        });
+        if (lastIsDeleted || pending?.wasLast) {
+          const activeConversationIdStr = activeConversationIdRef.current?.toString();
+          if (activeConversationIdStr && activeConversationIdStr === conversationIdStr) {
+            const lastMessage = pending?.nextLastMessage
+              || messagesRef.current[messagesRef.current.length - 1];
+            setContacts((prev) =>
+              prev.map((chat) => {
+                const chatId = getConversationId(chat)?.toString();
+                if (chatId !== conversationIdStr) return chat;
+                if (!lastMessage) {
+                  return {
+                    ...chat,
+                    last_message: {
+                      content: '',
+                      type: 'text',
+                      sender: chat?.last_message?.sender || '',
+                      when: '',
+                      message_id: null,
+                    },
+                  };
+                }
+                return {
+                  ...chat,
+                  last_message: {
+                    content: lastMessage?.content || lastMessage?.text || '',
+                    type: lastMessage?.type || 'text',
+                    sender: lastMessage?.sender_username || lastMessage?.sender_name || lastMessage?.sender || chat?.last_message?.sender || '',
+                    when: lastMessage?.created_at || lastMessage?.when || '',
+                    message_id: getMessageId(lastMessage),
+                    sender_id: lastMessage?.sender || lastMessage?.sender_id || lastMessage?.from_user_id,
+                  },
+                };
+              })
+            );
+          } else {
+            refreshContacts();
+          }
+        }
+      }
+      pendingDeleteRef.current.delete(messageId.toString());
+    };
+
+    const handleMessageDeleteError = (payload) => {
+      const messageId = payload?.message_id || payload?.messageId;
+      const errorMessage = payload?.message || payload?.error || 'Unable to delete message.';
+      toast.error(errorMessage);
+      if (!messageId) return;
+      const pending = pendingDeleteRef.current.get(messageId.toString());
+      if (pending?.message) {
+        setMessages((prev) => {
+          const next = [...prev];
+          const insertIndex = Math.min(pending.index, next.length);
+          next.splice(insertIndex, 0, pending.message);
+          return next;
+        });
+        if (pending?.wasLast && pending?.conversationId) {
+          setContacts((prev) =>
+            prev.map((chat) => {
+              const chatId = getConversationId(chat)?.toString();
+              if (chatId !== pending.conversationId) return chat;
+              if (!pending.previousLastMessage) return chat;
+              return {
+                ...chat,
+                last_message: pending.previousLastMessage,
+              };
+            })
+          );
+        }
+        pendingDeleteRef.current.delete(messageId.toString());
+      }
     };
 
     const handleConversationDeleted = (payload) => {
@@ -1561,6 +1686,8 @@ function ChatsPage() {
     socket.on('message:edit:ack', handleMessageEditAck);
     socket.on('message:edit:error', handleMessageEditError);
     socket.on(SOCKET_EVENTS.MESSAGE_DELETED, handleMessageDeleted);
+    socket.on('message:delete:ack', handleMessageDeleteAck);
+    socket.on('message:delete:error', handleMessageDeleteError);
     socket.on(SOCKET_EVENTS.CONVERSATION_DELETED, handleConversationDeleted);
     socket.on('message', handleGenericMessage);
     socket.on('error', handleMessageSendError);
@@ -1600,6 +1727,8 @@ function ChatsPage() {
       socket.off('message:edit:ack', handleMessageEditAck);
       socket.off('message:edit:error', handleMessageEditError);
       socket.off(SOCKET_EVENTS.MESSAGE_DELETED, handleMessageDeleted);
+      socket.off('message:delete:ack', handleMessageDeleteAck);
+      socket.off('message:delete:error', handleMessageDeleteError);
       socket.off(SOCKET_EVENTS.CONVERSATION_DELETED, handleConversationDeleted);
       socket.off('message', handleGenericMessage);
       socket.off('error', handleMessageSendError);
@@ -1694,6 +1823,32 @@ function ChatsPage() {
 
     shouldAutoScrollRef.current = false;
   }, [messages.length, scrollToBottom, selectedChat]);
+
+  useLayoutEffect(() => {
+    if (!messageContextMenu || !messageContextMenuRef.current) {
+      return;
+    }
+
+    const menuEl = messageContextMenuRef.current;
+    const { innerWidth, innerHeight } = window;
+    const margin = 8;
+    const menuWidth = menuEl.offsetWidth || 0;
+    const menuHeight = menuEl.offsetHeight || 0;
+    const nextX = Math.min(
+      Math.max(messageContextMenu.x, margin),
+      Math.max(margin, innerWidth - menuWidth - margin)
+    );
+    const nextY = Math.min(
+      Math.max(messageContextMenu.y, margin),
+      Math.max(margin, innerHeight - menuHeight - margin)
+    );
+
+    if (nextX !== messageContextMenu.x || nextY !== messageContextMenu.y) {
+      setMessageContextMenu((prev) =>
+        prev ? { ...prev, x: nextX, y: nextY } : prev
+      );
+    }
+  }, [messageContextMenu]);
 
   useEffect(() => {
     if (animatedMessageIdsRef.current.size === 0) {
@@ -3053,23 +3208,7 @@ function ChatsPage() {
                   }}
                 >
                   <div className={`${styles.statusAvatar} ${styles.statusAvatarSmall}`}>
-                    {isPrivateChat ? (
-                      <button
-                        type="button"
-                        className={styles.profileAvatarButton}
-                        onClick={(event) => {
-                          event.stopPropagation();
-                          const contactId = chat.contact_info?._id || chat.contact_info?.id;
-                          if (contactId) {
-                            navigate(`/members/${contactId}`);
-                          }
-                        }}
-                      >
-                        <ProfileAvatar size="md" src={avatarSrc} />
-                      </button>
-                    ) : (
-                      <ProfileAvatar size="md" src={avatarSrc} />
-                    )}
+                    <ProfileAvatar size="md" src={avatarSrc} />
                     {isPrivateChat && (
                       <span className={`${styles.statusDot} ${statusClass}`} />
                     )}
@@ -3087,29 +3226,7 @@ function ChatsPage() {
                         {truncateMessage(getMessagePreviewText(chat.last_message))}
                       </p>
                     </div>
-                    <div
-                      className={styles.chatInfoFooter}
-                      onClick={(event) => {
-                        event.stopPropagation();
-                        if (!isPrivateChat) return;
-                        const contactId = chat.contact_info?._id || chat.contact_info?.id;
-                        if (contactId) {
-                          navigate(`/members/${contactId}`);
-                        }
-                      }}
-                      role={isPrivateChat ? 'button' : undefined}
-                      tabIndex={isPrivateChat ? 0 : undefined}
-                      onKeyDown={(event) => {
-                        if (!isPrivateChat) return;
-                        if (event.key === 'Enter') {
-                          event.stopPropagation();
-                          const contactId = chat.contact_info?._id || chat.contact_info?.id;
-                          if (contactId) {
-                            navigate(`/members/${contactId}`);
-                          }
-                        }
-                      }}
-                    >
+                    <div className={styles.chatInfoFooter}>
                       <span className={styles.chatTimestampRow}>
                         {hasLastMessage && isMyMessage && (
                           <span className={styles.chatStatusIcon} aria-hidden="true">
@@ -3818,6 +3935,7 @@ function ChatsPage() {
                 className={styles.messageContextMenu}
                 data-message-context-menu
                 style={{ left: messageContextMenu.x, top: messageContextMenu.y }}
+                ref={messageContextMenuRef}
               >
                 <button
                   type="button"
