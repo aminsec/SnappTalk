@@ -322,7 +322,6 @@ function ChatsPage() {
   const longPressTriggeredRef = useRef(false);
   const messageContextMenuRef = useRef(null);
   const conversationAliasRef = useRef(new Map());
-  const debugPvRef = useRef(true);
   const previousSelectedChatIdRef = useRef(null);
 
   const [unreadCounts, setUnreadCounts] = useState({});
@@ -372,11 +371,6 @@ function ChatsPage() {
     }
   }, []);
 
-  const debugPv = useCallback((...args) => {
-    if (!debugPvRef.current) return;
-    console.log('[debug pv]', ...args);
-  }, []);
-
   const setConversationAlias = useCallback((tempId, realId) => {
     if (!tempId || !realId) return;
     const tempStr = tempId.toString();
@@ -384,8 +378,7 @@ function ChatsPage() {
     if (!tempStr || !realStr) return;
     conversationAliasRef.current.set(tempStr, realStr);
     conversationAliasRef.current.set(realStr, realStr);
-    debugPv('alias', { temp: tempStr, real: realStr });
-  }, [debugPv]);
+  }, []);
 
   const handleSendMessage = useCallback(() => {
     const content = messageInput.trim();
@@ -464,12 +457,6 @@ function ChatsPage() {
     }, 60000);
 
     const conversationIdStr = conversationId.toString();
-    debugPv('send', {
-      optimisticId,
-      conversationId: conversationIdStr,
-      isPendingPv,
-      contactUserId,
-    });
     setContacts((prev) => {
       const next = [...prev];
       const idx = next.findIndex((c) => getConversationId(c)?.toString() === conversationIdStr);
@@ -532,11 +519,6 @@ function ChatsPage() {
             }
 
             const newConversationId = ack?.conversationId || ack?.conversation?._id || ack?.conversation?.id;
-            debugPv('new_pv ack', {
-              optimisticId,
-              newConversationId: newConversationId?.toString() || null,
-              serverMessageId: getMessageId(ack?.message) || null,
-            });
             if (newConversationId) {
               setConversationAlias(conversationId, newConversationId);
               setContacts((prev) =>
@@ -1102,10 +1084,6 @@ function ChatsPage() {
       storeRecentReceive(conversationIdStr, messageText);
 
       const messageId = payload?.message_id || `receive-${Date.now()}`;
-      debugPv('message:receive', {
-        messageId: messageId.toString(),
-        conversationId: conversationId?.toString() || null,
-      });
       const senderInfo = payload?.sender_info || payload?.senderInfo || null;
       const messageSender = senderInfo?._id
         || senderInfo?.id
@@ -1267,11 +1245,6 @@ function ChatsPage() {
 
       const pending = pendingSendMapRef.current[trackId];
       if (!pending?.tempId) return;
-      debugPv('message:send:ack', {
-        messageId: messageId.toString(),
-        trackId: trackId.toString(),
-        tempId: pending.tempId?.toString() || null,
-      });
       delete pendingSendMapRef.current[trackId];
       if (pendingAckTimersRef.current[pending.tempId]) {
         clearTimeout(pendingAckTimersRef.current[pending.tempId]);
@@ -1456,11 +1429,6 @@ function ChatsPage() {
       }
       const conversationIdStr = conversationId?.toString();
       const messageText = message?.content || message?.text || '';
-      debugPv('message:new', {
-        messageId: messageId.toString(),
-        conversationId: conversationIdStr,
-        messageText,
-      });
       if (hasRecentReceive(conversationIdStr, messageText)) {
         return;
       }
@@ -1570,13 +1538,6 @@ function ChatsPage() {
           messageAnimationTimeoutRef.current = setTimeout(() => {
             setLastAnimatedMessageId(null);
           }, 600);
-        }
-        if (matchedTempId || wasExisting) {
-          debugPv('message:new replace', {
-            messageId: messageId.toString(),
-            matchedTempId,
-            wasExisting,
-          });
         }
         const pending = pendingMessagesRef.current[conversationIdStr] || [];
         if (pending.length > 0) {
@@ -1826,11 +1787,6 @@ function ChatsPage() {
       const messageText = payload?.message;
       const newConversationId = payload?.conversationId || payload?.conversation_id;
       const pending = pendingPvRef.current;
-      debugPv('message', {
-        messageText,
-        newConversationId: newConversationId?.toString() || null,
-        hasPending: Boolean(pending?.tempId),
-      });
       if (messageText !== 'Conversation created' || !newConversationId || !pending?.tempId) {
         return;
       }
@@ -1870,7 +1826,6 @@ function ChatsPage() {
       if (!conversationId) {
         return;
       }
-      debugPv('new_pv_conversation', { conversationId: conversationId.toString() });
       refreshContacts();
     };
 
@@ -1944,7 +1899,6 @@ function ChatsPage() {
     };
   }, [
     emitSeenForMessage,
-    debugPv,
     refreshContacts,
     setConversationAlias,
     setUnreadCount,
@@ -3362,22 +3316,6 @@ function ChatsPage() {
   const isPreviewImage = selectedFile?.type?.startsWith('image/');
   const isPreviewVideo = selectedFile?.type?.startsWith('video/');
 
-  useEffect(() => {
-    debugPv('render gate', {
-      activeChatIdStr,
-      messagesConversationIdStr,
-      resolvedActiveId,
-      resolvedMessagesId,
-      shouldRenderMessages,
-    });
-  }, [
-    activeChatIdStr,
-    messagesConversationIdStr,
-    resolvedActiveId,
-    resolvedMessagesId,
-    shouldRenderMessages,
-    debugPv,
-  ]);
 
   return (
     <div className={styles.chatsPageContainer}>
