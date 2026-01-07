@@ -74,13 +74,20 @@ export async function handleNewPvConversationEvent(socket: Socket, data: NewPvCo
 export async function handlePvConversationDelete(socket: Socket, data: pvConversationDeleteEVT, io: Server) {
     const { conversation_id, delete_for } = data;
     const { userInfo } = socket;
+    const allowedValuesForDeletedFor = ["me", "all"];
+
+    //Checking delete_for value
+    if(!allowedValuesForDeletedFor.includes(delete_for)){
+        socket.emit("conversation:pv:delete:error", {message: "Invalid delete_for parameter value"});
+        return;
+    }
 
     //Checking if user has access to the conversation
     const [conversation, err]: [Conversation | null, ErrorResponse | null] = await checkUserHasAccessToConversation(new ObjectId(conversation_id), userInfo.id);
 
     //If user had not access to conversation, a not found error will be shown
-    if(err){
-        socket.emit("conversation:pv:delete:error", {message: err.message, conversation_id});
+    if(err || conversation === null){
+        socket.emit("conversation:pv:delete:error", {message: "Access denied", conversation_id});
         return;
     }
 
