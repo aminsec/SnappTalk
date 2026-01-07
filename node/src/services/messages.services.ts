@@ -14,7 +14,6 @@ export async function getMessageById(messageId: ObjectId): Promise<Message> {
 
 export async function getConversationMessagesByLimitedDate(conversationId: ObjectId, deletedConversationDate: string, limit: number, offset: number): Promise<[Message[] | null, ErrorResponse | null]> {
     try {
-        console.log(deletedConversationDate)
         const messagesCollection = await getMessagesCollection();
         const messages = await messagesCollection.find({
             conversation_id: conversationId,
@@ -136,6 +135,25 @@ export async function editMessageById(messageId: ObjectId, new_message: string):
 
         return [true, null];
 
+    } catch (error) {
+        console.log(error);
+        const err: ErrorResponse = {message: "A system error occurred", state: "failed", type: "system_error"};
+        return [null, err];
+    }
+};
+
+export async function deleteMessageById(messageId: ObjectId): Promise<[Boolean | null, ErrorResponse | null]> {
+    try {
+        const messagesCollection = await getMessagesCollection();
+        const result = await messagesCollection.deleteOne({
+            _id: messageId
+        });
+
+        if(result.acknowledged === true){
+            return [true, null];
+        }else{
+            return [false, null];
+        }
     } catch (error) {
         console.log(error);
         const err: ErrorResponse = {message: "A system error occurred", state: "failed", type: "system_error"};

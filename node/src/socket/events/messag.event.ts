@@ -1,8 +1,8 @@
 import { Socket } from "socket.io";
-import { MessageEditEVT, MessageSeenEVT, MessageSendEVT } from "../../types/socket.events.types";
-import { createNewMessage, editMessageById, getMessageById, seenMessageById } from "../../services/messages.services";
+import { MessageDeleteEVT, MessageEditEVT, MessageSeenEVT, MessageSendEVT } from "../../types/socket.events.types";
+import { createNewMessage, deleteMessageById, editMessageById, getConversationMessagesByLimitedDate, getMessageById, seenMessageById } from "../../services/messages.services";
 import { ObjectId } from "mongodb";
-import { updateConversationLastMessageId } from "../../services/conversations.services";
+import { getConversationById, updateConversationLastMessageId } from "../../services/conversations.services";
 
 export async function handleMessageSend(socket: Socket, data: MessageSendEVT) {
     const { conversation_id, message_text, track_id } = data;
@@ -12,8 +12,8 @@ export async function handleMessageSend(socket: Socket, data: MessageSendEVT) {
         //Inserting message to db
         const [insertedMessageId, error] = await createNewMessage(new ObjectId(conversation_id), new ObjectId(socket.userInfo.id), "text", message_text, []);
         if(error){
-            console.log(error);
-            socket.emit("error", {message: "Couldn't save the message"})
+            socket.emit("error", {message: "Couldn't save the message"});
+            return;
         }
 
         if(insertedMessageId){
@@ -93,4 +93,57 @@ export async function handleMessageEdit(socket: Socket, data: MessageEditEVT) {
     const conversationOfMessage = message.conversation_id;
     socket.to(conversationOfMessage.toString()).emit("message:edited", {message_id, new_message, conversation_id: message.conversation_id});
     return;
+};
+
+export async function handleMessageDelete(socket: Socket, data: MessageDeleteEVT) {
+    const { message_id } = data;
+    const { userInfo } = socket;
+    let isLastMessage = false
+
+    const messageInfo = await getMessageById(new ObjectId(message_id));
+    if(messageInfo === null){
+        socket.emit("message:delete:error", {message: "Message not found", message_id});
+        return;
+    }
+
+    if(messageInfo.sender.toString() === userInfo.id){
+        const [conversationOfMessage, error] = await getConversationById(messageInfo.conversation_id);
+        if(error || conversationOfMessage === null){
+            socket.emit("message:delete:error", {message: "Message not found", message_id});
+            return;
+        }
+
+        //Checking if the message is last message of conversation because if it is we need to update last message of conversation
+        if(conversationOfMessage.last_message_id.toString() === messageInfo._id.toString()){
+            isLastMessage = true;
+            const [oneMessageBeforeLastMessage, error] = await getConversationMessagesByLimitedDate(conversationOfMessage._id, "0", 1, 1); //This will be an array with one element
+
+            if(error || oneMessageBeforeLastMessage === null){
+                socket.emit("message:delete:error", {message: error?.message, message_id});
+                return;
+            }
+
+            const [updateResult, err] = await updateConversationLastMessageId(conversationOfMessage._id, oneMessageBeforeLastMessage[0]._id);
+            if(err){
+                socket.emit("message:delete:error", {message: err.message, message_id});
+                return;
+            }
+        }
+
+        const [deleteResult, Error] = await deleteMessageById(messageInfo._id);
+        if(Error){
+            socket.emit("message:delete:error", {message: Error.message, message_id});
+            return;
+        }
+
+        if(deleteResult){
+            socket.emit("message:delete:ack", {message: "Message deleted successfully", message_id});
+            socket.to(messageInfo.conversation_id.toString()).emit("message:deleted", {message_id, conversation_id: conversationOfMessage._id, is_last_message: isLastMessage});
+            return;
+        }
+
+    }else{
+        socket.emit("message:delete:error", {message: "Access denied"});
+        return;
+    }
 };
