@@ -3104,23 +3104,7 @@ function ChatsPage() {
                   }}
                 >
                   <div className={`${styles.statusAvatar} ${styles.statusAvatarSmall}`}>
-                    {isPrivateChat ? (
-                      <button
-                        type="button"
-                        className={styles.profileAvatarButton}
-                        onClick={(event) => {
-                          event.stopPropagation();
-                          const contactId = chat.contact_info?._id || chat.contact_info?.id;
-                          if (contactId) {
-                            navigate(`/members/${contactId}`);
-                          }
-                        }}
-                      >
-                        <ProfileAvatar size="md" src={avatarSrc} />
-                      </button>
-                    ) : (
-                      <ProfileAvatar size="md" src={avatarSrc} />
-                    )}
+                    <ProfileAvatar size="md" src={avatarSrc} />
                     {isPrivateChat && (
                       <span className={`${styles.statusDot} ${statusClass}`} />
                     )}
@@ -3138,29 +3122,7 @@ function ChatsPage() {
                         {truncateMessage(getMessagePreviewText(chat.last_message))}
                       </p>
                     </div>
-                    <div
-                      className={styles.chatInfoFooter}
-                      onClick={(event) => {
-                        event.stopPropagation();
-                        if (!isPrivateChat) return;
-                        const contactId = chat.contact_info?._id || chat.contact_info?.id;
-                        if (contactId) {
-                          navigate(`/members/${contactId}`);
-                        }
-                      }}
-                      role={isPrivateChat ? 'button' : undefined}
-                      tabIndex={isPrivateChat ? 0 : undefined}
-                      onKeyDown={(event) => {
-                        if (!isPrivateChat) return;
-                        if (event.key === 'Enter') {
-                          event.stopPropagation();
-                          const contactId = chat.contact_info?._id || chat.contact_info?.id;
-                          if (contactId) {
-                            navigate(`/members/${contactId}`);
-                          }
-                        }
-                      }}
-                    >
+                    <div className={styles.chatInfoFooter}>
                       <span className={styles.chatTimestampRow}>
                         {hasLastMessage && isMyMessage && (
                           <span className={styles.chatStatusIcon} aria-hidden="true">

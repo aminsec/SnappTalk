@@ -397,13 +397,6 @@
     cursor: pointer;
 }
 
-.chatInfoFooter:hover .timestamp {
-    color: var(--text-main);
-}
-
-.chatInfoFooter:hover .chatStatusIconImage {
-    opacity: 1;
-}
 
 .profileAvatarButton {
     background: none;
