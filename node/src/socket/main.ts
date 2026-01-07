@@ -18,7 +18,7 @@ export function handleSocketConnection(socket: Socket, io: Server, onlineUsers: 
   });
 
   socket.on("message:delete", (data) => {
-    handleMessageDelete(socket, data);
+    handleMessageDelete(socket, data, io);
   });
 
   socket.on("conversation:pv:delete", (data) => {

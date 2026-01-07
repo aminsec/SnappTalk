@@ -1,8 +1,9 @@
-import { Socket } from "socket.io";
+import { Socket, Server } from "socket.io";
 import { MessageDeleteEVT, MessageEditEVT, MessageSeenEVT, MessageSendEVT } from "../../types/socket.events.types";
 import { createNewMessage, deleteMessageById, editMessageById, getConversationMessagesByLimitedDate, getMessageById, seenMessageById } from "../../services/messages.services";
 import { ObjectId } from "mongodb";
 import { getConversationById, updateConversationLastMessageId } from "../../services/conversations.services";
+import { handlePvConversationDelete } from "./conversation.event";
 
 export async function handleMessageSend(socket: Socket, data: MessageSendEVT) {
     const { conversation_id, message_text, track_id } = data;
@@ -95,11 +96,10 @@ export async function handleMessageEdit(socket: Socket, data: MessageEditEVT) {
     return;
 };
 
-export async function handleMessageDelete(socket: Socket, data: MessageDeleteEVT) {
+export async function handleMessageDelete(socket: Socket, data: MessageDeleteEVT, io: Server) {
     const { message_id } = data;
     const { userInfo } = socket;
     let isLastMessage = false
-
     const messageInfo = await getMessageById(new ObjectId(message_id));
     if(messageInfo === null){
         socket.emit("message:delete:error", {message: "Message not found", message_id});
@@ -113,17 +113,22 @@ export async function handleMessageDelete(socket: Socket, data: MessageDeleteEVT
             return;
         }
 
+        var [oneMessageBeforeLastMessage, err] = await getConversationMessagesByLimitedDate(conversationOfMessage._id, "0", 2, 0); //This will be an array with one element
+        if(err || oneMessageBeforeLastMessage === null){
+            socket.emit("message:delete:error", {message: "Coudn't delete message"});
+            return;
+        }
+
+        //This checks the targeted message is the only message left in conversation, in this situation we delete whole conversation for both side
+        if(oneMessageBeforeLastMessage?.length === 1){
+            handlePvConversationDelete(socket, {conversation_id: conversationOfMessage._id.toString(), delete_for: "all"}, io);
+            return;
+        }
+
         //Checking if the message is last message of conversation because if it is we need to update last message of conversation
         if(conversationOfMessage.last_message_id.toString() === messageInfo._id.toString()){
             isLastMessage = true;
-            const [oneMessageBeforeLastMessage, error] = await getConversationMessagesByLimitedDate(conversationOfMessage._id, "0", 1, 1); //This will be an array with one element
-
-            if(error || oneMessageBeforeLastMessage === null){
-                socket.emit("message:delete:error", {message: error?.message, message_id});
-                return;
-            }
-
-            const [updateResult, err] = await updateConversationLastMessageId(conversationOfMessage._id, oneMessageBeforeLastMessage[0]._id);
+            const [updateResult, err] = await updateConversationLastMessageId(conversationOfMessage._id, oneMessageBeforeLastMessage[1]._id);
             if(err){
                 socket.emit("message:delete:error", {message: err.message, message_id});
                 return;
