@@ -1,15 +1,21 @@
 import { ObjectId } from "mongodb";
 import { getMessagesCollection } from "../models/messages.model";
 import { ErrorResponse } from "../types/response.types";
-import { Message } from "../types/messages.types";
+import { InsertMessage, Message } from "../types/messages.types";
 
-export async function getMessageById(messageId: ObjectId): Promise<Message> {
-    const messagesCollection = await getMessagesCollection();
-    const message = await messagesCollection.findOne({
-        _id: messageId
-    });
-
-    return message;
+export async function getMessageById(messageId: ObjectId): Promise<[Message | null, ErrorResponse | null]> {
+    try {
+        const messagesCollection = await getMessagesCollection();
+        const message = await messagesCollection.findOne({
+            _id: messageId
+        });
+    
+        return [message, null];
+    } catch (error) {
+        console.log(error);
+        const err: ErrorResponse = {message: "A system error occurred", state: "failed", type: "system_error"};
+        return [null, err];
+    }
 };
 
 export async function getConversationMessagesByLimitedDate(conversationId: ObjectId, deletedConversationDate: string, limit: number, offset: number): Promise<[Message[] | null, ErrorResponse | null]> {
@@ -34,18 +40,19 @@ export async function getConversationMessagesByLimitedDate(conversationId: Objec
     }
 };
 
-export async function createNewMessage(conversationId: ObjectId, sender: ObjectId, type: string, content: string, attachments: string[]): Promise<[ObjectId | null, ErrorResponse | null]> {
+export async function createNewMessage(data: InsertMessage): Promise<[ObjectId | null, ErrorResponse | null]> {
     try {
         const messagesCollection = await getMessagesCollection();
         const message = await messagesCollection.insertOne({
-            conversation_id: conversationId,
-            sender: sender,
-            type: type,
-            content: content,
-            attachments: attachments,
-            seen_by: {[sender.toString()]: new Date()},
+            conversation_id: data.conversation_id,
+            sender: data.sender,
+            type: data.type,
+            content: data.content,
+            attachments: data.attachments,
+            seen_by: {[data.sender.toString()]: new Date()},
             edited: false,
-            created_at: new Date()
+            created_at: new Date(),
+            replied_to: data.replied_to
         });
 
         if(message.acknowledged === true){

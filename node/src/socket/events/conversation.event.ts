@@ -6,10 +6,12 @@ import { createNewMessage } from "../../services/messages.services";
 import { checkUserHasAccessToConversation } from "../../utils/validate";
 import { ErrorResponse } from "../../types/response.types";
 import { Conversation } from "../../types/conversation.types";
+import { InsertMessage } from "../../types/messages.types";
 
 export async function handleNewPvConversationEvent(socket: Socket, data: NewPvConversationEVT, onlineUsers: Map<string, string>, io: Server) {
     const requestedUserId = new ObjectId(socket.userInfo.id);
     const contactUserId = new ObjectId(data.new_user_id);
+    const { userInfo } = socket;
     const { track_id } = data;
     
     //Checking if there is a conversation with requested user id
@@ -35,7 +37,17 @@ export async function handleNewPvConversationEvent(socket: Socket, data: NewPvCo
 
     //Inserting new message to the conversation
     if(newPvConversationId){
-        const [newMessageId, err] = await createNewMessage(newPvConversationId, requestedUserId, "text", data.message_text, []);
+        //Inserting message
+        const insertData: InsertMessage = {
+            sender: new ObjectId(userInfo.id),
+            content: data.message_text,
+            conversation_id: newPvConversationId,
+            replied_to: null,
+            attachments: [],
+            type: "text"
+        };
+
+        const [newMessageId, err] = await createNewMessage(insertData);
         if(err){
             socket.emit("error", {message: "There was a problem in our backend"});
             return;

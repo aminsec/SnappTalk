@@ -312,6 +312,7 @@ function ChatsPage() {
   const pendingPvRef = useRef(null);
   const pendingMessagesRef = useRef({});
   const pendingSendMapRef = useRef({});
+  const pendingReplyMapRef = useRef({});
   const pendingAckTimersRef = useRef({});
   const recentReceiveRef = useRef({});
   const seenSentRef = useRef({});
@@ -447,20 +448,38 @@ function ChatsPage() {
     messageAnimationTimeoutRef.current = setTimeout(() => {
       setLastAnimatedMessageId(null);
     }, 600);
-    pendingSendMapRef.current[optimisticId] = {
-      tempId: optimisticId,
-      conversationId: conversationId.toString(),
-    };
-    if (pendingAckTimersRef.current[optimisticId]) {
-      clearTimeout(pendingAckTimersRef.current[optimisticId]);
+    if (replyTo) {
+      pendingReplyMapRef.current[optimisticId] = {
+        tempId: optimisticId,
+        conversationId: conversationId.toString(),
+        replyToId: replyTo.messageId,
+      };
+      if (pendingAckTimersRef.current[optimisticId]) {
+        clearTimeout(pendingAckTimersRef.current[optimisticId]);
+      }
+      pendingAckTimersRef.current[optimisticId] = setTimeout(() => {
+        setMessages((prev) =>
+          prev.map((m) =>
+            getMessageId(m) === optimisticId ? { ...m, status: 'error' } : m
+          )
+        );
+      }, 60000);
+    } else {
+      pendingSendMapRef.current[optimisticId] = {
+        tempId: optimisticId,
+        conversationId: conversationId.toString(),
+      };
+      if (pendingAckTimersRef.current[optimisticId]) {
+        clearTimeout(pendingAckTimersRef.current[optimisticId]);
+      }
+      pendingAckTimersRef.current[optimisticId] = setTimeout(() => {
+        setMessages((prev) =>
+          prev.map((m) =>
+            getMessageId(m) === optimisticId ? { ...m, status: 'error' } : m
+          )
+        );
+      }, 60000);
     }
-    pendingAckTimersRef.current[optimisticId] = setTimeout(() => {
-      setMessages((prev) =>
-        prev.map((m) =>
-          getMessageId(m) === optimisticId ? { ...m, status: 'error' } : m
-        )
-      );
-    }, 60000);
 
     const conversationIdStr = conversationId.toString();
     setContacts((prev) => {
@@ -576,14 +595,26 @@ function ChatsPage() {
         return;
       }
 
-      socket.emit(
-        SOCKET_EVENTS.MESSAGE_SEND,
-        {
-          conversation_id: conversationId,
-          message_text: content,
-          track_id: optimisticId,
-        }
-      );
+      if (replyTo) {
+        socket.emit(
+          SOCKET_EVENTS.MESSAGE_SEND_REPLY,
+          {
+            conversation_id: conversationId.toString(),
+            message_text: content,
+            reply_to: replyTo.messageId,
+            track_id: optimisticId,
+          }
+        );
+      } else {
+        socket.emit(
+          SOCKET_EVENTS.MESSAGE_SEND,
+          {
+            conversation_id: conversationId,
+            message_text: content,
+            track_id: optimisticId,
+          }
+        );
+      }
     } catch (err) {
       console.error('Failed to emit socket message:', err);
       toast.error('Unable to send message right now.');
@@ -745,33 +776,65 @@ function ChatsPage() {
     }
 
     const messageId = getMessageId(message);
+    const replyToId = message?.reply_to?.messageId
+      || message?.reply_to?.message_id
+      || message?.reply_to
+      || message?.replyTo?.messageId
+      || null;
     if (messageId) {
       setMessages((prev) =>
         prev.map((m) =>
           getMessageId(m) === messageId ? { ...m, status: 'pending' } : m
         )
       );
-      pendingSendMapRef.current[messageId] = {
-        tempId: messageId,
-        conversationId: conversationId.toString(),
-      };
-      if (pendingAckTimersRef.current[messageId]) {
-        clearTimeout(pendingAckTimersRef.current[messageId]);
+      if (replyToId) {
+        pendingReplyMapRef.current[messageId] = {
+          tempId: messageId,
+          conversationId: conversationId.toString(),
+          replyToId,
+        };
+        if (pendingAckTimersRef.current[messageId]) {
+          clearTimeout(pendingAckTimersRef.current[messageId]);
+        }
+        pendingAckTimersRef.current[messageId] = setTimeout(() => {
+          setMessages((prev) =>
+            prev.map((m) =>
+              getMessageId(m) === messageId ? { ...m, status: 'error' } : m
+            )
+          );
+        }, 60000);
+      } else {
+        pendingSendMapRef.current[messageId] = {
+          tempId: messageId,
+          conversationId: conversationId.toString(),
+        };
+        if (pendingAckTimersRef.current[messageId]) {
+          clearTimeout(pendingAckTimersRef.current[messageId]);
+        }
+        pendingAckTimersRef.current[messageId] = setTimeout(() => {
+          setMessages((prev) =>
+            prev.map((m) =>
+              getMessageId(m) === messageId ? { ...m, status: 'error' } : m
+            )
+          );
+        }, 60000);
       }
-      pendingAckTimersRef.current[messageId] = setTimeout(() => {
-        setMessages((prev) =>
-          prev.map((m) =>
-            getMessageId(m) === messageId ? { ...m, status: 'error' } : m
-          )
-        );
-      }, 60000);
     }
 
-    socket.emit(SOCKET_EVENTS.MESSAGE_SEND, {
-      conversation_id: conversationId,
-      message_text: content,
-      track_id: messageId,
-    });
+    if (replyToId) {
+      socket.emit(SOCKET_EVENTS.MESSAGE_SEND_REPLY, {
+        conversation_id: conversationId.toString(),
+        message_text: content,
+        reply_to: replyToId,
+        track_id: messageId,
+      });
+    } else {
+      socket.emit(SOCKET_EVENTS.MESSAGE_SEND, {
+        conversation_id: conversationId,
+        message_text: content,
+        track_id: messageId,
+      });
+    }
   }, [socket]);
 
   const handleOpenDeleteConversation = useCallback((conversationOverride = null) => {
@@ -1336,6 +1399,191 @@ function ChatsPage() {
           return chat;
         })
       );
+    };
+
+    const resolveReplyPreview = (replyId) => {
+      if (!replyId) return null;
+      const replyIdStr = replyId.toString();
+      const match = messagesRef.current.find(
+        (m) => getMessageId(m)?.toString() === replyIdStr
+      );
+      if (!match) {
+        return { messageId: replyIdStr };
+      }
+      return {
+        messageId: replyIdStr,
+        content: match?.content || match?.text || '',
+        sender: match?.sender,
+      };
+    };
+
+    const handleMessageSendReplyAck = (payload) => {
+      const messageId = payload?.message_id || payload?.messageId;
+      const trackId = payload?.track_id || payload?.trackId;
+      if (!messageId || !trackId) return;
+      const pending = pendingReplyMapRef.current[trackId];
+      if (!pending?.tempId) return;
+      delete pendingReplyMapRef.current[trackId];
+      if (pendingAckTimersRef.current[pending.tempId]) {
+        clearTimeout(pendingAckTimersRef.current[pending.tempId]);
+        delete pendingAckTimersRef.current[pending.tempId];
+      }
+      setMessages((prev) =>
+        prev.map((m) => {
+          const mid = getMessageId(m);
+          if (mid === pending.tempId) {
+            return {
+              ...m,
+              _id: messageId,
+              id: messageId,
+              status: 'sent',
+            };
+          }
+          return m;
+        })
+      );
+      setContacts((prev) =>
+        prev.map((chat) => {
+          const chatId = getConversationId(chat)?.toString();
+          if (chatId !== pending.conversationId) return chat;
+          const lastMessageId = chat?.last_message?.message_id;
+          if (lastMessageId && lastMessageId === pending.tempId) {
+            return {
+              ...chat,
+              last_message: {
+                ...chat.last_message,
+                message_id: messageId,
+              },
+            };
+          }
+          return chat;
+        })
+      );
+    };
+
+    const handleMessageSendReplyError = (payload) => {
+      const message = payload?.message || payload?.error || 'Unable to send reply.';
+      const trackId = payload?.track_id || payload?.trackId;
+      toast.error(message);
+      if (!trackId) return;
+      const pending = pendingReplyMapRef.current[trackId];
+      if (!pending?.tempId) return;
+      delete pendingReplyMapRef.current[trackId];
+      if (pendingAckTimersRef.current[pending.tempId]) {
+        clearTimeout(pendingAckTimersRef.current[pending.tempId]);
+        delete pendingAckTimersRef.current[pending.tempId];
+      }
+      setMessages((prev) =>
+        prev.map((m) =>
+          getMessageId(m) === pending.tempId ? { ...m, status: 'error' } : m
+        )
+      );
+    };
+
+    const handleMessageReceiveReply = (payload) => {
+      const conversationId = payload?.conversation_id || payload?.conversationId;
+      const messageText = payload?.message_text || payload?.message || '';
+      const replyToId = payload?.replied_to || payload?.reply_to;
+      if (!conversationId || !messageText) {
+        return;
+      }
+      const conversationIdStr = conversationId?.toString();
+      const messageId = payload?.message_id || payload?.messageId;
+      const signature = messageId ? `id:${messageId}` : '';
+      if (hasRecentReceive(conversationIdStr, signature)) {
+        return;
+      }
+      storeRecentReceive(conversationIdStr, signature);
+
+      const senderInfo = payload?.sender_info || payload?.senderInfo || null;
+      const messageSender = senderInfo?._id
+        || senderInfo?.id
+        || payload?.sender_id
+        || payload?.sender
+        || payload?.from_user_id
+        || payload?.user_id
+        || null;
+      const messageWhen = payload?.when
+        ? new Date(payload.when).toISOString()
+        : new Date().toISOString();
+
+      const replyPreview = resolveReplyPreview(replyToId);
+      const resolvedMessageId = messageId || `receive-${Date.now()}`;
+      const message = {
+        _id: resolvedMessageId,
+        id: resolvedMessageId,
+        conversation_id: conversationId,
+        sender: messageSender,
+        type: 'text',
+        content: messageText,
+        created_at: messageWhen,
+        edited: false,
+        reply_to: replyPreview,
+        sender_info: senderInfo || undefined,
+      };
+
+      pendingMessagesRef.current[conversationIdStr] = [
+        ...(pendingMessagesRef.current[conversationIdStr] || []),
+        message,
+      ];
+
+      const selectedConversationId = getConversationId(selectedChatRef.current);
+      const selectedConversationIdStr = selectedConversationId?.toString();
+      const isActiveConversation = selectedConversationIdStr
+        && selectedConversationIdStr === conversationIdStr;
+      const existsInList = contactsRef.current.some(
+        (c) => getConversationId(c)?.toString() === conversationIdStr
+      );
+
+      if (!existsInList) {
+        setUnreadCount(conversationIdStr, (count) => count + 1);
+        refreshContacts();
+        return;
+      }
+
+      setContacts((prev) => {
+        const next = [...prev];
+        const idx = next.findIndex(
+          (c) => getConversationId(c)?.toString() === conversationIdStr
+        );
+        if (idx === -1) return prev;
+        const chat = next[idx];
+        const currentUnread = chat?.unread_messages_count ?? chat?.unread_count ?? 0;
+        const nextUnread = isActiveConversation ? 0 : currentUnread + 1;
+        const senderUsername = senderInfo?.username
+          || payload?.senderUsername
+          || payload?.sender_name
+          || chat?.last_message?.sender
+          || '';
+        next[idx] = {
+          ...chat,
+          last_message: {
+            content: messageText,
+            type: 'text',
+            sender: senderUsername,
+            when: messageWhen,
+            message_id: resolvedMessageId,
+            sender_id: messageSender || undefined,
+          },
+          unread_messages_count: nextUnread,
+        };
+
+        const [moved] = next.splice(idx, 1);
+        next.unshift(moved);
+        return next;
+      });
+
+      if (isActiveConversation) {
+        setMessagesConversationId(conversationIdStr);
+        animatedMessageIdsRef.current.add(resolvedMessageId);
+        flushPendingMessages(conversationIdStr);
+        if (isNearBottomRef.current) {
+          shouldAutoScrollRef.current = true;
+        }
+        setUnreadCount(conversationIdStr, 0);
+      } else {
+        setUnreadCount(conversationIdStr, (count) => count + 1);
+      }
     };
 
     const handleMessageSendError = (payload) => {
@@ -1903,11 +2151,14 @@ function ChatsPage() {
     socket.on(SOCKET_EVENTS.MESSAGE_NEW, handleMessageNew);
     socket.on(SOCKET_EVENTS.MESSAGE_RECEIVE, handleMessageReceive);
     socket.on(SOCKET_EVENTS.MESSAGE_SEND_ACK, handleMessageSendAck);
+    socket.on(SOCKET_EVENTS.MESSAGE_SEND_REPLY_ACK, handleMessageSendReplyAck);
+    socket.on(SOCKET_EVENTS.MESSAGE_SEND_REPLY_ERROR, handleMessageSendReplyError);
     socket.on(SOCKET_EVENTS.MESSAGE_SEEN, handleMessageSeen);
     socket.on(SOCKET_EVENTS.MESSAGE_EDITED, handleMessageEdited);
     socket.on('message:edit:ack', handleMessageEditAck);
     socket.on('message:edit:error', handleMessageEditError);
     socket.on(SOCKET_EVENTS.MESSAGE_DELETED, handleMessageDeleted);
+    socket.on(SOCKET_EVENTS.MESSAGE_RECEIVE_REPLY, handleMessageReceiveReply);
     socket.on('message:delete:ack', handleMessageDeleteAck);
     socket.on('message:delete:error', handleMessageDeleteError);
     socket.on(SOCKET_EVENTS.CONVERSATION_PV_DELETED, handleConversationDeleted);
@@ -1945,12 +2196,15 @@ function ChatsPage() {
     return () => {
       socket.off(SOCKET_EVENTS.MESSAGE_NEW, handleMessageNew);
       socket.off(SOCKET_EVENTS.MESSAGE_RECEIVE, handleMessageReceive);
-      socket.off(SOCKET_EVENTS.MESSAGE_SEND_ACK, handleMessageSendAck);
+    socket.off(SOCKET_EVENTS.MESSAGE_SEND_ACK, handleMessageSendAck);
+    socket.off(SOCKET_EVENTS.MESSAGE_SEND_REPLY_ACK, handleMessageSendReplyAck);
+    socket.off(SOCKET_EVENTS.MESSAGE_SEND_REPLY_ERROR, handleMessageSendReplyError);
       socket.off(SOCKET_EVENTS.MESSAGE_SEEN, handleMessageSeen);
       socket.off(SOCKET_EVENTS.MESSAGE_EDITED, handleMessageEdited);
       socket.off('message:edit:ack', handleMessageEditAck);
       socket.off('message:edit:error', handleMessageEditError);
-      socket.off(SOCKET_EVENTS.MESSAGE_DELETED, handleMessageDeleted);
+    socket.off(SOCKET_EVENTS.MESSAGE_DELETED, handleMessageDeleted);
+    socket.off(SOCKET_EVENTS.MESSAGE_RECEIVE_REPLY, handleMessageReceiveReply);
       socket.off('message:delete:ack', handleMessageDeleteAck);
       socket.off('message:delete:error', handleMessageDeleteError);
       socket.off(SOCKET_EVENTS.CONVERSATION_PV_DELETED, handleConversationDeleted);
