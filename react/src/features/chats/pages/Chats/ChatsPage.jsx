@@ -1083,19 +1083,19 @@ function ChatsPage() {
       console.log('[socket]', eventName, payload);
     };
 
-    const storeRecentReceive = (conversationIdStr, messageText) => {
-      if (!conversationIdStr || !messageText) return;
+    const storeRecentReceive = (conversationIdStr, signature) => {
+      if (!conversationIdStr || !signature) return;
       const now = Date.now();
       const list = recentReceiveRef.current[conversationIdStr] || [];
-      recentReceiveRef.current[conversationIdStr] = [...list, { text: messageText, ts: now }]
+      recentReceiveRef.current[conversationIdStr] = [...list, { signature, ts: now }]
         .filter((item) => now - item.ts < 4000);
     };
 
-    const hasRecentReceive = (conversationIdStr, messageText) => {
-      if (!conversationIdStr || !messageText) return false;
+    const hasRecentReceive = (conversationIdStr, signature) => {
+      if (!conversationIdStr || !signature) return false;
       const now = Date.now();
       const list = recentReceiveRef.current[conversationIdStr] || [];
-      const match = list.some((item) => item.text === messageText && now - item.ts < 4000);
+      const match = list.some((item) => item.signature === signature && now - item.ts < 4000);
       if (!match) {
         recentReceiveRef.current[conversationIdStr] = list.filter(
           (item) => now - item.ts < 4000
@@ -1111,12 +1111,20 @@ function ChatsPage() {
         return;
       }
       const conversationIdStr = conversationId?.toString();
-      if (hasRecentReceive(conversationIdStr, messageText)) {
+      const messageId = payload?.message_id;
+      const senderId = payload?.sender_id || payload?.sender || payload?.from_user_id || payload?.user_id;
+      const when = payload?.when;
+      const signature = messageId
+        ? `id:${messageId}`
+        : (when && senderId
+          ? `alt:${senderId}|${messageText}|${when}`
+          : '');
+      if (hasRecentReceive(conversationIdStr, signature)) {
         return;
       }
-      storeRecentReceive(conversationIdStr, messageText);
+      storeRecentReceive(conversationIdStr, signature);
 
-      const messageId = payload?.message_id || `receive-${Date.now()}`;
+      const resolvedMessageId = messageId || `receive-${Date.now()}`;
       const senderInfo = payload?.sender_info || payload?.senderInfo || null;
       const messageSender = senderInfo?._id
         || senderInfo?.id
@@ -1128,8 +1136,8 @@ function ChatsPage() {
       const messageWhen = payload?.when ? new Date(payload.when).toISOString() : new Date().toISOString();
 
       const message = {
-        _id: messageId,
-        id: messageId,
+        _id: resolvedMessageId,
+        id: resolvedMessageId,
         conversation_id: conversationId,
         sender: messageSender,
         type: 'text',
@@ -1463,9 +1471,11 @@ function ChatsPage() {
       }
       const conversationIdStr = conversationId?.toString();
       const messageText = message?.content || message?.text || '';
-      if (hasRecentReceive(conversationIdStr, messageText)) {
+      const signature = messageId ? `id:${messageId}` : '';
+      if (hasRecentReceive(conversationIdStr, signature)) {
         return;
       }
+      storeRecentReceive(conversationIdStr, signature);
 
       setContacts((prev) => {
         const next = [...prev];
@@ -2389,7 +2399,13 @@ function ChatsPage() {
       const merged = [...prev];
       pending.forEach((msg) => {
         const mid = getMessageId(msg)?.toString();
-        if (!mid || existingIds.has(mid)) return;
+        if (mid) {
+          if (existingIds.has(mid)) return;
+          merged.push(msg);
+          existingIds.add(mid);
+          return;
+        }
+
         const signature = makeSignature(msg);
         if (existingSignatures.has(signature)) {
           const pendingTime = new Date(msg?.created_at || msg?.when || 0).getTime();
