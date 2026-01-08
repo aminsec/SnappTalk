@@ -191,10 +191,26 @@ const resolveMessageSeen = (message, chat, currentUserId) => {
   }
   return Boolean(seenBy[currentUserId]);
 };
-const normalizeMessage = (message, chat, currentUserId) => ({
-  ...message,
-  seen: resolveMessageSeen(message, chat, currentUserId),
-});
+const normalizeMessage = (message, chat, currentUserId) => {
+  const existingReply = message?.reply_to
+    || message?.replyTo
+    || message?.reply_to_message;
+  const repliedTo = message?.replied_to;
+  const replyPreview = existingReply || (repliedTo
+    ? {
+        messageId: repliedTo?._id || repliedTo?.id || null,
+        content: repliedTo?.content || repliedTo?.text || '',
+        type: repliedTo?.type || 'text',
+        sender: repliedTo?.sender || repliedTo?.sender_id || repliedTo?.sender_name,
+      }
+    : null);
+
+  return {
+    ...message,
+    reply_to: replyPreview || message?.reply_to,
+    seen: resolveMessageSeen(message, chat, currentUserId),
+  };
+};
 
 const fileToBase64 = (file) => new Promise((resolve, reject) => {
   const reader = new FileReader();
@@ -1942,11 +1958,27 @@ function ChatsPage() {
       if (!conversationId || !messageId) return;
       const conversationIdStr = conversationId.toString();
       const isActive = activeConversationIdRef.current === conversationIdStr;
-      setMessages((prev) => prev.filter((m) => getMessageId(m) !== messageId));
+      const deletedIdStr = messageId.toString();
+      const stripReplyIfDeleted = (msg) => {
+        const reply = msg?.reply_to || msg?.replyTo || msg?.reply_to_message;
+        const replyId = reply?.messageId
+          || reply?.message_id
+          || reply?._id
+          || reply?.id;
+        if (!replyId || replyId.toString() !== deletedIdStr) return msg;
+        return { ...msg, reply_to: null };
+      };
+      setMessages((prev) =>
+        prev
+          .filter((m) => getMessageId(m) !== messageId)
+          .map(stripReplyIfDeleted)
+      );
       if (pendingMessagesRef.current[conversationIdStr]) {
         pendingMessagesRef.current[conversationIdStr] = pendingMessagesRef.current[
           conversationIdStr
-        ].filter((m) => getMessageId(m) !== messageId);
+        ]
+          .filter((m) => getMessageId(m) !== messageId)
+          .map(stripReplyIfDeleted);
       }
 
       if (!isActive && (unreadCountsRef.current[conversationIdStr] || 0) > 0) {
@@ -1975,6 +2007,21 @@ function ChatsPage() {
       if (!messageId) {
         return;
       }
+      const deletedIdStr = messageId.toString();
+      const stripReplyIfDeleted = (msg) => {
+        const reply = msg?.reply_to || msg?.replyTo || msg?.reply_to_message;
+        const replyId = reply?.messageId
+          || reply?.message_id
+          || reply?._id
+          || reply?.id;
+        if (!replyId || replyId.toString() !== deletedIdStr) return msg;
+        return { ...msg, reply_to: null };
+      };
+      setMessages((prev) => prev.map(stripReplyIfDeleted));
+      Object.keys(pendingMessagesRef.current || {}).forEach((convId) => {
+        pendingMessagesRef.current[convId] = (pendingMessagesRef.current[convId] || [])
+          .map(stripReplyIfDeleted);
+      });
       const pending = pendingDeleteRef.current.get(messageId.toString());
       const conversationIdStr = pending?.conversationId
         || payload?.conversation_id?.toString()
