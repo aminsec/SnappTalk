@@ -21,18 +21,53 @@ export async function getMessageById(messageId: ObjectId): Promise<[Message | nu
 export async function getConversationMessagesByLimitedDate(conversationId: ObjectId, deletedConversationDate: string, limit: number, offset: number): Promise<[Message[] | null, ErrorResponse | null]> {
     try {
         const messagesCollection: Collection<Message> = await getMessagesCollection();
-        const messages = await messagesCollection.find({
-            conversation_id: conversationId,
-            created_at: {
-                $gt: new Date(deletedConversationDate)
-            }
+        const messages = await messagesCollection.aggregate<Message>([
+            {
+                $match: {
+                  conversation_id: conversationId,
+                  created_at: {
+                        $gt: new Date(deletedConversationDate)
+                    }
+                }
+              },
+            
+              {
+                $sort: {
+                  created_at: -1,
+                  _id: -1           
+                }
+              },
+            
+              { $skip: offset },
+              { $limit: limit },
+            {
+              $lookup: {
+                from: "messages",
+                localField: "replied_to",
+                foreignField: "_id",
+                as: "replied_to_doc",
+                pipeline: [
+                  // Extracting needed fields
+                  {
+                    $project: {
+                      _id: 1,
+                      type: 1,
+                      content: 1,
+                    }
+                  }
+                ]
+              }
+            },
+            {
+              $addFields: {
+                replied_to: { $first: "$replied_to_doc" } // convert array -> single object
+              }
+            },
+            { $project: { replied_to_doc: 0 } }
+          ]).toArray();
 
-        }, {
-            limit: limit,
-            skip: offset
-        }).sort({ created_at: -1 }).toArray();
-
-        return [messages, null];
+          return [messages, null];
+          
     } catch (error) {
         console.log(error);
         const err: ErrorResponse = {message: "A system error occurred", state: "failed", type: "system_error"};

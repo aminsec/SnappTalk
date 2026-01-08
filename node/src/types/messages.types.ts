@@ -11,7 +11,7 @@ export interface Message {
     edited: Boolean,
     edited_at: Date,
     created_at: Date,
-    replied_to: ObjectId
+    replied_to: Object | null
 };
 
 export interface InsertMessage {
