@@ -23,6 +23,7 @@ export async function getUserConversations(userInfo: ProtectedUserInfo): Promise
             var contactId = (conversation.members[0]).toString() !== userInfo.id ? conversation.members[0].toString() : conversation.members[1].toString();
             //Attaching last messsage to contact
             const lastMessageId = conversation.last_message_id;
+
             const [lastMessage, error] = await getMessageById(lastMessageId);
             if(error || lastMessage === null) {
                 const err: ErrorResponse = {message: "message not found", state: "failed", type: "not_found"};
@@ -60,7 +61,7 @@ export async function getUserConversations(userInfo: ProtectedUserInfo): Promise
                         const err: ErrorResponse = {message: "message not found", state: "failed", type: "not_found"};
                         return [null, err];
                     }
-                    
+
                     conversation.unread_messages_count = unreadMessages;
                 }
             }

@@ -88,6 +88,13 @@ export async function handleMessageReply(socket: Socket, data: MessageReplyEVT) 
             return;
         }
 
+        //Setting the message as last message of conversation
+        const [lastMessageUpdated, updateError] = await updateConversationLastMessageId(new ObjectId(conversation_id), new ObjectId(insertedMessageId));
+        if(updateError){
+            socket.emit("error", {message: "Couldn't send the message"});
+            return;
+        }
+
         //Sending ack
         socket.emit("message:send:reply:ack", {message_id: insertedMessageId, conversation_id, track_id});
         socket.to(conversation_id).emit("message:receive:reply", {
