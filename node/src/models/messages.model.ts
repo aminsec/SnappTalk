@@ -9,7 +9,7 @@ export async function getMessagesCollection() {
             const connection = db.collection('messages');
             messagesCollection = connection;
         }
-
+            
         return messagesCollection;
     } catch (error) {
         console.error("Error connecting to messages collection:", error);

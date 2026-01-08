@@ -3,13 +3,13 @@ import { ErrorResponse } from "../types/response.types";
 import { getConversationsCollection } from "../models/conversatations.model";
 import { ProtectedUserInfo } from "../types/user.types";
 import { getUserInfoById } from "./account.services";
-import { ObjectId } from "mongodb";
+import { Collection, ObjectId } from "mongodb";
 import { whiteListConversations } from "../utils/operations";
 import { deleteConversationMessages, getMessageById, getUnreadMessagesCount } from "./messages.services";
 
 export async function getUserConversations(userInfo: ProtectedUserInfo): Promise<[Conversation[] | null, ErrorResponse | null]> {
     try {
-        const conversationsCollection  = await getConversationsCollection();
+        const conversationsCollection = await getConversationsCollection();
         const conversations: Conversation[] = await conversationsCollection.find(
             {members: 
                 {$in: [new ObjectId(userInfo.id)]}
@@ -56,6 +56,11 @@ export async function getUserConversations(userInfo: ProtectedUserInfo): Promise
 
                 if(contactUserInfo){
                     const [unreadMessages, err] = await getUnreadMessagesCount(userInfo.id.toString(), conversation._id);
+                    if(err || unreadMessages === null){
+                        const err: ErrorResponse = {message: "message not found", state: "failed", type: "not_found"};
+                        return [null, err];
+                    }
+                    
                     conversation.unread_messages_count = unreadMessages;
                 }
             }

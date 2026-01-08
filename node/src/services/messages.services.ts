@@ -1,15 +1,15 @@
-import { ObjectId } from "mongodb";
+import { Collection, ObjectId } from "mongodb";
 import { getMessagesCollection } from "../models/messages.model";
 import { ErrorResponse } from "../types/response.types";
 import { InsertMessage, Message } from "../types/messages.types";
 
 export async function getMessageById(messageId: ObjectId): Promise<[Message | null, ErrorResponse | null]> {
     try {
-        const messagesCollection = await getMessagesCollection();
+        const messagesCollection: Collection<Message> = await getMessagesCollection();
         const message = await messagesCollection.findOne({
             _id: messageId
         });
-    
+        
         return [message, null];
     } catch (error) {
         console.log(error);
@@ -20,7 +20,7 @@ export async function getMessageById(messageId: ObjectId): Promise<[Message | nu
 
 export async function getConversationMessagesByLimitedDate(conversationId: ObjectId, deletedConversationDate: string, limit: number, offset: number): Promise<[Message[] | null, ErrorResponse | null]> {
     try {
-        const messagesCollection = await getMessagesCollection();
+        const messagesCollection: Collection<Message> = await getMessagesCollection();
         const messages = await messagesCollection.find({
             conversation_id: conversationId,
             created_at: {
@@ -42,7 +42,7 @@ export async function getConversationMessagesByLimitedDate(conversationId: Objec
 
 export async function createNewMessage(data: InsertMessage): Promise<[ObjectId | null, ErrorResponse | null]> {
     try {
-        const messagesCollection = await getMessagesCollection();
+        const messagesCollection: Collection = await getMessagesCollection();
         const message = await messagesCollection.insertOne({
             conversation_id: data.conversation_id,
             sender: data.sender,
@@ -71,8 +71,8 @@ export async function createNewMessage(data: InsertMessage): Promise<[ObjectId |
 
 export async function seenMessageById(message_id: ObjectId, conversation_id: ObjectId, userid: string): Promise<[Boolean | null, ErrorResponse | null]> {
     try {
-        const messagesCollection = await getMessagesCollection();
-        const updateResult = messagesCollection.updateOne({
+        const messagesCollection: Collection = await getMessagesCollection();
+        const updateResult = await messagesCollection.updateOne({
             conversation_id,
             _id: message_id,
         }, {
@@ -81,7 +81,7 @@ export async function seenMessageById(message_id: ObjectId, conversation_id: Obj
             }
         });
     
-        if(updateResult.matchCount === 0){
+        if(updateResult.matchedCount === 0){
             const error: ErrorResponse = {state: "failed", message: "Coulnd't find message", type: "not_found"}; 
             return [null, error];
         }
@@ -95,9 +95,9 @@ export async function seenMessageById(message_id: ObjectId, conversation_id: Obj
     }
 };
 
-export async function getUnreadMessagesCount(userId: string, conversationId: ObjectId) {
+export async function getUnreadMessagesCount(userId: string, conversationId: ObjectId): Promise<[Number | null, ErrorResponse | null]> {
     try {
-        const messagesCollection = await getMessagesCollection();
+        const messagesCollection: Collection = await getMessagesCollection();
         const count = await messagesCollection.countDocuments({
           conversation_id: conversationId,
           sender: { $ne: new ObjectId(userId) },                 
@@ -114,7 +114,7 @@ export async function getUnreadMessagesCount(userId: string, conversationId: Obj
 
 export async function deleteConversationMessages(conversationId: ObjectId): Promise<[Boolean | null, ErrorResponse | null]> {
     try {
-        const messagesCollection = await getMessagesCollection();
+        const messagesCollection: Collection = await getMessagesCollection();
         const result = await messagesCollection.deleteMany({
             conversation_id: conversationId
         });
@@ -129,7 +129,7 @@ export async function deleteConversationMessages(conversationId: ObjectId): Prom
 
 export async function editMessageById(messageId: ObjectId, new_message: string): Promise<[Boolean | null, null | ErrorResponse]> {
     try {
-        const messagesCollection = await getMessagesCollection();
+        const messagesCollection: Collection = await getMessagesCollection();
         const result = await messagesCollection.updateOne({
             _id: messageId
         }, {
@@ -151,7 +151,7 @@ export async function editMessageById(messageId: ObjectId, new_message: string):
 
 export async function deleteMessageById(messageId: ObjectId): Promise<[Boolean | null, ErrorResponse | null]> {
     try {
-        const messagesCollection = await getMessagesCollection();
+        const messagesCollection: Collection = await getMessagesCollection();
         const result = await messagesCollection.deleteOne({
             _id: messageId
         });

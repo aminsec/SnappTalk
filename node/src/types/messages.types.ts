@@ -10,7 +10,7 @@ export interface Message {
     seen_by: Object,
     edited: Boolean,
     edited_at: Date,
-    created_at: string,
+    created_at: Date,
     replied_to: ObjectId
 };
 
