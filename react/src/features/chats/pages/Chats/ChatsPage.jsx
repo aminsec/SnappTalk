@@ -4338,32 +4338,6 @@ function ChatsPage() {
               </div>
             )}
 
-            {replyingToMessage && (
-              <div className={styles.replyBarRow}>
-                <div className={styles.replyBar}>
-                  <div className={styles.replyBarContent}>
-                    <p className={styles.replyBarTitle}>Replying to</p>
-                    <p className={styles.replyBarText}>
-                      {truncateMessage(
-                        replyingToMessage?.content
-                          || replyingToMessage?.text
-                          || getMessagePreviewText(replyingToMessage),
-                        60
-                      )}
-                    </p>
-                  </div>
-                  <button
-                    type="button"
-                    className={styles.replyBarClose}
-                    onClick={() => setReplyingToMessage(null)}
-                    aria-label="Cancel reply"
-                  >
-                    <FontAwesomeIcon icon={faXmark} />
-                  </button>
-                </div>
-              </div>
-            )}
-
             <div className={styles.inputBar}>
               <div className={styles.optionsMenuContainer} ref={optionsMenuRef}>
                 <button
@@ -4404,6 +4378,46 @@ function ChatsPage() {
                 title="Maximum file size is 5MB"
               />
               <div className={styles.composer}>
+                {replyingToMessage && (
+                  <div className={styles.replyBarRow}>
+                    <div className={styles.replyBar}>
+                      <div className={styles.replyBarMain}>
+                        <p className={styles.replyBarTitle}>
+                          Reply
+                          <span className={styles.replyBarName}>
+                            {(() => {
+                              const senderId = getSenderId(replyingToMessage)?.toString();
+                              if (senderId && senderId === user?.id?.toString()) return 'You';
+                              if (selectedChat?.type === 'pv') {
+                                return selectedChat?.contact_info?.username || 'User';
+                              }
+                              return replyingToMessage?.sender_info?.username
+                                || replyingToMessage?.sender_name
+                                || replyingToMessage?.sender_username
+                                || 'Member';
+                            })()}
+                          </span>
+                        </p>
+                        <p className={styles.replyBarText}>
+                          {truncateMessage(
+                            replyingToMessage?.content
+                              || replyingToMessage?.text
+                              || getMessagePreviewText(replyingToMessage),
+                            60
+                          )}
+                        </p>
+                      </div>
+                      <button
+                        type="button"
+                        className={styles.replyBarClose}
+                        onClick={() => setReplyingToMessage(null)}
+                        aria-label="Cancel reply"
+                      >
+                        <FontAwesomeIcon icon={faXmark} />
+                      </button>
+                    </div>
+                  </div>
+                )}
                 <textarea
                   className={styles.messageTextarea}
                   placeholder={editingMessage ? 'Edit message...' : 'Type a message...'}
