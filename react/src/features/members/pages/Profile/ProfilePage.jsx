@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faPaperPlane, faCalendarDays } from '@fortawesome/free-solid-svg-icons';
@@ -6,6 +6,7 @@ import toast from 'react-hot-toast';
 
 import { Sidebar, Button, ProfileAvatar } from '@/shared/components';
 import { useAuth } from '@/shared/state/useAuth';
+import { useSocket } from '@/shared/state/useSocket';
 
 import styles from './ProfilePage.module.css';
 
@@ -13,8 +14,10 @@ function ProfilePage() {
   const { userId } = useParams();
   const navigate = useNavigate();
   const { user } = useAuth();
+  const { socket } = useSocket();
   const [profile, setProfile] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
+  const statusOfflineTimerRef = useRef(null);
 
   useEffect(() => {
     if (!userId) {
@@ -57,6 +60,62 @@ function ProfilePage() {
       isActive = false;
     };
   }, [userId]);
+
+  useEffect(() => {
+    if (!socket || !userId) {
+      return;
+    }
+
+    const viewedUserId = userId.toString();
+
+    const handleStatusOnline = (payload) => {
+      const eventUserId = payload?.user_id?.toString();
+      if (!eventUserId || eventUserId !== viewedUserId) {
+        return;
+      }
+      if (statusOfflineTimerRef.current) {
+        clearTimeout(statusOfflineTimerRef.current);
+        statusOfflineTimerRef.current = null;
+      }
+      setProfile((prev) => {
+        if (!prev || prev.status === 'online') {
+          return prev;
+        }
+        return { ...prev, status: 'online' };
+      });
+    };
+
+    const handleStatusOffline = (payload) => {
+      const eventUserId = payload?.user_id?.toString();
+      if (!eventUserId || eventUserId !== viewedUserId) {
+        return;
+      }
+      if (statusOfflineTimerRef.current) {
+        clearTimeout(statusOfflineTimerRef.current);
+      }
+      statusOfflineTimerRef.current = setTimeout(() => {
+        setProfile((prev) => {
+          if (!prev || prev.status === 'offline') {
+            return prev;
+          }
+          return { ...prev, status: 'offline' };
+        });
+        statusOfflineTimerRef.current = null;
+      }, 5000);
+    };
+
+    socket.on('status:online', handleStatusOnline);
+    socket.on('status:offline', handleStatusOffline);
+
+    return () => {
+      socket.off('status:online', handleStatusOnline);
+      socket.off('status:offline', handleStatusOffline);
+      if (statusOfflineTimerRef.current) {
+        clearTimeout(statusOfflineTimerRef.current);
+        statusOfflineTimerRef.current = null;
+      }
+    };
+  }, [socket, userId]);
 
   const profileId = profile?._id || profile?.id;
   const isMe = user?.id && profileId && user.id.toString() === profileId.toString();
