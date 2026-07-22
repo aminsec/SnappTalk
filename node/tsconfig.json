@@ -8,6 +8,6 @@
     "esModuleInterop": true,
     "forceConsistentCasingInFileNames": true,
     "skipLibCheck": true,
-     "moduleResolution": "node",
+    "moduleResolution": "bundler"
   }
 }
