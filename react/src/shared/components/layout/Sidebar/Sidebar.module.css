@@ -172,3 +172,18 @@
     transition: none !important;
   }
 }
+
+/* ============================================
+   REMOVE LOAD ANIMATIONS
+   ============================================ */
+   .sidebar {
+    animation: none !important;
+}
+
+.navItems {
+    animation: none !important;
+}
+
+.bottomSection {
+    animation: none !important;
+}

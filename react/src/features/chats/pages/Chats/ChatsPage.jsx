@@ -20,6 +20,7 @@ import {
   faCircleExclamation,
   faMicrophone,
   faStop,
+  faArrowLeft,
 } from '@fortawesome/free-solid-svg-icons';
 import { faFaceSmile } from '@fortawesome/free-regular-svg-icons';
 import { Sidebar, Input, Button, ProfileAvatar } from '@/shared/components';
@@ -343,6 +344,7 @@ function ChatsPage() {
   const statusOfflineTimersRef = useRef({});
   const longPressTimeoutRef = useRef(null);
   const longPressTriggeredRef = useRef(false);
+  const [isSwitching, setIsSwitching] = useState(false);
   const messageContextMenuRef = useRef(null);
   const conversationAliasRef = useRef(new Map());
   const previousSelectedChatIdRef = useRef(null);
@@ -350,7 +352,8 @@ function ChatsPage() {
   const [unreadCounts, setUnreadCounts] = useState({});
   const unreadCountsRef = useRef({});
   const hasFetchedContactsRef = useRef(false);
-
+  // Mobile responsive states
+  const [isMobileChatOpen, setIsMobileChatOpen] = useState(false);
   const isAtBottomRef = useRef(false);
   const startConversationRef = useRef(null);
   const deleteTargetName = useMemo(() => {
@@ -392,6 +395,11 @@ function ChatsPage() {
         }, 1400);
       }, 350);
     }
+  }, []);
+
+  const handleSelectChat = useCallback((chat) => {
+    setSelectedChat(chat);
+    setIsMobileChatOpen(true);
   }, []);
 
   const setConversationAlias = useCallback((tempId, realId) => {
@@ -3703,12 +3711,18 @@ function ChatsPage() {
   const shouldHoldGroupMessages = isActiveGroup && missingSenderInfo;
   const isPreviewImage = selectedFile?.type?.startsWith('image/');
   const isPreviewVideo = selectedFile?.type?.startsWith('video/');
-
+  // Helper to format date like "28 July"
+  const formatDateSeparator = (dateString) => {
+    if (!dateString) return "";
+    const date = new Date(dateString);
+    return date.toLocaleDateString('en-US', { day: 'numeric', month: 'long' });
+  };
 
   return (
-    <div className={styles.chatsPageContainer}>
+    <div className={`${styles.chatsPageContainer} ${isMobileChatOpen ? styles.mobileChatOpen : ''}`}>  
+  
       <Sidebar className={styles.sidebar} />
-
+  
       <aside className={styles.chatListSidebar}>
         <div className={styles.searchContainer}>
           <Input
@@ -3747,7 +3761,7 @@ function ChatsPage() {
             Groups
           </button>
         </div>
-
+  
         <div className={styles.chatList}>
           {contacts.length === 0 ? (
             <div className={styles.emptyState}>
@@ -3789,7 +3803,7 @@ function ChatsPage() {
               const statusClass = contactStatus === 'online'
                 ? styles.statusDotOnline
                 : styles.statusDotOffline;
-
+  
               return (
                 <div
                   key={chatKey}
@@ -3799,7 +3813,7 @@ function ChatsPage() {
                       longPressTriggeredRef.current = false;
                       return;
                     }
-                    setSelectedChat(chat);
+                    handleSelectChat(chat);
                   }}
                   onContextMenu={(event) => {
                     event.preventDefault();
@@ -3900,7 +3914,7 @@ function ChatsPage() {
           <FontAwesomeIcon icon={faAddressBook} />
         </button>
       </aside>
-
+  
       <main
         className={`${styles.chatMain} ${hasWallpaper ? styles.chatMainWallpaper : ''}`}
         style={wallpaperStyle}
@@ -3908,6 +3922,15 @@ function ChatsPage() {
         {selectedChat ? (
           <>
             <div className={styles.chatHeader}>
+              {/* Mobile Back Button */}
+              <button
+                type="button"
+                className={styles.mobileBackButton}
+                onClick={() => setIsMobileChatOpen(false)}
+                aria-label="Back to chats"
+              >
+                <FontAwesomeIcon icon={faArrowLeft} />
+              </button>
               <div className={styles.UserStatus}>
                 <div className={`${styles.statusAvatar} ${styles.statusAvatarLarge}`}>
                   {selectedChat.type === "pv" ? (
@@ -4001,7 +4024,7 @@ function ChatsPage() {
                 )}
               </div>
             </div>
-
+  
             <div 
               className={styles.messagesContainer}
               ref={messagesContainerRef}
@@ -4044,18 +4067,22 @@ function ChatsPage() {
                 </div>
               )}
               <div className={styles.messagesWrapper}>
-                {!shouldHoldGroupMessages && visibleMessages.map((message, index) => {
-                  // Message detection: message.sender is an ObjectId that should match user.id
-                  const userId = user?.id; // User object uses 'id' not '_id'
-                  const username = user?.username;
+              {!shouldHoldGroupMessages && visibleMessages.map((message, index) => {
+                  // --- START NEW DATE SEPARATOR LOGIC ---
+                  const currentMsgDate = message.created_at || message.when;
+                  const prevMsgDate = index > 0 ? (visibleMessages[index - 1].created_at || visibleMessages[index - 1].when) : null;
                   
-                  // Convert both to strings for comparison (message.sender can be ObjectId or string)
+                  // Check if the day changed
+                  const currentDateObj = new Date(currentMsgDate).toDateString();
+                  const prevDateObj = prevMsgDate ? new Date(prevMsgDate).toDateString() : null;
+                  const showDateSeparator = !prevDateObj || currentDateObj !== prevDateObj;
+
+                  // --- EXISTING VARIABLE LOGIC (Keep exactly as you have it) ---
+                  const userId = user?.id;
+                  const username = user?.username;
                   const messageSenderId = message.sender?.toString() || message.sender;
                   const currentUserId = userId?.toString() || userId;
-                  
-                  // Primary check: compare sender ObjectId with user.id
                   const isMyMessage = messageSenderId === currentUserId ||
-                    // Fallback checks for different API response formats
                     message.sender === currentUserId ||
                     message.sender_id?.toString() === currentUserId ||
                     message.sender_id === currentUserId ||
@@ -4063,10 +4090,8 @@ function ChatsPage() {
                     message.user_id === currentUserId ||
                     message.from_user_id?.toString() === currentUserId ||
                     message.from_user_id === currentUserId ||
-                    // Username fallback (less reliable but included for compatibility)
                     message.sender === username ||
                     message.sender_name === username;
-                  
                   const messageId = message._id || message.id || `msg-${index}`;
                   const messageContent = message.content || message.text || '';
                   const messageTime = message.when || message.timestamp || message.created_at;
@@ -4087,8 +4112,6 @@ function ChatsPage() {
                     replyPreview?.content || replyPreview?.text || getMessagePreviewText(replyPreview),
                     80
                   );
-                  
-                  // Get sender info for group messages (received only)
                   const senderIdStr = messageSenderId;
                   const senderInfo = !isMyMessage && isGroupChat ? senderInfoCache[senderIdStr] : null;
                   const shouldShowSenderMeta = !isMyMessage && isGroupChat;
@@ -4102,220 +4125,218 @@ function ChatsPage() {
                   const senderAvatar = shouldShowSenderMeta
                     ? (senderInfo?.profile_pic || message.sender_info?.profile_pic || null)
                     : null;
-                  
                   const deliveryStatus = isMyMessage && isPrivateChat
                     ? (message?.status || 'sent')
                     : null;
-
                   const messageRenderKey = message?.client_id || messageId;
                   const messageAnimKey = (message?.client_id || messageId)?.toString();
+                  
+                  // --- RETURN JSX ---
                   return (
-                    <div
-                      key={messageRenderKey}
-                      className={`${
-                        styles.messageWrapper
-                      } ${
-                        isMyMessage ? styles.messageWrapperSent : styles.messageWrapperReceived
-                      } ${
-                        !isMyMessage && isGroupChat ? styles.messageWrapperGroup : ''
-                      } ${
-                        (messageAnimKey && animatedMessageIdsRef.current.has(messageAnimKey))
-                          || messageAnimKey === lastAnimatedMessageId
-                          ? styles.messageEnter
-                          : ''
-                      }`}
-                      ref={(el) => {
-                        const id = messageId?.toString();
-                        if (!id) return;
-                        if (el) {
-                          messageRefs.current.set(id, el);
-                        } else {
-                          messageRefs.current.delete(id);
-                        }
-                      }}
-                      onContextMenu={(e) => {
-                        e.preventDefault();
-                        setMessageContextMenu({
-                          x: e.clientX,
-                          y: e.clientY,
-                          message,
-                          isMyMessage,
-                        });
-                      }}
-                      onDoubleClick={() => handleReplyToMessage(message)}
-                    >
-                      {/* Avatar for received messages in groups - positioned on the left */}
-                      {shouldShowSenderMeta && (
-                        <div className={styles.messageAvatar}>
-                          <button
-                            type="button"
-                            className={styles.profileAvatarButton}
-                            onClick={() => {
-                              if (senderIdStr) {
-                                navigate(`/members/${senderIdStr}`);
-                              }
-                            }}
-                          >
-                            <ProfileAvatar
-                              src={senderAvatar}
-                              size={36}
-                              alt={senderName || 'Member'}
-                              borderWidth={0}
-                            />
-                          </button>
+                    <React.Fragment key={messageRenderKey}>
+                      {/* Render Date Separator if day changed */}
+                      {showDateSeparator && (
+                        <div className={styles.dateSeparator}>
+                          <span className={styles.dateSeparatorText}>
+                            {formatDateSeparator(currentMsgDate)}
+                          </span>
                         </div>
                       )}
-                      
+
                       <div
-                        className={`${styles.message} ${isMyMessage ? styles.sent : styles.received} ${
-                          shouldUseEmojiOnlyStyle ? styles.emojiOnly : ''
-                        } ${isMediaOnly ? styles.mediaOnly : ''}`}
-                        data-message-type={isMyMessage ? 'sent' : 'received'}
+                        className={`${
+                          styles.messageWrapper
+                        } ${
+                          isMyMessage ? styles.messageWrapperSent : styles.messageWrapperReceived
+                        } ${
+                          !isMyMessage && isGroupChat ? styles.messageWrapperGroup : ''
+                        } ${
+                          (messageAnimKey && animatedMessageIdsRef.current.has(messageAnimKey))
+                            || messageAnimKey === lastAnimatedMessageId
+                            ? styles.messageEnter
+                            : ''
+                        }`}
+                        ref={(el) => {
+                          const id = messageId?.toString();
+                          if (!id) return;
+                          if (el) {
+                            messageRefs.current.set(id, el);
+                          } else {
+                            messageRefs.current.delete(id);
+                          }
+                        }}
+                        onContextMenu={(e) => {
+                          e.preventDefault();
+                          setMessageContextMenu({
+                            x: e.clientX,
+                            y: e.clientY,
+                            message,
+                            isMyMessage,
+                          });
+                        }}
+                        onDoubleClick={() => handleReplyToMessage(message)}
                       >
-                        {replyPreview && (
-                          <div
-                            className={styles.replyPreview}
-                            role="button"
-                            tabIndex={0}
-                            onClick={() => scrollToMessage(replyPreview?.messageId || replyPreview?.message_id)}
-                            onKeyDown={(event) => {
-                              if (event.key === 'Enter') {
-                                scrollToMessage(replyPreview?.messageId || replyPreview?.message_id);
-                              }
-                            }}
-                          >
-                            <div className={styles.replyPreviewLine} />
-                            <div className={styles.replyPreviewContent}>
-                              <p className={styles.replyPreviewText}>
-                                {replyPreviewText}
-                              </p>
-                            </div>
-                          </div>
-                        )}
-                        {/* Username inside message bubble for group chats */}
                         {shouldShowSenderMeta && (
-                      <div className={styles.messageSenderName}>
+                          <div className={styles.messageAvatar}>
                             <button
                               type="button"
-                              className={styles.profileLinkInline}
+                              className={styles.profileAvatarButton}
                               onClick={() => {
-                                const senderId = messageSenderId;
-                                if (senderId) {
-                                  navigate(`/members/${senderId}`);
+                                if (senderIdStr) {
+                                  navigate(`/members/${senderIdStr}`);
                                 }
                               }}
                             >
-                              {senderName}
+                              <ProfileAvatar
+                                src={senderAvatar}
+                                size={36}
+                                alt={senderName || 'Member'}
+                                borderWidth={0}
+                              />
                             </button>
                           </div>
                         )}
-                        
-                        {isMedia && (resolvedMessageType === 'video') && (
-                          <video
-                            className={`${styles.messageMedia} ${styles.messageMediaVideo}`}
-                            controls
-                            preload="metadata"
-                            playsInline
-                            onLoadedMetadata={() => {
-                              if (isInitialLoadRef.current) {
-                                scrollToBottom();
-                              }
-                            }}
-                          >
-                            <source src={mediaUrl} type={message?.mime_type || 'video/mp4'} />
-                          </video>
-                        )}
-                        {isMedia && (resolvedMessageType === 'voice' || resolvedMessageType === 'audio') && (
-                          <audio
-                            className={`${styles.messageMedia} ${styles.messageMediaAudio}`}
-                            controls
-                            preload="metadata"
-                            src={mediaUrl}
-                          />
-                        )}
-                        {isMedia && !['video', 'voice', 'audio'].includes(resolvedMessageType) && (
-                          <img
-                            src={mediaUrl}
-                            alt={resolvedMessageType}
-                            className={`${styles.messageMedia} ${
-                              resolvedMessageType === 'sticker'
-                                ? styles.messageMediaSticker
-                                : resolvedMessageType === 'gif'
-                                  ? styles.messageMediaGif
-                                  : styles.messageMediaImage
-                            }`}
-                            onLoad={() => {
-                              if (isInitialLoadRef.current) {
-                                scrollToBottom();
-                              }
-                            }}
-                            onError={(e) => {
-                              e.target.style.display = 'none';
-                            }}
-                          />
-                        )}
-                        {messageContent && <p>{messageContent}</p>}
-                        <div className={styles.messageFooter}>
-                          {message?.edited && (
-                            <span className={styles.editedBadge}>edited</span>
+                        <div
+                          className={`${styles.message} ${isMyMessage ? styles.sent : styles.received} ${
+                            shouldUseEmojiOnlyStyle ? styles.emojiOnly : ''
+                          } ${isMediaOnly ? styles.mediaOnly : ''}`}
+                          data-message-type={isMyMessage ? 'sent' : 'received'}
+                        >
+                          {replyPreview && (
+                            <div
+                              className={styles.replyPreview}
+                              role="button"
+                              tabIndex={0}
+                              onClick={() => scrollToMessage(replyPreview?.messageId || replyPreview?.message_id)}
+                              onKeyDown={(event) => {
+                                if (event.key === 'Enter') {
+                                  scrollToMessage(replyPreview?.messageId || replyPreview?.message_id);
+                                }
+                              }}
+                            >
+                              <div className={styles.replyPreviewLine} />
+                              <div className={styles.replyPreviewContent}>
+                                <p className={styles.replyPreviewText}>
+                                  {replyPreviewText}
+                                </p>
+                              </div>
+                            </div>
                           )}
-                          <span className={styles.timestamp}>
-                            {convertISOtoLocal(messageTime)}
-                          </span>
-                          {isMyMessage && isPrivateChat && (
-                            <span className={styles.seenIcon}>
-                              {deliveryStatus === 'pending' && (
-                                <span className={styles.deliveryClock} title="Sending">
-                                  <span className={styles.deliveryClockFace} />
-                                  <span className={styles.deliveryClockHandShort} />
-                                  <span className={styles.deliveryClockHandLong} />
-                                </span>
-                              )}
-                              {deliveryStatus === 'error' && (
-                                <button
-                                  type="button"
-                                  className={styles.deliveryErrorButton}
-                                  onClick={() => handleResendMessage(message)}
-                                  title="Message failed. Click to resend."
-                                >
-                                  <FontAwesomeIcon icon={faCircleExclamation} />
-                                </button>
-                              )}
-                              {deliveryStatus === 'sent' && (
-                                <img
-                                  src={message?.seen ? seenIcon : sentIcon}
-                                  alt={message?.seen ? "Seen" : "Sent"}
-                                  className={styles.seenIconImage}
-                                />
-                              )}
+                          {shouldShowSenderMeta && (
+                            <div className={styles.messageSenderName}>
+                              <button
+                                type="button"
+                                className={styles.profileLinkInline}
+                                onClick={() => {
+                                  const senderId = messageSenderId;
+                                  if (senderId) {
+                                    navigate(`/members/${senderId}`);
+                                  }
+                                }}
+                              >
+                                {senderName}
+                              </button>
+                            </div>
+                          )}
+                          {isMedia && (resolvedMessageType === 'video') && (
+                            <video
+                              className={`${styles.messageMedia} ${styles.messageMediaVideo}`}
+                              controls
+                              preload="metadata"
+                              playsInline
+                              onLoadedMetadata={() => {
+                                if (isInitialLoadRef.current) {
+                                  scrollToBottom();
+                                }
+                              }}
+                            >
+                              <source src={mediaUrl} type={message?.mime_type || 'video/mp4'} />
+                            </video>
+                          )}
+                          {isMedia && (resolvedMessageType === 'voice' || resolvedMessageType === 'audio') && (
+                            <audio
+                              className={`${styles.messageMedia} ${styles.messageMediaAudio}`}
+                              controls
+                              preload="metadata"
+                              src={mediaUrl}
+                            />
+                          )}
+                          {isMedia && !['video', 'voice', 'audio'].includes(resolvedMessageType) && (
+                            <img
+                              src={mediaUrl}
+                              alt={resolvedMessageType}
+                              className={`${styles.messageMedia} ${
+                                resolvedMessageType === 'sticker'
+                                  ? styles.messageMediaSticker
+                                  : resolvedMessageType === 'gif'
+                                    ? styles.messageMediaGif
+                                    : styles.messageMediaImage
+                              }`}
+                              onLoad={() => {
+                                if (isInitialLoadRef.current) {
+                                  scrollToBottom();
+                                }
+                              }}
+                              onError={(e) => {
+                                e.target.style.display = 'none';
+                              }}
+                            />
+                          )}
+                          {/* ADDED dir="auto" HERE FOR RTL SUPPORT */}
+                          {messageContent && <p dir="auto">{messageContent}</p>} 
+                          <div className={styles.messageFooter}>
+                            {message?.edited && (
+                              <span className={styles.editedBadge}>edited</span>
+                            )}
+                            <span className={styles.timestamp}>
+                              {convertISOtoLocal(messageTime)}
                             </span>
-                          )}
+                            {isMyMessage && isPrivateChat && (
+                              <span className={styles.seenIcon}>
+                                {deliveryStatus === 'pending' && (
+                                  <span className={styles.deliveryClock} title="Sending">
+                                    <span className={styles.deliveryClockFace} />
+                                    <span className={styles.deliveryClockHandShort} />
+                                    <span className={styles.deliveryClockHandLong} />
+                                  </span>
+                                )}
+                                {deliveryStatus === 'error' && (
+                                  <button
+                                    type="button"
+                                    className={styles.deliveryErrorButton}
+                                    onClick={() => handleResendMessage(message)}
+                                    title="Message failed. Click to resend."
+                                  >
+                                    <FontAwesomeIcon icon={faCircleExclamation} />
+                                  </button>
+                                )}
+                                {deliveryStatus === 'sent' && (
+                                  <img
+                                    src={message?.seen ? seenIcon : sentIcon}
+                                    alt={message?.seen ? "Seen" : "Sent"}
+                                    className={styles.seenIconImage}
+                                  />
+                                )}
+                              </span>
+                            )}
+                          </div>
                         </div>
                       </div>
-                    </div>
+                    </React.Fragment>
                   );
                 })}
                 <div ref={messagesEndRef} />
               </div>
             </div>
-
+  
             {selectedFile && (
               <div className={styles.uploadProgress}>
                 <div className={styles.filePreviewContainer}>
                   {filePreview && isPreviewImage && (
-                    <img
-                      src={filePreview}
-                      alt="Preview"
-                      className={styles.filePreview}
-                    />
+                    <img src={filePreview} alt="Preview" className={styles.filePreview} />
                   )}
                   {filePreview && isPreviewVideo && (
-                    <video
-                      className={styles.filePreviewVideo}
-                      src={filePreview}
-                      muted
-                      playsInline
-                    />
+                    <video className={styles.filePreviewVideo} src={filePreview} muted playsInline />
                   )}
                   {(!filePreview || (!isPreviewImage && !isPreviewVideo)) && (
                     <div className={styles.filePreviewFallback}>
@@ -4337,12 +4358,23 @@ function ChatsPage() {
                 )}
               </div>
             )}
-
+  
             <div className={styles.inputBar}>
+            <input
+              id="file-upload"
+              type="file"
+              style={{ display: 'none' }}
+              onChange={handleFileChange}
+              accept="image/*,video/*,audio/*"
+              title="Maximum file size is 5MB"
+            />
+            
+            {/* Left Actions */}
+            <div className={styles.inputActionsLeft}>
               <div className={styles.optionsMenuContainer} ref={optionsMenuRef}>
                 <button
                   type="button"
-                  className={styles.optionsButton}
+                  className={styles.actionButton}
                   onClick={handleOptionsMenuToggle}
                   aria-label="More options"
                 >
@@ -4369,106 +4401,93 @@ function ChatsPage() {
                   </div>
                 )}
               </div>
-              <input
-                id="file-upload"
-                type="file"
-                style={{ display: 'none' }}
-                onChange={handleFileChange}
-                accept="image/*,video/*,audio/*"
-                title="Maximum file size is 5MB"
-              />
-              <div className={styles.composer}>
-                {replyingToMessage && (
-                  <div className={styles.replyBarRow}>
-                    <div className={styles.replyBar}>
-                      <div className={styles.replyBarMain}>
-                        <p className={styles.replyBarTitle}>
-                          Reply
-                          <span className={styles.replyBarName}>
-                            {(() => {
-                              const senderId = getSenderId(replyingToMessage)?.toString();
-                              if (senderId && senderId === user?.id?.toString()) return 'You';
-                              if (selectedChat?.type === 'pv') {
-                                return selectedChat?.contact_info?.username || 'User';
-                              }
-                              return replyingToMessage?.sender_info?.username
-                                || replyingToMessage?.sender_name
-                                || replyingToMessage?.sender_username
-                                || 'Member';
-                            })()}
-                          </span>
-                        </p>
-                        <p className={styles.replyBarText}>
-                          {truncateMessage(
-                            replyingToMessage?.content
-                              || replyingToMessage?.text
-                              || getMessagePreviewText(replyingToMessage),
-                            60
-                          )}
-                        </p>
-                      </div>
-                      <button
-                        type="button"
-                        className={styles.replyBarClose}
-                        onClick={() => setReplyingToMessage(null)}
-                        aria-label="Cancel reply"
-                      >
-                        <FontAwesomeIcon icon={faXmark} />
-                      </button>
+            </div>
+
+            {/* Composer (textarea + reply bar) */}
+            <div className={styles.composer}>
+              {replyingToMessage && (
+                <div className={styles.replyBar}>
+                  <div className={styles.replyBarIndicator} />
+                  <div className={styles.replyBarContent}>
+                    <div className={styles.replyBarHeader}>
+                      <span className={styles.replyBarLabel}>
+                        {(() => {
+                          const senderId = getSenderId(replyingToMessage)?.toString();
+                          if (senderId && senderId === user?.id?.toString()) return 'You';
+                          if (selectedChat?.type === 'pv') {
+                            return selectedChat?.contact_info?.username || 'User';
+                          }
+                          return replyingToMessage?.sender_info?.username
+                            || replyingToMessage?.sender_name
+                            || replyingToMessage?.sender_username
+                            || 'Member';
+                        })()}
+                      </span>
+                      {replyingToMessage?.type && replyingToMessage?.type !== 'text' && (
+                        <span className={styles.replyBarType}>
+                          {replyingToMessage.type === 'image' ? '📷 Photo' :
+                          replyingToMessage.type === 'video' ? '🎥 Video' :
+                          replyingToMessage.type === 'gif' ? '🎬 GIF' :
+                          replyingToMessage.type === 'sticker' ? '🎨 Sticker' :
+                          replyingToMessage.type === 'voice' ? '🎤 Voice' :
+                          replyingToMessage.type === 'audio' ? '🎵 Audio' :
+                          '📎 File'}
+                        </span>
+                      )}
                     </div>
+                    <p className={styles.replyBarText}>
+                      {truncateMessage(
+                        replyingToMessage?.content
+                          || replyingToMessage?.text
+                          || getMessagePreviewText(replyingToMessage),
+                        80
+                      )}
+                    </p>
                   </div>
-                )}
-                <textarea
-                  className={styles.messageTextarea}
-                  placeholder={editingMessage ? 'Edit message...' : 'Type a message...'}
-                  value={messageInput}
-                  onChange={(e) => setMessageInput(e.target.value)}
-                  rows={1}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter' && !e.shiftKey) {
-                      e.preventDefault();
-                      if (editingMessage) {
-                        if (messageInput.trim().length <= MAX_MESSAGE_LENGTH) {
-                          handleEditSubmit();
-                        }
-                      } else {
-                        if (messageInput.trim().length <= MAX_MESSAGE_LENGTH) {
-                          handleSendMessage();
-                        }
-                      }
-                    }
-                    if (e.key === 'Escape' && editingMessage) {
-                      e.preventDefault();
-                      handleEditCancel();
-                    }
-                  }}
-                />
-              </div>
-              {editingMessage && (
-                <>
                   <button
                     type="button"
-                    className={styles.sendButton}
-                    onClick={handleEditCancel}
-                    aria-label="Cancel edit"
+                    className={styles.replyBarClose}
+                    onClick={() => setReplyingToMessage(null)}
+                    aria-label="Cancel reply"
                   >
                     <FontAwesomeIcon icon={faXmark} />
                   </button>
-                  <button
-                    type="button"
-                    className={styles.sendButton}
-                    onClick={handleEditSubmit}
-                    aria-label="Save edit"
-                    disabled={messageInput.trim().length > MAX_MESSAGE_LENGTH}
-                  >
-                    <FontAwesomeIcon icon={faCheck} />
-                  </button>
-                </>
+                </div>
               )}
+              <textarea
+                className={styles.messageTextarea}
+                placeholder={editingMessage ? 'Edit message...' : 'Type a message...'}
+                value={messageInput}
+                onChange={(e) => setMessageInput(e.target.value)}
+                rows={1}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' && !e.shiftKey) {
+                    e.preventDefault();
+                    if (editingMessage) {
+                      if (messageInput.trim().length <= MAX_MESSAGE_LENGTH) {
+                        handleEditSubmit();
+                      }
+                    } else {
+                      if (messageInput.trim().length <= MAX_MESSAGE_LENGTH) {
+                        handleSendMessage();
+                      }
+                    }
+                  }
+                  if (e.key === 'Escape' && editingMessage) {
+                    e.preventDefault();
+                    handleEditCancel();
+                  }
+                }}
+              />
+            </div>
+
+            {/* Right Actions */}
+            <div className={styles.inputActionsRight}>
+              {/* Emoji Button */}
               <div className={styles.mediaPickerWrapper} ref={mediaPickerRef}>
                 <button
                   type="button"
-                  className={styles.mediaButton}
+                  className={styles.actionButton}
                   onClick={() => setIsMediaPickerOpen((prev) => !prev)}
                   aria-label="Open emojis, GIFs, and stickers"
                 >
@@ -4549,31 +4568,60 @@ function ChatsPage() {
                   </div>
                 )}
               </div>
+
+              {/* Recording Indicator */}
               {isRecording && (
                 <div className={styles.recordingIndicator}>
                   <span className={styles.recordingDot} />
                   <span className={styles.recordingTime}>{formatDuration(recordingDuration)}</span>
                 </div>
               )}
-              <button
-                type="button"
-                className={`${styles.recordButton} ${isRecording ? styles.recordButtonActive : ''}`}
-                onClick={isRecording ? stopRecording : startRecording}
-                aria-label={isRecording ? 'Stop recording' : 'Record voice'}
-              >
-                <FontAwesomeIcon icon={isRecording ? faStop : faMicrophone} />
-              </button>
+
+              {/* Edit Mode Buttons */}
+              {editingMessage && (
+                <>
+                  <button
+                    type="button"
+                    className={`${styles.actionButton} ${styles.editCancelButton}`}
+                    onClick={handleEditCancel}
+                    aria-label="Cancel edit"
+                  >
+                    <FontAwesomeIcon icon={faXmark} />
+                  </button>
+                  <button
+                    type="button"
+                    className={`${styles.actionButton} ${styles.editSaveButton}`}
+                    onClick={handleEditSubmit}
+                    aria-label="Save edit"
+                    disabled={messageInput.trim().length > MAX_MESSAGE_LENGTH}
+                  >
+                    <FontAwesomeIcon icon={faCheck} />
+                  </button>
+                </>
+              )}
+
+              {/* Record/Send Button */}
               {!editingMessage && (
-                <button
-                  type="button"
-                  className={styles.sendButton}
-                  onClick={handleSendMessage}
-                  disabled={messageInput.trim().length > MAX_MESSAGE_LENGTH}
-                >
-                  <img src={sendIcon} alt="Send" className={styles.sendIcon} />
-                </button>
+                <div className={`${styles.sendButtonWrapper} ${isSwitching ? (messageInput.trim() ? 'switching-in' : 'switching-out') : ''}`}>
+                  <button
+                    type="button"
+                    className={`${styles.actionButton} ${styles.primaryButton} ${isRecording ? styles.recordingActive : ''} ${messageInput.trim() ? styles.hasText : ''}`}
+                    onClick={isRecording ? stopRecording : (messageInput.trim() ? handleSendMessage : startRecording)}
+                    disabled={!isRecording && messageInput.trim().length > MAX_MESSAGE_LENGTH}
+                    aria-label={isRecording ? 'Stop recording' : (messageInput.trim() ? 'Send message' : 'Record voice')}
+                  >
+                    {isRecording ? (
+                      <FontAwesomeIcon icon={faStop} />
+                    ) : messageInput.trim() ? (
+                      <img src={sendIcon} alt="Send" className={styles.sendIcon} />
+                    ) : (
+                      <FontAwesomeIcon icon={faMicrophone} />
+                    )}
+                  </button>
+                </div>
               )}
             </div>
+          </div>
 
             {messageContextMenu && (
               <div
@@ -4590,7 +4638,6 @@ function ChatsPage() {
                   <FontAwesomeIcon icon={faReply} />
                   <span>Reply</span>
                 </button>
-
                 {messageContextMenu.isMyMessage && (
                   <button
                     type="button"
@@ -4607,7 +4654,6 @@ function ChatsPage() {
                     <span>Edit</span>
                   </button>
                 )}
-
                 {messageContextMenu.isMyMessage && (
                   <button
                     type="button"
@@ -4651,14 +4697,14 @@ function ChatsPage() {
             data-conversation-context-menu
             style={{ left: conversationContextMenu.x, top: conversationContextMenu.y }}
           >
-                <button
-                  type="button"
-                  className={styles.optionsMenuItem}
-                  onClick={() => handleOpenDeleteConversation(conversationContextMenu.conversation)}
-                >
-                  <FontAwesomeIcon icon={faTrash} />
-                  <span>Delete conversation</span>
-                </button>
+            <button
+              type="button"
+              className={styles.optionsMenuItem}
+              onClick={() => handleOpenDeleteConversation(conversationContextMenu.conversation)}
+            >
+              <FontAwesomeIcon icon={faTrash} />
+              <span>Delete conversation</span>
+            </button>
           </div>
         )}
         {deleteConfirm.open && (
@@ -4729,7 +4775,7 @@ function ChatsPage() {
           </div>
         )}
       </main>
-
+  
       <NewConversationModal
         isOpen={isNewConversationModalOpen}
         onClose={handleCloseModal}
