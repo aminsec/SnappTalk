@@ -1308,6 +1308,44 @@
     align-items: center;
 }
 
+/* ============================================
+   CHAT HEADER OPTIONS BUTTON (Three Dots)
+   ============================================ */
+   .optionsButton {
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    border: none;
+    background: transparent;
+    color: var(--text-muted);
+    font-size: 18px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background-color 0.2s ease, color 0.2s ease, transform 0.15s ease;
+    flex-shrink: 0;
+}
+
+.optionsButton:hover {
+    background-color: var(--item-hover);
+    color: var(--text-main);
+}
+
+.optionsButton:active {
+    transform: scale(0.92);
+}
+
+/* Fix the dropdown positioning so it opens downwards */
+.optionsMenuDown {
+    top: calc(100% + 8px); /* Push it below the button */
+    right: 0; /* Align it to the right edge of the button */
+    left: auto;
+    bottom: auto;
+    transform: none;
+    min-width: 200px;
+}
+
 .optionsMenuItem {
     width: 100%;
     display: flex;
