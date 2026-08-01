@@ -1,32 +1,16 @@
-import { ObjectId } from "mongodb";
+import { Collection, ObjectId } from "mongodb";
 import { getMessagesCollection } from "../models/messages.model";
 import { ErrorResponse } from "../types/response.types";
-import { Message } from "../types/messages.types";
+import { InsertMessage, Message } from "../types/messages.types";
 
-export async function getMessageById(messageId: ObjectId): Promise<Message> {
-    const messagesCollection = await getMessagesCollection();
-    const message = await messagesCollection.findOne({
-        _id: messageId
-    });
-
-    return message;
-};
-
-export async function getConversationMessagesByLimitedDate(conversationId: ObjectId, deletedConversationDate: string, limit: number, offset: number): Promise<[Message[] | null, ErrorResponse | null]> {
+export async function getMessageById(messageId: ObjectId): Promise<[Message | null, ErrorResponse | null]> {
     try {
-        const messagesCollection = await getMessagesCollection();
-        const messages = await messagesCollection.find({
-            conversation_id: conversationId,
-            created_at: {
-                $gt: new Date(deletedConversationDate)
-            }
-
-        }, {
-            limit: limit,
-            skip: offset
-        }).sort({ created_at: -1 }).toArray();
-
-        return [messages, null];
+        const messagesCollection: Collection<Message> = await getMessagesCollection();
+        const message = await messagesCollection.findOne({
+            _id: messageId
+        });
+        
+        return [message, null];
     } catch (error) {
         console.log(error);
         const err: ErrorResponse = {message: "A system error occurred", state: "failed", type: "system_error"};
@@ -34,18 +18,76 @@ export async function getConversationMessagesByLimitedDate(conversationId: Objec
     }
 };
 
-export async function createNewMessage(conversationId: ObjectId, sender: ObjectId, type: string, content: string, attachments: string[]): Promise<[ObjectId | null, ErrorResponse | null]> {
+export async function getConversationMessagesByLimitedDate(conversationId: ObjectId, deletedConversationDate: string, limit: number, offset: number): Promise<[Message[] | null, ErrorResponse | null]> {
     try {
-        const messagesCollection = await getMessagesCollection();
+        const messagesCollection: Collection<Message> = await getMessagesCollection();
+        const messages = await messagesCollection.aggregate<Message>([
+            {
+                $match: {
+                  conversation_id: conversationId,
+                  created_at: {
+                        $gt: new Date(deletedConversationDate)
+                    }
+                }
+              },
+            
+              {
+                $sort: {
+                  created_at: -1,
+                  _id: -1           
+                }
+              },
+            
+              { $skip: offset },
+              { $limit: limit },
+            {
+              $lookup: {
+                from: "messages",
+                localField: "replied_to",
+                foreignField: "_id",
+                as: "replied_to_doc",
+                pipeline: [
+                  // Extracting needed fields
+                  {
+                    $project: {
+                      _id: 1,
+                      type: 1,
+                      content: 1,
+                    }
+                  }
+                ]
+              }
+            },
+            {
+              $addFields: {
+                replied_to: { $first: "$replied_to_doc" } // convert array -> single object
+              }
+            },
+            { $project: { replied_to_doc: 0 } }
+          ]).toArray();
+
+          return [messages, null];
+          
+    } catch (error) {
+        console.log(error);
+        const err: ErrorResponse = {message: "A system error occurred", state: "failed", type: "system_error"};
+        return [null, err];
+    }
+};
+
+export async function createNewMessage(data: InsertMessage): Promise<[ObjectId | null, ErrorResponse | null]> {
+    try {
+        const messagesCollection: Collection = await getMessagesCollection();
         const message = await messagesCollection.insertOne({
-            conversation_id: conversationId,
-            sender: sender,
-            type: type,
-            content: content,
-            attachments: attachments,
-            seen_by: {[sender.toString()]: new Date()},
+            conversation_id: data.conversation_id,
+            sender: data.sender,
+            type: data.type,
+            content: data.content,
+            attachments: data.attachments,
+            seen_by: {[data.sender.toString()]: new Date()},
             edited: false,
-            created_at: new Date()
+            created_at: new Date(),
+            replied_to: data.replied_to
         });
 
         if(message.acknowledged === true){
@@ -64,8 +106,8 @@ export async function createNewMessage(conversationId: ObjectId, sender: ObjectI
 
 export async function seenMessageById(message_id: ObjectId, conversation_id: ObjectId, userid: string): Promise<[Boolean | null, ErrorResponse | null]> {
     try {
-        const messagesCollection = await getMessagesCollection();
-        const updateResult = messagesCollection.updateOne({
+        const messagesCollection: Collection = await getMessagesCollection();
+        const updateResult = await messagesCollection.updateOne({
             conversation_id,
             _id: message_id,
         }, {
@@ -74,7 +116,7 @@ export async function seenMessageById(message_id: ObjectId, conversation_id: Obj
             }
         });
     
-        if(updateResult.matchCount === 0){
+        if(updateResult.matchedCount === 0){
             const error: ErrorResponse = {state: "failed", message: "Coulnd't find message", type: "not_found"}; 
             return [null, error];
         }
@@ -88,9 +130,9 @@ export async function seenMessageById(message_id: ObjectId, conversation_id: Obj
     }
 };
 
-export async function getUnreadMessagesCount(userId: string, conversationId: ObjectId) {
+export async function getUnreadMessagesCount(userId: string, conversationId: ObjectId): Promise<[Number | null, ErrorResponse | null]> {
     try {
-        const messagesCollection = await getMessagesCollection();
+        const messagesCollection: Collection = await getMessagesCollection();
         const count = await messagesCollection.countDocuments({
           conversation_id: conversationId,
           sender: { $ne: new ObjectId(userId) },                 
@@ -107,7 +149,7 @@ export async function getUnreadMessagesCount(userId: string, conversationId: Obj
 
 export async function deleteConversationMessages(conversationId: ObjectId): Promise<[Boolean | null, ErrorResponse | null]> {
     try {
-        const messagesCollection = await getMessagesCollection();
+        const messagesCollection: Collection = await getMessagesCollection();
         const result = await messagesCollection.deleteMany({
             conversation_id: conversationId
         });
@@ -122,7 +164,7 @@ export async function deleteConversationMessages(conversationId: ObjectId): Prom
 
 export async function editMessageById(messageId: ObjectId, new_message: string): Promise<[Boolean | null, null | ErrorResponse]> {
     try {
-        const messagesCollection = await getMessagesCollection();
+        const messagesCollection: Collection = await getMessagesCollection();
         const result = await messagesCollection.updateOne({
             _id: messageId
         }, {
@@ -144,7 +186,7 @@ export async function editMessageById(messageId: ObjectId, new_message: string):
 
 export async function deleteMessageById(messageId: ObjectId): Promise<[Boolean | null, ErrorResponse | null]> {
     try {
-        const messagesCollection = await getMessagesCollection();
+        const messagesCollection: Collection = await getMessagesCollection();
         const result = await messagesCollection.deleteOne({
             _id: messageId
         });

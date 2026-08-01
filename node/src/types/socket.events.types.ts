@@ -17,6 +17,12 @@ export interface MessageSendEVT {
     track_id: string
 };
 
+export interface MessageReplyEVT {
+    conversation_id: string
+    message_text: string
+    reply_to: string
+};
+
 export interface MessageSeenEVT {
     conversation_id: string,
     message_id: string

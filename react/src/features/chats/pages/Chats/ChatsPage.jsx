@@ -20,9 +20,11 @@ import {
   faCircleExclamation,
   faMicrophone,
   faStop,
+  faArrowLeft,
+  faBars,
 } from '@fortawesome/free-solid-svg-icons';
 import { faFaceSmile } from '@fortawesome/free-regular-svg-icons';
-import { Sidebar, Input, Button, ProfileAvatar } from '@/shared/components';
+import { Sidebar, MobileMenu, Input, Button, ProfileAvatar } from '@/shared/components';
 import { useAuth } from '@/shared/state/useAuth';
 import toast from 'react-hot-toast';
 import { useSocket } from '@/shared/state/useSocket';
@@ -191,10 +193,26 @@ const resolveMessageSeen = (message, chat, currentUserId) => {
   }
   return Boolean(seenBy[currentUserId]);
 };
-const normalizeMessage = (message, chat, currentUserId) => ({
-  ...message,
-  seen: resolveMessageSeen(message, chat, currentUserId),
-});
+const normalizeMessage = (message, chat, currentUserId) => {
+  const existingReply = message?.reply_to
+    || message?.replyTo
+    || message?.reply_to_message;
+  const repliedTo = message?.replied_to;
+  const replyPreview = existingReply || (repliedTo
+    ? {
+        messageId: repliedTo?._id || repliedTo?.id || null,
+        content: repliedTo?.content || repliedTo?.text || '',
+        type: repliedTo?.type || 'text',
+        sender: repliedTo?.sender || repliedTo?.sender_id || repliedTo?.sender_name,
+      }
+    : null);
+
+  return {
+    ...message,
+    reply_to: replyPreview || message?.reply_to,
+    seen: resolveMessageSeen(message, chat, currentUserId),
+  };
+};
 
 const fileToBase64 = (file) => new Promise((resolve, reject) => {
   const reader = new FileReader();
@@ -268,9 +286,12 @@ function ChatsPage() {
   const [activeTab, setActiveTab] = useState('all');
   const [isOptionsMenuOpen, setIsOptionsMenuOpen] = useState(false);
   const [isChatMenuOpen, setIsChatMenuOpen] = useState(false);
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [deleteConfirm, setDeleteConfirm] = useState({ open: false, conversationId: null });
   const [isDeletingConversation, setIsDeletingConversation] = useState(false);
   const [deleteForEveryone, setDeleteForEveryone] = useState(false);
+  const [messageDeleteConfirm, setMessageDeleteConfirm] = useState({ open: false, message: null });
+  const [deleteMessageForEveryone, setDeleteMessageForEveryone] = useState(false);
   const [conversationContextMenu, setConversationContextMenu] = useState(null);
   const [isMediaPickerOpen, setIsMediaPickerOpen] = useState(false);
   const [mediaTab, setMediaTab] = useState('gifs');
@@ -312,6 +333,7 @@ function ChatsPage() {
   const pendingPvRef = useRef(null);
   const pendingMessagesRef = useRef({});
   const pendingSendMapRef = useRef({});
+  const pendingReplyMapRef = useRef({});
   const pendingAckTimersRef = useRef({});
   const recentReceiveRef = useRef({});
   const seenSentRef = useRef({});
@@ -326,6 +348,7 @@ function ChatsPage() {
   const statusOfflineTimersRef = useRef({});
   const longPressTimeoutRef = useRef(null);
   const longPressTriggeredRef = useRef(false);
+  const [isSwitching, setIsSwitching] = useState(false);
   const messageContextMenuRef = useRef(null);
   const conversationAliasRef = useRef(new Map());
   const previousSelectedChatIdRef = useRef(null);
@@ -333,7 +356,13 @@ function ChatsPage() {
   const [unreadCounts, setUnreadCounts] = useState({});
   const unreadCountsRef = useRef({});
   const hasFetchedContactsRef = useRef(false);
-
+  // Mobile responsive states
+  const [isMobileChatOpen, setIsMobileChatOpen] = useState(() => {
+    // If arriving via a deep link (startUser), open the chat pane immediately
+    // so it doesn't slide in from the right on first render.
+    const params = new URLSearchParams(window.location.search);
+    return Boolean(params.get('startUser'));
+  });
   const isAtBottomRef = useRef(false);
   const startConversationRef = useRef(null);
   const deleteTargetName = useMemo(() => {
@@ -375,6 +404,11 @@ function ChatsPage() {
         }, 1400);
       }, 350);
     }
+  }, []);
+
+  const handleSelectChat = useCallback((chat) => {
+    setSelectedChat(chat);
+    setIsMobileChatOpen(true);
   }, []);
 
   const setConversationAlias = useCallback((tempId, realId) => {
@@ -447,20 +481,38 @@ function ChatsPage() {
     messageAnimationTimeoutRef.current = setTimeout(() => {
       setLastAnimatedMessageId(null);
     }, 600);
-    pendingSendMapRef.current[optimisticId] = {
-      tempId: optimisticId,
-      conversationId: conversationId.toString(),
-    };
-    if (pendingAckTimersRef.current[optimisticId]) {
-      clearTimeout(pendingAckTimersRef.current[optimisticId]);
+    if (replyTo) {
+      pendingReplyMapRef.current[optimisticId] = {
+        tempId: optimisticId,
+        conversationId: conversationId.toString(),
+        replyToId: replyTo.messageId,
+      };
+      if (pendingAckTimersRef.current[optimisticId]) {
+        clearTimeout(pendingAckTimersRef.current[optimisticId]);
+      }
+      pendingAckTimersRef.current[optimisticId] = setTimeout(() => {
+        setMessages((prev) =>
+          prev.map((m) =>
+            getMessageId(m) === optimisticId ? { ...m, status: 'error' } : m
+          )
+        );
+      }, 60000);
+    } else {
+      pendingSendMapRef.current[optimisticId] = {
+        tempId: optimisticId,
+        conversationId: conversationId.toString(),
+      };
+      if (pendingAckTimersRef.current[optimisticId]) {
+        clearTimeout(pendingAckTimersRef.current[optimisticId]);
+      }
+      pendingAckTimersRef.current[optimisticId] = setTimeout(() => {
+        setMessages((prev) =>
+          prev.map((m) =>
+            getMessageId(m) === optimisticId ? { ...m, status: 'error' } : m
+          )
+        );
+      }, 60000);
     }
-    pendingAckTimersRef.current[optimisticId] = setTimeout(() => {
-      setMessages((prev) =>
-        prev.map((m) =>
-          getMessageId(m) === optimisticId ? { ...m, status: 'error' } : m
-        )
-      );
-    }, 60000);
 
     const conversationIdStr = conversationId.toString();
     setContacts((prev) => {
@@ -576,14 +628,26 @@ function ChatsPage() {
         return;
       }
 
-      socket.emit(
-        SOCKET_EVENTS.MESSAGE_SEND,
-        {
-          conversation_id: conversationId,
-          message_text: content,
-          track_id: optimisticId,
-        }
-      );
+      if (replyTo) {
+        socket.emit(
+          SOCKET_EVENTS.MESSAGE_SEND_REPLY,
+          {
+            conversation_id: conversationId.toString(),
+            message_text: content,
+            reply_to: replyTo.messageId,
+            track_id: optimisticId,
+          }
+        );
+      } else {
+        socket.emit(
+          SOCKET_EVENTS.MESSAGE_SEND,
+          {
+            conversation_id: conversationId,
+            message_text: content,
+            track_id: optimisticId,
+          }
+        );
+      }
     } catch (err) {
       console.error('Failed to emit socket message:', err);
       toast.error('Unable to send message right now.');
@@ -642,7 +706,7 @@ function ChatsPage() {
   }, []);
 
   const performDeleteMessage = useCallback(
-    (message) => {
+    (message, scope = 'me') => {
       const messageId = getMessageId(message);
       if (!messageId) return;
 
@@ -679,6 +743,7 @@ function ChatsPage() {
 
       socket.emit(SOCKET_EVENTS.MESSAGE_DELETE, {
         message_id: messageId,
+        delete_for: scope,
       });
     },
     [selectedChat, socket]
@@ -709,11 +774,29 @@ function ChatsPage() {
         return;
       }
 
-      performDeleteMessage(message);
+      // Ask the user whether to delete for themselves or for everyone
+      setMessageDeleteConfirm({ open: true, message });
+      setDeleteMessageForEveryone(false);
       setMessageContextMenu(null);
     },
-    [performDeleteMessage]
+    []
   );
+
+  const handleConfirmDeleteMessage = useCallback(() => {
+    if (messageDeleteConfirm?.message) {
+      performDeleteMessage(
+        messageDeleteConfirm.message,
+        deleteMessageForEveryone ? 'all' : 'me'
+      );
+    }
+    setMessageDeleteConfirm({ open: false, message: null });
+    setDeleteMessageForEveryone(false);
+  }, [messageDeleteConfirm, deleteMessageForEveryone, performDeleteMessage]);
+
+  const handleCancelDeleteMessage = useCallback(() => {
+    setMessageDeleteConfirm({ open: false, message: null });
+    setDeleteMessageForEveryone(false);
+  }, []);
 
   const handleConfirmDeleteLastMessage = useCallback(() => {
     if (deleteLastMessageAlert?.message) {
@@ -745,33 +828,65 @@ function ChatsPage() {
     }
 
     const messageId = getMessageId(message);
+    const replyToId = message?.reply_to?.messageId
+      || message?.reply_to?.message_id
+      || message?.reply_to
+      || message?.replyTo?.messageId
+      || null;
     if (messageId) {
       setMessages((prev) =>
         prev.map((m) =>
           getMessageId(m) === messageId ? { ...m, status: 'pending' } : m
         )
       );
-      pendingSendMapRef.current[messageId] = {
-        tempId: messageId,
-        conversationId: conversationId.toString(),
-      };
-      if (pendingAckTimersRef.current[messageId]) {
-        clearTimeout(pendingAckTimersRef.current[messageId]);
+      if (replyToId) {
+        pendingReplyMapRef.current[messageId] = {
+          tempId: messageId,
+          conversationId: conversationId.toString(),
+          replyToId,
+        };
+        if (pendingAckTimersRef.current[messageId]) {
+          clearTimeout(pendingAckTimersRef.current[messageId]);
+        }
+        pendingAckTimersRef.current[messageId] = setTimeout(() => {
+          setMessages((prev) =>
+            prev.map((m) =>
+              getMessageId(m) === messageId ? { ...m, status: 'error' } : m
+            )
+          );
+        }, 60000);
+      } else {
+        pendingSendMapRef.current[messageId] = {
+          tempId: messageId,
+          conversationId: conversationId.toString(),
+        };
+        if (pendingAckTimersRef.current[messageId]) {
+          clearTimeout(pendingAckTimersRef.current[messageId]);
+        }
+        pendingAckTimersRef.current[messageId] = setTimeout(() => {
+          setMessages((prev) =>
+            prev.map((m) =>
+              getMessageId(m) === messageId ? { ...m, status: 'error' } : m
+            )
+          );
+        }, 60000);
       }
-      pendingAckTimersRef.current[messageId] = setTimeout(() => {
-        setMessages((prev) =>
-          prev.map((m) =>
-            getMessageId(m) === messageId ? { ...m, status: 'error' } : m
-          )
-        );
-      }, 60000);
     }
 
-    socket.emit(SOCKET_EVENTS.MESSAGE_SEND, {
-      conversation_id: conversationId,
-      message_text: content,
-      track_id: messageId,
-    });
+    if (replyToId) {
+      socket.emit(SOCKET_EVENTS.MESSAGE_SEND_REPLY, {
+        conversation_id: conversationId.toString(),
+        message_text: content,
+        reply_to: replyToId,
+        track_id: messageId,
+      });
+    } else {
+      socket.emit(SOCKET_EVENTS.MESSAGE_SEND, {
+        conversation_id: conversationId,
+        message_text: content,
+        track_id: messageId,
+      });
+    }
   }, [socket]);
 
   const handleOpenDeleteConversation = useCallback((conversationOverride = null) => {
@@ -1338,6 +1453,191 @@ function ChatsPage() {
       );
     };
 
+    const resolveReplyPreview = (replyId) => {
+      if (!replyId) return null;
+      const replyIdStr = replyId.toString();
+      const match = messagesRef.current.find(
+        (m) => getMessageId(m)?.toString() === replyIdStr
+      );
+      if (!match) {
+        return { messageId: replyIdStr };
+      }
+      return {
+        messageId: replyIdStr,
+        content: match?.content || match?.text || '',
+        sender: match?.sender,
+      };
+    };
+
+    const handleMessageSendReplyAck = (payload) => {
+      const messageId = payload?.message_id || payload?.messageId;
+      const trackId = payload?.track_id || payload?.trackId;
+      if (!messageId || !trackId) return;
+      const pending = pendingReplyMapRef.current[trackId];
+      if (!pending?.tempId) return;
+      delete pendingReplyMapRef.current[trackId];
+      if (pendingAckTimersRef.current[pending.tempId]) {
+        clearTimeout(pendingAckTimersRef.current[pending.tempId]);
+        delete pendingAckTimersRef.current[pending.tempId];
+      }
+      setMessages((prev) =>
+        prev.map((m) => {
+          const mid = getMessageId(m);
+          if (mid === pending.tempId) {
+            return {
+              ...m,
+              _id: messageId,
+              id: messageId,
+              status: 'sent',
+            };
+          }
+          return m;
+        })
+      );
+      setContacts((prev) =>
+        prev.map((chat) => {
+          const chatId = getConversationId(chat)?.toString();
+          if (chatId !== pending.conversationId) return chat;
+          const lastMessageId = chat?.last_message?.message_id;
+          if (lastMessageId && lastMessageId === pending.tempId) {
+            return {
+              ...chat,
+              last_message: {
+                ...chat.last_message,
+                message_id: messageId,
+              },
+            };
+          }
+          return chat;
+        })
+      );
+    };
+
+    const handleMessageSendReplyError = (payload) => {
+      const message = payload?.message || payload?.error || 'Unable to send reply.';
+      const trackId = payload?.track_id || payload?.trackId;
+      toast.error(message);
+      if (!trackId) return;
+      const pending = pendingReplyMapRef.current[trackId];
+      if (!pending?.tempId) return;
+      delete pendingReplyMapRef.current[trackId];
+      if (pendingAckTimersRef.current[pending.tempId]) {
+        clearTimeout(pendingAckTimersRef.current[pending.tempId]);
+        delete pendingAckTimersRef.current[pending.tempId];
+      }
+      setMessages((prev) =>
+        prev.map((m) =>
+          getMessageId(m) === pending.tempId ? { ...m, status: 'error' } : m
+        )
+      );
+    };
+
+    const handleMessageReceiveReply = (payload) => {
+      const conversationId = payload?.conversation_id || payload?.conversationId;
+      const messageText = payload?.message_text || payload?.message || '';
+      const replyToId = payload?.replied_to || payload?.reply_to;
+      if (!conversationId || !messageText) {
+        return;
+      }
+      const conversationIdStr = conversationId?.toString();
+      const messageId = payload?.message_id || payload?.messageId;
+      const signature = messageId ? `id:${messageId}` : '';
+      if (hasRecentReceive(conversationIdStr, signature)) {
+        return;
+      }
+      storeRecentReceive(conversationIdStr, signature);
+
+      const senderInfo = payload?.sender_info || payload?.senderInfo || null;
+      const messageSender = senderInfo?._id
+        || senderInfo?.id
+        || payload?.sender_id
+        || payload?.sender
+        || payload?.from_user_id
+        || payload?.user_id
+        || null;
+      const messageWhen = payload?.when
+        ? new Date(payload.when).toISOString()
+        : new Date().toISOString();
+
+      const replyPreview = resolveReplyPreview(replyToId);
+      const resolvedMessageId = messageId || `receive-${Date.now()}`;
+      const message = {
+        _id: resolvedMessageId,
+        id: resolvedMessageId,
+        conversation_id: conversationId,
+        sender: messageSender,
+        type: 'text',
+        content: messageText,
+        created_at: messageWhen,
+        edited: false,
+        reply_to: replyPreview,
+        sender_info: senderInfo || undefined,
+      };
+
+      pendingMessagesRef.current[conversationIdStr] = [
+        ...(pendingMessagesRef.current[conversationIdStr] || []),
+        message,
+      ];
+
+      const selectedConversationId = getConversationId(selectedChatRef.current);
+      const selectedConversationIdStr = selectedConversationId?.toString();
+      const isActiveConversation = selectedConversationIdStr
+        && selectedConversationIdStr === conversationIdStr;
+      const existsInList = contactsRef.current.some(
+        (c) => getConversationId(c)?.toString() === conversationIdStr
+      );
+
+      if (!existsInList) {
+        setUnreadCount(conversationIdStr, (count) => count + 1);
+        refreshContacts();
+        return;
+      }
+
+      setContacts((prev) => {
+        const next = [...prev];
+        const idx = next.findIndex(
+          (c) => getConversationId(c)?.toString() === conversationIdStr
+        );
+        if (idx === -1) return prev;
+        const chat = next[idx];
+        const currentUnread = chat?.unread_messages_count ?? chat?.unread_count ?? 0;
+        const nextUnread = isActiveConversation ? 0 : currentUnread + 1;
+        const senderUsername = senderInfo?.username
+          || payload?.senderUsername
+          || payload?.sender_name
+          || chat?.last_message?.sender
+          || '';
+        next[idx] = {
+          ...chat,
+          last_message: {
+            content: messageText,
+            type: 'text',
+            sender: senderUsername,
+            when: messageWhen,
+            message_id: resolvedMessageId,
+            sender_id: messageSender || undefined,
+          },
+          unread_messages_count: nextUnread,
+        };
+
+        const [moved] = next.splice(idx, 1);
+        next.unshift(moved);
+        return next;
+      });
+
+      if (isActiveConversation) {
+        setMessagesConversationId(conversationIdStr);
+        animatedMessageIdsRef.current.add(resolvedMessageId);
+        flushPendingMessages(conversationIdStr);
+        if (isNearBottomRef.current) {
+          shouldAutoScrollRef.current = true;
+        }
+        setUnreadCount(conversationIdStr, 0);
+      } else {
+        setUnreadCount(conversationIdStr, (count) => count + 1);
+      }
+    };
+
     const handleMessageSendError = (payload) => {
       const trackId = payload?.track_id || payload?.trackId;
       const errorMessage = payload?.message || payload?.error || '';
@@ -1694,11 +1994,27 @@ function ChatsPage() {
       if (!conversationId || !messageId) return;
       const conversationIdStr = conversationId.toString();
       const isActive = activeConversationIdRef.current === conversationIdStr;
-      setMessages((prev) => prev.filter((m) => getMessageId(m) !== messageId));
+      const deletedIdStr = messageId.toString();
+      const stripReplyIfDeleted = (msg) => {
+        const reply = msg?.reply_to || msg?.replyTo || msg?.reply_to_message;
+        const replyId = reply?.messageId
+          || reply?.message_id
+          || reply?._id
+          || reply?.id;
+        if (!replyId || replyId.toString() !== deletedIdStr) return msg;
+        return { ...msg, reply_to: null };
+      };
+      setMessages((prev) =>
+        prev
+          .filter((m) => getMessageId(m) !== messageId)
+          .map(stripReplyIfDeleted)
+      );
       if (pendingMessagesRef.current[conversationIdStr]) {
         pendingMessagesRef.current[conversationIdStr] = pendingMessagesRef.current[
           conversationIdStr
-        ].filter((m) => getMessageId(m) !== messageId);
+        ]
+          .filter((m) => getMessageId(m) !== messageId)
+          .map(stripReplyIfDeleted);
       }
 
       if (!isActive && (unreadCountsRef.current[conversationIdStr] || 0) > 0) {
@@ -1727,6 +2043,21 @@ function ChatsPage() {
       if (!messageId) {
         return;
       }
+      const deletedIdStr = messageId.toString();
+      const stripReplyIfDeleted = (msg) => {
+        const reply = msg?.reply_to || msg?.replyTo || msg?.reply_to_message;
+        const replyId = reply?.messageId
+          || reply?.message_id
+          || reply?._id
+          || reply?.id;
+        if (!replyId || replyId.toString() !== deletedIdStr) return msg;
+        return { ...msg, reply_to: null };
+      };
+      setMessages((prev) => prev.map(stripReplyIfDeleted));
+      Object.keys(pendingMessagesRef.current || {}).forEach((convId) => {
+        pendingMessagesRef.current[convId] = (pendingMessagesRef.current[convId] || [])
+          .map(stripReplyIfDeleted);
+      });
       const pending = pendingDeleteRef.current.get(messageId.toString());
       const conversationIdStr = pending?.conversationId
         || payload?.conversation_id?.toString()
@@ -1903,11 +2234,14 @@ function ChatsPage() {
     socket.on(SOCKET_EVENTS.MESSAGE_NEW, handleMessageNew);
     socket.on(SOCKET_EVENTS.MESSAGE_RECEIVE, handleMessageReceive);
     socket.on(SOCKET_EVENTS.MESSAGE_SEND_ACK, handleMessageSendAck);
+    socket.on(SOCKET_EVENTS.MESSAGE_SEND_REPLY_ACK, handleMessageSendReplyAck);
+    socket.on(SOCKET_EVENTS.MESSAGE_SEND_REPLY_ERROR, handleMessageSendReplyError);
     socket.on(SOCKET_EVENTS.MESSAGE_SEEN, handleMessageSeen);
     socket.on(SOCKET_EVENTS.MESSAGE_EDITED, handleMessageEdited);
     socket.on('message:edit:ack', handleMessageEditAck);
     socket.on('message:edit:error', handleMessageEditError);
     socket.on(SOCKET_EVENTS.MESSAGE_DELETED, handleMessageDeleted);
+    socket.on(SOCKET_EVENTS.MESSAGE_RECEIVE_REPLY, handleMessageReceiveReply);
     socket.on('message:delete:ack', handleMessageDeleteAck);
     socket.on('message:delete:error', handleMessageDeleteError);
     socket.on(SOCKET_EVENTS.CONVERSATION_PV_DELETED, handleConversationDeleted);
@@ -1945,12 +2279,15 @@ function ChatsPage() {
     return () => {
       socket.off(SOCKET_EVENTS.MESSAGE_NEW, handleMessageNew);
       socket.off(SOCKET_EVENTS.MESSAGE_RECEIVE, handleMessageReceive);
-      socket.off(SOCKET_EVENTS.MESSAGE_SEND_ACK, handleMessageSendAck);
+    socket.off(SOCKET_EVENTS.MESSAGE_SEND_ACK, handleMessageSendAck);
+    socket.off(SOCKET_EVENTS.MESSAGE_SEND_REPLY_ACK, handleMessageSendReplyAck);
+    socket.off(SOCKET_EVENTS.MESSAGE_SEND_REPLY_ERROR, handleMessageSendReplyError);
       socket.off(SOCKET_EVENTS.MESSAGE_SEEN, handleMessageSeen);
       socket.off(SOCKET_EVENTS.MESSAGE_EDITED, handleMessageEdited);
       socket.off('message:edit:ack', handleMessageEditAck);
       socket.off('message:edit:error', handleMessageEditError);
-      socket.off(SOCKET_EVENTS.MESSAGE_DELETED, handleMessageDeleted);
+    socket.off(SOCKET_EVENTS.MESSAGE_DELETED, handleMessageDeleted);
+    socket.off(SOCKET_EVENTS.MESSAGE_RECEIVE_REPLY, handleMessageReceiveReply);
       socket.off('message:delete:ack', handleMessageDeleteAck);
       socket.off('message:delete:error', handleMessageDeleteError);
       socket.off(SOCKET_EVENTS.CONVERSATION_PV_DELETED, handleConversationDeleted);
@@ -2951,6 +3288,7 @@ function ChatsPage() {
     const existingChat = findExisting(contacts);
     if (existingChat) {
       setSelectedChat(existingChat);
+      setIsMobileChatOpen(true);
       params.delete('startUser');
       navigate('/chats', { replace: true });
       return;
@@ -2960,6 +3298,7 @@ function ChatsPage() {
       const serverChat = findExisting(serverChats || []);
       if (serverChat) {
         setSelectedChat(serverChat);
+        setIsMobileChatOpen(true);
         params.delete('startUser');
         navigate('/chats', { replace: true });
         return;
@@ -2991,6 +3330,7 @@ function ChatsPage() {
         return [optimisticChat, ...prev];
       });
       setSelectedChat(optimisticChat);
+      setIsMobileChatOpen(true);
 
       const cacheBuster = `cb=${Date.now()}`;
       fetch(`/api/v1/members/${startUserId}/info?${cacheBuster}`, {
@@ -3402,13 +3742,32 @@ function ChatsPage() {
   const shouldHoldGroupMessages = isActiveGroup && missingSenderInfo;
   const isPreviewImage = selectedFile?.type?.startsWith('image/');
   const isPreviewVideo = selectedFile?.type?.startsWith('video/');
-
+  // Helper to format date like "28 July"
+  const formatDateSeparator = (dateString) => {
+    if (!dateString) return "";
+    const date = new Date(dateString);
+    return date.toLocaleDateString('en-US', { day: 'numeric', month: 'long' });
+  };
 
   return (
-    <div className={styles.chatsPageContainer}>
+    <div className={`${styles.chatsPageContainer} ${isMobileChatOpen ? styles.mobileChatOpen : ''}`}>  
+  
       <Sidebar className={styles.sidebar} />
 
+      <MobileMenu open={isMobileMenuOpen} onClose={() => setIsMobileMenuOpen(false)} />
+
       <aside className={styles.chatListSidebar}>
+        <div className={styles.mobileChatHeader}>
+          <button
+            type="button"
+            className={styles.mobileMenuButton}
+            onClick={() => setIsMobileMenuOpen(true)}
+            aria-label="Open menu"
+          >
+            <FontAwesomeIcon icon={faBars} />
+          </button>
+          <span className={styles.mobileChatHeaderTitle}>Chats</span>
+        </div>
         <div className={styles.searchContainer}>
           <Input
             type="text"
@@ -3446,7 +3805,7 @@ function ChatsPage() {
             Groups
           </button>
         </div>
-
+  
         <div className={styles.chatList}>
           {contacts.length === 0 ? (
             <div className={styles.emptyState}>
@@ -3488,7 +3847,7 @@ function ChatsPage() {
               const statusClass = contactStatus === 'online'
                 ? styles.statusDotOnline
                 : styles.statusDotOffline;
-
+  
               return (
                 <div
                   key={chatKey}
@@ -3498,7 +3857,7 @@ function ChatsPage() {
                       longPressTriggeredRef.current = false;
                       return;
                     }
-                    setSelectedChat(chat);
+                    handleSelectChat(chat);
                   }}
                   onContextMenu={(event) => {
                     event.preventDefault();
@@ -3599,7 +3958,7 @@ function ChatsPage() {
           <FontAwesomeIcon icon={faAddressBook} />
         </button>
       </aside>
-
+  
       <main
         className={`${styles.chatMain} ${hasWallpaper ? styles.chatMainWallpaper : ''}`}
         style={wallpaperStyle}
@@ -3607,6 +3966,15 @@ function ChatsPage() {
         {selectedChat ? (
           <>
             <div className={styles.chatHeader}>
+              {/* Mobile Back Button */}
+              <button
+                type="button"
+                className={styles.mobileBackButton}
+                onClick={() => setIsMobileChatOpen(false)}
+                aria-label="Back to chats"
+              >
+                <FontAwesomeIcon icon={faArrowLeft} />
+              </button>
               <div className={styles.UserStatus}>
                 <div className={`${styles.statusAvatar} ${styles.statusAvatarLarge}`}>
                   {selectedChat.type === "pv" ? (
@@ -3700,7 +4068,7 @@ function ChatsPage() {
                 )}
               </div>
             </div>
-
+  
             <div 
               className={styles.messagesContainer}
               ref={messagesContainerRef}
@@ -3743,18 +4111,22 @@ function ChatsPage() {
                 </div>
               )}
               <div className={styles.messagesWrapper}>
-                {!shouldHoldGroupMessages && visibleMessages.map((message, index) => {
-                  // Message detection: message.sender is an ObjectId that should match user.id
-                  const userId = user?.id; // User object uses 'id' not '_id'
-                  const username = user?.username;
+              {!shouldHoldGroupMessages && visibleMessages.map((message, index) => {
+                  // --- START NEW DATE SEPARATOR LOGIC ---
+                  const currentMsgDate = message.created_at || message.when;
+                  const prevMsgDate = index > 0 ? (visibleMessages[index - 1].created_at || visibleMessages[index - 1].when) : null;
                   
-                  // Convert both to strings for comparison (message.sender can be ObjectId or string)
+                  // Check if the day changed
+                  const currentDateObj = new Date(currentMsgDate).toDateString();
+                  const prevDateObj = prevMsgDate ? new Date(prevMsgDate).toDateString() : null;
+                  const showDateSeparator = !prevDateObj || currentDateObj !== prevDateObj;
+
+                  // --- EXISTING VARIABLE LOGIC (Keep exactly as you have it) ---
+                  const userId = user?.id;
+                  const username = user?.username;
                   const messageSenderId = message.sender?.toString() || message.sender;
                   const currentUserId = userId?.toString() || userId;
-                  
-                  // Primary check: compare sender ObjectId with user.id
                   const isMyMessage = messageSenderId === currentUserId ||
-                    // Fallback checks for different API response formats
                     message.sender === currentUserId ||
                     message.sender_id?.toString() === currentUserId ||
                     message.sender_id === currentUserId ||
@@ -3762,10 +4134,8 @@ function ChatsPage() {
                     message.user_id === currentUserId ||
                     message.from_user_id?.toString() === currentUserId ||
                     message.from_user_id === currentUserId ||
-                    // Username fallback (less reliable but included for compatibility)
                     message.sender === username ||
                     message.sender_name === username;
-                  
                   const messageId = message._id || message.id || `msg-${index}`;
                   const messageContent = message.content || message.text || '';
                   const messageTime = message.when || message.timestamp || message.created_at;
@@ -3786,8 +4156,6 @@ function ChatsPage() {
                     replyPreview?.content || replyPreview?.text || getMessagePreviewText(replyPreview),
                     80
                   );
-                  
-                  // Get sender info for group messages (received only)
                   const senderIdStr = messageSenderId;
                   const senderInfo = !isMyMessage && isGroupChat ? senderInfoCache[senderIdStr] : null;
                   const shouldShowSenderMeta = !isMyMessage && isGroupChat;
@@ -3801,220 +4169,218 @@ function ChatsPage() {
                   const senderAvatar = shouldShowSenderMeta
                     ? (senderInfo?.profile_pic || message.sender_info?.profile_pic || null)
                     : null;
-                  
                   const deliveryStatus = isMyMessage && isPrivateChat
                     ? (message?.status || 'sent')
                     : null;
-
                   const messageRenderKey = message?.client_id || messageId;
                   const messageAnimKey = (message?.client_id || messageId)?.toString();
+                  
+                  // --- RETURN JSX ---
                   return (
-                    <div
-                      key={messageRenderKey}
-                      className={`${
-                        styles.messageWrapper
-                      } ${
-                        isMyMessage ? styles.messageWrapperSent : styles.messageWrapperReceived
-                      } ${
-                        !isMyMessage && isGroupChat ? styles.messageWrapperGroup : ''
-                      } ${
-                        (messageAnimKey && animatedMessageIdsRef.current.has(messageAnimKey))
-                          || messageAnimKey === lastAnimatedMessageId
-                          ? styles.messageEnter
-                          : ''
-                      }`}
-                      ref={(el) => {
-                        const id = messageId?.toString();
-                        if (!id) return;
-                        if (el) {
-                          messageRefs.current.set(id, el);
-                        } else {
-                          messageRefs.current.delete(id);
-                        }
-                      }}
-                      onContextMenu={(e) => {
-                        e.preventDefault();
-                        setMessageContextMenu({
-                          x: e.clientX,
-                          y: e.clientY,
-                          message,
-                          isMyMessage,
-                        });
-                      }}
-                      onDoubleClick={() => handleReplyToMessage(message)}
-                    >
-                      {/* Avatar for received messages in groups - positioned on the left */}
-                      {shouldShowSenderMeta && (
-                        <div className={styles.messageAvatar}>
-                          <button
-                            type="button"
-                            className={styles.profileAvatarButton}
-                            onClick={() => {
-                              if (senderIdStr) {
-                                navigate(`/members/${senderIdStr}`);
-                              }
-                            }}
-                          >
-                            <ProfileAvatar
-                              src={senderAvatar}
-                              size={36}
-                              alt={senderName || 'Member'}
-                              borderWidth={0}
-                            />
-                          </button>
+                    <React.Fragment key={messageRenderKey}>
+                      {/* Render Date Separator if day changed */}
+                      {showDateSeparator && (
+                        <div className={styles.dateSeparator}>
+                          <span className={styles.dateSeparatorText}>
+                            {formatDateSeparator(currentMsgDate)}
+                          </span>
                         </div>
                       )}
-                      
+
                       <div
-                        className={`${styles.message} ${isMyMessage ? styles.sent : styles.received} ${
-                          shouldUseEmojiOnlyStyle ? styles.emojiOnly : ''
-                        } ${isMediaOnly ? styles.mediaOnly : ''}`}
-                        data-message-type={isMyMessage ? 'sent' : 'received'}
+                        className={`${
+                          styles.messageWrapper
+                        } ${
+                          isMyMessage ? styles.messageWrapperSent : styles.messageWrapperReceived
+                        } ${
+                          !isMyMessage && isGroupChat ? styles.messageWrapperGroup : ''
+                        } ${
+                          (messageAnimKey && animatedMessageIdsRef.current.has(messageAnimKey))
+                            || messageAnimKey === lastAnimatedMessageId
+                            ? styles.messageEnter
+                            : ''
+                        }`}
+                        ref={(el) => {
+                          const id = messageId?.toString();
+                          if (!id) return;
+                          if (el) {
+                            messageRefs.current.set(id, el);
+                          } else {
+                            messageRefs.current.delete(id);
+                          }
+                        }}
+                        onContextMenu={(e) => {
+                          e.preventDefault();
+                          setMessageContextMenu({
+                            x: e.clientX,
+                            y: e.clientY,
+                            message,
+                            isMyMessage,
+                          });
+                        }}
+                        onDoubleClick={() => handleReplyToMessage(message)}
                       >
-                        {replyPreview && (
-                          <div
-                            className={styles.replyPreview}
-                            role="button"
-                            tabIndex={0}
-                            onClick={() => scrollToMessage(replyPreview?.messageId || replyPreview?.message_id)}
-                            onKeyDown={(event) => {
-                              if (event.key === 'Enter') {
-                                scrollToMessage(replyPreview?.messageId || replyPreview?.message_id);
-                              }
-                            }}
-                          >
-                            <div className={styles.replyPreviewLine} />
-                            <div className={styles.replyPreviewContent}>
-                              <p className={styles.replyPreviewText}>
-                                {replyPreviewText}
-                              </p>
-                            </div>
-                          </div>
-                        )}
-                        {/* Username inside message bubble for group chats */}
                         {shouldShowSenderMeta && (
-                      <div className={styles.messageSenderName}>
+                          <div className={styles.messageAvatar}>
                             <button
                               type="button"
-                              className={styles.profileLinkInline}
+                              className={styles.profileAvatarButton}
                               onClick={() => {
-                                const senderId = messageSenderId;
-                                if (senderId) {
-                                  navigate(`/members/${senderId}`);
+                                if (senderIdStr) {
+                                  navigate(`/members/${senderIdStr}`);
                                 }
                               }}
                             >
-                              {senderName}
+                              <ProfileAvatar
+                                src={senderAvatar}
+                                size={36}
+                                alt={senderName || 'Member'}
+                                borderWidth={0}
+                              />
                             </button>
                           </div>
                         )}
-                        
-                        {isMedia && (resolvedMessageType === 'video') && (
-                          <video
-                            className={`${styles.messageMedia} ${styles.messageMediaVideo}`}
-                            controls
-                            preload="metadata"
-                            playsInline
-                            onLoadedMetadata={() => {
-                              if (isInitialLoadRef.current) {
-                                scrollToBottom();
-                              }
-                            }}
-                          >
-                            <source src={mediaUrl} type={message?.mime_type || 'video/mp4'} />
-                          </video>
-                        )}
-                        {isMedia && (resolvedMessageType === 'voice' || resolvedMessageType === 'audio') && (
-                          <audio
-                            className={`${styles.messageMedia} ${styles.messageMediaAudio}`}
-                            controls
-                            preload="metadata"
-                            src={mediaUrl}
-                          />
-                        )}
-                        {isMedia && !['video', 'voice', 'audio'].includes(resolvedMessageType) && (
-                          <img
-                            src={mediaUrl}
-                            alt={resolvedMessageType}
-                            className={`${styles.messageMedia} ${
-                              resolvedMessageType === 'sticker'
-                                ? styles.messageMediaSticker
-                                : resolvedMessageType === 'gif'
-                                  ? styles.messageMediaGif
-                                  : styles.messageMediaImage
-                            }`}
-                            onLoad={() => {
-                              if (isInitialLoadRef.current) {
-                                scrollToBottom();
-                              }
-                            }}
-                            onError={(e) => {
-                              e.target.style.display = 'none';
-                            }}
-                          />
-                        )}
-                        {messageContent && <p>{messageContent}</p>}
-                        <div className={styles.messageFooter}>
-                          {message?.edited && (
-                            <span className={styles.editedBadge}>edited</span>
+                        <div
+                          className={`${styles.message} ${isMyMessage ? styles.sent : styles.received} ${
+                            shouldUseEmojiOnlyStyle ? styles.emojiOnly : ''
+                          } ${isMediaOnly ? styles.mediaOnly : ''}`}
+                          data-message-type={isMyMessage ? 'sent' : 'received'}
+                        >
+                          {replyPreview && (
+                            <div
+                              className={styles.replyPreview}
+                              role="button"
+                              tabIndex={0}
+                              onClick={() => scrollToMessage(replyPreview?.messageId || replyPreview?.message_id)}
+                              onKeyDown={(event) => {
+                                if (event.key === 'Enter') {
+                                  scrollToMessage(replyPreview?.messageId || replyPreview?.message_id);
+                                }
+                              }}
+                            >
+                              <div className={styles.replyPreviewLine} />
+                              <div className={styles.replyPreviewContent}>
+                                <p className={styles.replyPreviewText}>
+                                  {replyPreviewText}
+                                </p>
+                              </div>
+                            </div>
                           )}
-                          <span className={styles.timestamp}>
-                            {convertISOtoLocal(messageTime)}
-                          </span>
-                          {isMyMessage && isPrivateChat && (
-                            <span className={styles.seenIcon}>
-                              {deliveryStatus === 'pending' && (
-                                <span className={styles.deliveryClock} title="Sending">
-                                  <span className={styles.deliveryClockFace} />
-                                  <span className={styles.deliveryClockHandShort} />
-                                  <span className={styles.deliveryClockHandLong} />
-                                </span>
-                              )}
-                              {deliveryStatus === 'error' && (
-                                <button
-                                  type="button"
-                                  className={styles.deliveryErrorButton}
-                                  onClick={() => handleResendMessage(message)}
-                                  title="Message failed. Click to resend."
-                                >
-                                  <FontAwesomeIcon icon={faCircleExclamation} />
-                                </button>
-                              )}
-                              {deliveryStatus === 'sent' && (
-                                <img
-                                  src={message?.seen ? seenIcon : sentIcon}
-                                  alt={message?.seen ? "Seen" : "Sent"}
-                                  className={styles.seenIconImage}
-                                />
-                              )}
+                          {shouldShowSenderMeta && (
+                            <div className={styles.messageSenderName}>
+                              <button
+                                type="button"
+                                className={styles.profileLinkInline}
+                                onClick={() => {
+                                  const senderId = messageSenderId;
+                                  if (senderId) {
+                                    navigate(`/members/${senderId}`);
+                                  }
+                                }}
+                              >
+                                {senderName}
+                              </button>
+                            </div>
+                          )}
+                          {isMedia && (resolvedMessageType === 'video') && (
+                            <video
+                              className={`${styles.messageMedia} ${styles.messageMediaVideo}`}
+                              controls
+                              preload="metadata"
+                              playsInline
+                              onLoadedMetadata={() => {
+                                if (isInitialLoadRef.current) {
+                                  scrollToBottom();
+                                }
+                              }}
+                            >
+                              <source src={mediaUrl} type={message?.mime_type || 'video/mp4'} />
+                            </video>
+                          )}
+                          {isMedia && (resolvedMessageType === 'voice' || resolvedMessageType === 'audio') && (
+                            <audio
+                              className={`${styles.messageMedia} ${styles.messageMediaAudio}`}
+                              controls
+                              preload="metadata"
+                              src={mediaUrl}
+                            />
+                          )}
+                          {isMedia && !['video', 'voice', 'audio'].includes(resolvedMessageType) && (
+                            <img
+                              src={mediaUrl}
+                              alt={resolvedMessageType}
+                              className={`${styles.messageMedia} ${
+                                resolvedMessageType === 'sticker'
+                                  ? styles.messageMediaSticker
+                                  : resolvedMessageType === 'gif'
+                                    ? styles.messageMediaGif
+                                    : styles.messageMediaImage
+                              }`}
+                              onLoad={() => {
+                                if (isInitialLoadRef.current) {
+                                  scrollToBottom();
+                                }
+                              }}
+                              onError={(e) => {
+                                e.target.style.display = 'none';
+                              }}
+                            />
+                          )}
+                          {/* ADDED dir="auto" HERE FOR RTL SUPPORT */}
+                          {messageContent && <p dir="auto">{messageContent}</p>} 
+                          <div className={styles.messageFooter}>
+                            {message?.edited && (
+                              <span className={styles.editedBadge}>edited</span>
+                            )}
+                            <span className={styles.timestamp}>
+                              {convertISOtoLocal(messageTime)}
                             </span>
-                          )}
+                            {isMyMessage && isPrivateChat && (
+                              <span className={styles.seenIcon}>
+                                {deliveryStatus === 'pending' && (
+                                  <span className={styles.deliveryClock} title="Sending">
+                                    <span className={styles.deliveryClockFace} />
+                                    <span className={styles.deliveryClockHandShort} />
+                                    <span className={styles.deliveryClockHandLong} />
+                                  </span>
+                                )}
+                                {deliveryStatus === 'error' && (
+                                  <button
+                                    type="button"
+                                    className={styles.deliveryErrorButton}
+                                    onClick={() => handleResendMessage(message)}
+                                    title="Message failed. Click to resend."
+                                  >
+                                    <FontAwesomeIcon icon={faCircleExclamation} />
+                                  </button>
+                                )}
+                                {deliveryStatus === 'sent' && (
+                                  <img
+                                    src={message?.seen ? seenIcon : sentIcon}
+                                    alt={message?.seen ? "Seen" : "Sent"}
+                                    className={styles.seenIconImage}
+                                  />
+                                )}
+                              </span>
+                            )}
+                          </div>
                         </div>
                       </div>
-                    </div>
+                    </React.Fragment>
                   );
                 })}
                 <div ref={messagesEndRef} />
               </div>
             </div>
-
+  
             {selectedFile && (
               <div className={styles.uploadProgress}>
                 <div className={styles.filePreviewContainer}>
                   {filePreview && isPreviewImage && (
-                    <img
-                      src={filePreview}
-                      alt="Preview"
-                      className={styles.filePreview}
-                    />
+                    <img src={filePreview} alt="Preview" className={styles.filePreview} />
                   )}
                   {filePreview && isPreviewVideo && (
-                    <video
-                      className={styles.filePreviewVideo}
-                      src={filePreview}
-                      muted
-                      playsInline
-                    />
+                    <video className={styles.filePreviewVideo} src={filePreview} muted playsInline />
                   )}
                   {(!filePreview || (!isPreviewImage && !isPreviewVideo)) && (
                     <div className={styles.filePreviewFallback}>
@@ -4036,38 +4402,23 @@ function ChatsPage() {
                 )}
               </div>
             )}
-
-            {replyingToMessage && (
-              <div className={styles.replyBarRow}>
-                <div className={styles.replyBar}>
-                  <div className={styles.replyBarContent}>
-                    <p className={styles.replyBarTitle}>Replying to</p>
-                    <p className={styles.replyBarText}>
-                      {truncateMessage(
-                        replyingToMessage?.content
-                          || replyingToMessage?.text
-                          || getMessagePreviewText(replyingToMessage),
-                        60
-                      )}
-                    </p>
-                  </div>
-                  <button
-                    type="button"
-                    className={styles.replyBarClose}
-                    onClick={() => setReplyingToMessage(null)}
-                    aria-label="Cancel reply"
-                  >
-                    <FontAwesomeIcon icon={faXmark} />
-                  </button>
-                </div>
-              </div>
-            )}
-
+  
             <div className={styles.inputBar}>
+            <input
+              id="file-upload"
+              type="file"
+              style={{ display: 'none' }}
+              onChange={handleFileChange}
+              accept="image/*,video/*,audio/*"
+              title="Maximum file size is 5MB"
+            />
+            
+            {/* Left Actions */}
+            <div className={styles.inputActionsLeft}>
               <div className={styles.optionsMenuContainer} ref={optionsMenuRef}>
                 <button
                   type="button"
-                  className={styles.optionsButton}
+                  className={styles.actionButton}
                   onClick={handleOptionsMenuToggle}
                   aria-label="More options"
                 >
@@ -4094,66 +4445,93 @@ function ChatsPage() {
                   </div>
                 )}
               </div>
-              <input
-                id="file-upload"
-                type="file"
-                style={{ display: 'none' }}
-                onChange={handleFileChange}
-                accept="image/*,video/*,audio/*"
-                title="Maximum file size is 5MB"
-              />
-              <div className={styles.composer}>
-                <textarea
-                  className={styles.messageTextarea}
-                  placeholder={editingMessage ? 'Edit message...' : 'Type a message...'}
-                  value={messageInput}
-                  onChange={(e) => setMessageInput(e.target.value)}
-                  rows={1}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter' && !e.shiftKey) {
-                      e.preventDefault();
-                      if (editingMessage) {
-                        if (messageInput.trim().length <= MAX_MESSAGE_LENGTH) {
-                          handleEditSubmit();
-                        }
-                      } else {
-                        if (messageInput.trim().length <= MAX_MESSAGE_LENGTH) {
-                          handleSendMessage();
-                        }
-                      }
-                    }
-                    if (e.key === 'Escape' && editingMessage) {
-                      e.preventDefault();
-                      handleEditCancel();
-                    }
-                  }}
-                />
-              </div>
-              {editingMessage && (
-                <>
+            </div>
+
+            {/* Composer (textarea + reply bar) */}
+            <div className={styles.composer}>
+              {replyingToMessage && (
+                <div className={styles.replyBar}>
+                  <div className={styles.replyBarIndicator} />
+                  <div className={styles.replyBarContent}>
+                    <div className={styles.replyBarHeader}>
+                      <span className={styles.replyBarLabel}>
+                        {(() => {
+                          const senderId = getSenderId(replyingToMessage)?.toString();
+                          if (senderId && senderId === user?.id?.toString()) return 'You';
+                          if (selectedChat?.type === 'pv') {
+                            return selectedChat?.contact_info?.username || 'User';
+                          }
+                          return replyingToMessage?.sender_info?.username
+                            || replyingToMessage?.sender_name
+                            || replyingToMessage?.sender_username
+                            || 'Member';
+                        })()}
+                      </span>
+                      {replyingToMessage?.type && replyingToMessage?.type !== 'text' && (
+                        <span className={styles.replyBarType}>
+                          {replyingToMessage.type === 'image' ? '📷 Photo' :
+                          replyingToMessage.type === 'video' ? '🎥 Video' :
+                          replyingToMessage.type === 'gif' ? '🎬 GIF' :
+                          replyingToMessage.type === 'sticker' ? '🎨 Sticker' :
+                          replyingToMessage.type === 'voice' ? '🎤 Voice' :
+                          replyingToMessage.type === 'audio' ? '🎵 Audio' :
+                          '📎 File'}
+                        </span>
+                      )}
+                    </div>
+                    <p className={styles.replyBarText}>
+                      {truncateMessage(
+                        replyingToMessage?.content
+                          || replyingToMessage?.text
+                          || getMessagePreviewText(replyingToMessage),
+                        80
+                      )}
+                    </p>
+                  </div>
                   <button
                     type="button"
-                    className={styles.sendButton}
-                    onClick={handleEditCancel}
-                    aria-label="Cancel edit"
+                    className={styles.replyBarClose}
+                    onClick={() => setReplyingToMessage(null)}
+                    aria-label="Cancel reply"
                   >
                     <FontAwesomeIcon icon={faXmark} />
                   </button>
-                  <button
-                    type="button"
-                    className={styles.sendButton}
-                    onClick={handleEditSubmit}
-                    aria-label="Save edit"
-                    disabled={messageInput.trim().length > MAX_MESSAGE_LENGTH}
-                  >
-                    <FontAwesomeIcon icon={faCheck} />
-                  </button>
-                </>
+                </div>
               )}
+              <textarea
+                className={styles.messageTextarea}
+                placeholder={editingMessage ? 'Edit message...' : 'Type a message...'}
+                value={messageInput}
+                onChange={(e) => setMessageInput(e.target.value)}
+                rows={1}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' && !e.shiftKey) {
+                    e.preventDefault();
+                    if (editingMessage) {
+                      if (messageInput.trim().length <= MAX_MESSAGE_LENGTH) {
+                        handleEditSubmit();
+                      }
+                    } else {
+                      if (messageInput.trim().length <= MAX_MESSAGE_LENGTH) {
+                        handleSendMessage();
+                      }
+                    }
+                  }
+                  if (e.key === 'Escape' && editingMessage) {
+                    e.preventDefault();
+                    handleEditCancel();
+                  }
+                }}
+              />
+            </div>
+
+            {/* Right Actions */}
+            <div className={styles.inputActionsRight}>
+              {/* Emoji Button */}
               <div className={styles.mediaPickerWrapper} ref={mediaPickerRef}>
                 <button
                   type="button"
-                  className={styles.mediaButton}
+                  className={styles.actionButton}
                   onClick={() => setIsMediaPickerOpen((prev) => !prev)}
                   aria-label="Open emojis, GIFs, and stickers"
                 >
@@ -4234,31 +4612,60 @@ function ChatsPage() {
                   </div>
                 )}
               </div>
+
+              {/* Recording Indicator */}
               {isRecording && (
                 <div className={styles.recordingIndicator}>
                   <span className={styles.recordingDot} />
                   <span className={styles.recordingTime}>{formatDuration(recordingDuration)}</span>
                 </div>
               )}
-              <button
-                type="button"
-                className={`${styles.recordButton} ${isRecording ? styles.recordButtonActive : ''}`}
-                onClick={isRecording ? stopRecording : startRecording}
-                aria-label={isRecording ? 'Stop recording' : 'Record voice'}
-              >
-                <FontAwesomeIcon icon={isRecording ? faStop : faMicrophone} />
-              </button>
+
+              {/* Edit Mode Buttons */}
+              {editingMessage && (
+                <>
+                  <button
+                    type="button"
+                    className={`${styles.actionButton} ${styles.editCancelButton}`}
+                    onClick={handleEditCancel}
+                    aria-label="Cancel edit"
+                  >
+                    <FontAwesomeIcon icon={faXmark} />
+                  </button>
+                  <button
+                    type="button"
+                    className={`${styles.actionButton} ${styles.editSaveButton}`}
+                    onClick={handleEditSubmit}
+                    aria-label="Save edit"
+                    disabled={messageInput.trim().length > MAX_MESSAGE_LENGTH}
+                  >
+                    <FontAwesomeIcon icon={faCheck} />
+                  </button>
+                </>
+              )}
+
+              {/* Record/Send Button */}
               {!editingMessage && (
-                <button
-                  type="button"
-                  className={styles.sendButton}
-                  onClick={handleSendMessage}
-                  disabled={messageInput.trim().length > MAX_MESSAGE_LENGTH}
-                >
-                  <img src={sendIcon} alt="Send" className={styles.sendIcon} />
-                </button>
+                <div className={`${styles.sendButtonWrapper} ${isSwitching ? (messageInput.trim() ? 'switching-in' : 'switching-out') : ''}`}>
+                  <button
+                    type="button"
+                    className={`${styles.actionButton} ${styles.primaryButton} ${isRecording ? styles.recordingActive : ''} ${messageInput.trim() ? styles.hasText : ''}`}
+                    onClick={isRecording ? stopRecording : (messageInput.trim() ? handleSendMessage : startRecording)}
+                    disabled={!isRecording && messageInput.trim().length > MAX_MESSAGE_LENGTH}
+                    aria-label={isRecording ? 'Stop recording' : (messageInput.trim() ? 'Send message' : 'Record voice')}
+                  >
+                    {isRecording ? (
+                      <FontAwesomeIcon icon={faStop} />
+                    ) : messageInput.trim() ? (
+                      <img src={sendIcon} alt="Send" className={styles.sendIcon} />
+                    ) : (
+                      <FontAwesomeIcon icon={faMicrophone} />
+                    )}
+                  </button>
+                </div>
               )}
             </div>
+          </div>
 
             {messageContextMenu && (
               <div
@@ -4275,7 +4682,6 @@ function ChatsPage() {
                   <FontAwesomeIcon icon={faReply} />
                   <span>Reply</span>
                 </button>
-
                 {messageContextMenu.isMyMessage && (
                   <button
                     type="button"
@@ -4292,7 +4698,6 @@ function ChatsPage() {
                     <span>Edit</span>
                   </button>
                 )}
-
                 {messageContextMenu.isMyMessage && (
                   <button
                     type="button"
@@ -4336,14 +4741,14 @@ function ChatsPage() {
             data-conversation-context-menu
             style={{ left: conversationContextMenu.x, top: conversationContextMenu.y }}
           >
-                <button
-                  type="button"
-                  className={styles.optionsMenuItem}
-                  onClick={() => handleOpenDeleteConversation(conversationContextMenu.conversation)}
-                >
-                  <FontAwesomeIcon icon={faTrash} />
-                  <span>Delete conversation</span>
-                </button>
+            <button
+              type="button"
+              className={styles.optionsMenuItem}
+              onClick={() => handleOpenDeleteConversation(conversationContextMenu.conversation)}
+            >
+              <FontAwesomeIcon icon={faTrash} />
+              <span>Delete conversation</span>
+            </button>
           </div>
         )}
         {deleteConfirm.open && (
@@ -4413,8 +4818,44 @@ function ChatsPage() {
             </div>
           </div>
         )}
+        {messageDeleteConfirm.open && (
+          <div className={styles.confirmOverlay} role="dialog" aria-modal="true">
+            <div className={styles.confirmBox}>
+              <p className={styles.confirmTitle}>Delete message?</p>
+              <p className={styles.confirmText}>
+                Choose whether to delete this message just for you or for everyone.
+              </p>
+              <div className={styles.confirmActions}>
+                <label className={styles.deleteCheckbox}>
+                  <input
+                    type="checkbox"
+                    checked={deleteMessageForEveryone}
+                    onChange={(event) => setDeleteMessageForEveryone(event.target.checked)}
+                  />
+                  <span>Delete for everyone</span>
+                </label>
+                <div className={styles.confirmButtons}>
+                  <button
+                    type="button"
+                    className={styles.cancelButton}
+                    onClick={handleCancelDeleteMessage}
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="button"
+                    className={styles.confirmButton}
+                    onClick={handleConfirmDeleteMessage}
+                  >
+                    Delete
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
       </main>
-
+  
       <NewConversationModal
         isOpen={isNewConversationModalOpen}
         onClose={handleCloseModal}

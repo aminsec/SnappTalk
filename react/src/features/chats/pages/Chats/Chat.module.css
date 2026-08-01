@@ -1,12 +1,25 @@
+/* ============================================
+   GLOBAL BOX SIZING
+   ============================================ */
+   *, *::before, *::after {
+    box-sizing: border-box;
+}
+
+/* ============================================
+   MAIN LAYOUT
+   ============================================ */
 .chatsPageContainer {
-    width: 100vw;
-    height: 100vh;
+    width: 100%;
+    width: 100dvw;
+    height: 100%;
+    height: 100dvh;
     display: flex;
     flex-direction: row;
     flex-wrap: nowrap;
     align-items: stretch;
     overflow: hidden;
     cursor: default;
+    position: relative;
 }
 
 .sidebar {
@@ -14,6 +27,9 @@
     height: 100vh;
 }
 
+/* ============================================
+   CHAT LIST SIDEBAR
+   ============================================ */
 .chatListSidebar {
     border-left: solid 3px var(--input-border);
     padding: 10px;
@@ -32,9 +48,20 @@
     height: 100vh;
     overflow-y: auto;
     position: relative;
-    animation: panelSlideIn 0.35s ease-out;
 }
 
+.chatListSidebar::-webkit-scrollbar {
+    display: none;
+}
+
+.chatListSidebar {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+}
+
+/* ============================================
+   CHAT TABS
+   ============================================ */
 .chatTabs {
     width: 100%;
     display: flex;
@@ -69,15 +96,9 @@
     color: var(--text-main);
 }
 
-.chatListSidebar::-webkit-scrollbar {
-    display: none;
-}
-
-.chatListSidebar {
-    -ms-overflow-style: none;
-    scrollbar-width: none;
-}
-
+/* ============================================
+   NEW CONVERSATION BUTTON
+   ============================================ */
 .newConversationButton {
     position: absolute;
     bottom: 20px;
@@ -107,6 +128,13 @@
 
 .newConversationButton:active {
     transform: scale(0.95);
+}
+
+/* ============================================
+   SEARCH & CHAT LIST
+   ============================================ */
+.mobileChatHeader {
+    display: none;
 }
 
 .searchContainer {
@@ -146,9 +174,11 @@
     font-weight: 500;
     letter-spacing: 0.5px;
     opacity: 0.7;
-    transition: opacity 0.3s ease;
 }
 
+/* ============================================
+   CHAT ITEM
+   ============================================ */
 .chatItem {
     display: flex;
     align-items: center;
@@ -156,7 +186,6 @@
     padding: 12px;
     border-radius: 8px;
     cursor: pointer;
-    /* Solid background using app theme colors */
     background-color: var(--input-bg);
     transition: background-color 0.2s ease, box-shadow 0.2s ease;
 }
@@ -166,17 +195,13 @@
     box-shadow: 0 6px 14px rgba(0, 0, 0, 0.25);
 }
 
-/* Selected contact in the list */
 .active {
     background-color: var(--item-hover);
 }
 
-.chatItemActive {
-    background-color: var(--item-active);
-    transform: translateX(2px);
-}
-
-/* ChatMenu Items Style */
+/* ============================================
+   CHAT INFO
+   ============================================ */
 .chatInfo {
     flex: 1;
     min-width: 0;
@@ -212,6 +237,7 @@
     justify-content: space-between;
     align-items: flex-end;
     gap: 10px;
+    cursor: pointer;
 }
 
 .chatTimestampRow {
@@ -256,24 +282,27 @@
     display: flex;
     align-items: center;
     justify-content: center;
+    color: #fff;
 }
 
 .chatInfoFooter .notificationBadge p {
     font-size: 11px;
 }
 
-.chatInfoFooter .notificationBadge {
-    color: #fff;
+.youText {
+    display: inline;
+    font-weight: bold;
+    margin-right: 4px;
 }
 
-/* Chat Messaging Styles */
-
+/* ============================================
+   CHAT MAIN
+   ============================================ */
 .chatMain {
     flex: 1;
     display: flex;
     flex-direction: column;
     background-color: var(--bg-color);
-    animation: panelFadeIn 0.35s ease-out;
     position: relative;
     isolation: isolate;
 }
@@ -293,6 +322,9 @@
     z-index: -1;
 }
 
+/* ============================================
+   CHAT HEADER
+   ============================================ */
 .chatHeader {
     width: 100%;
     display: flex;
@@ -305,7 +337,6 @@
     justify-content: space-between;
     align-items: center;
     box-shadow: 0 8px 18px rgba(0, 0, 0, 0.2);
-    animation: headerSlide 0.3s ease-out;
 }
 
 .UserStatus {
@@ -313,6 +344,8 @@
     flex-direction: row;
     gap: 15px;
     align-items: center;
+    flex: 1;
+    min-width: 0;
 }
 
 .statusAvatar {
@@ -369,11 +402,9 @@
     font-weight: 600;
     cursor: pointer;
     padding: 0;
-    transition: color 0.15s ease, text-decoration-color 0.15s ease;
 }
 
 .profileLink:hover {
-    color: var(--text-main);
     opacity: 0.85;
 }
 
@@ -385,18 +416,11 @@
     font-weight: 600;
     cursor: pointer;
     padding: 0;
-    transition: color 0.15s ease, text-decoration-color 0.15s ease;
 }
 
 .profileLinkInline:hover {
-    color: var(--text-main);
     opacity: 0.85;
 }
-
-.chatInfoFooter {
-    cursor: pointer;
-}
-
 
 .profileAvatarButton {
     background: none;
@@ -422,15 +446,17 @@
     color: var(--text-muted);
 }
 
-
+/* ============================================
+   MESSAGES CONTAINER
+   ============================================ */
 .messagesContainer {
     flex: 1;
     overflow-y: auto;
     padding: 15px;
+    padding-bottom: 96px; /* Space for the overlapping input bar */
     display: flex;
     flex-direction: column;
     gap: 12px;
-    animation: messagesFade 0.3s ease-out;
     background-color: transparent;
     position: relative;
     z-index: 1;
@@ -445,13 +471,9 @@
     scrollbar-width: none;
 }
 
-.chatHeader,
-.inputBar,
-.uploadProgress {
-    position: relative;
-    z-index: 2;
-}
-
+/* ============================================
+   MESSAGE ANIMATIONS
+   ============================================ */
 .messageEnter .message[data-message-type='sent'] {
     animation: messageEnterSent 220ms ease-out;
 }
@@ -461,27 +483,18 @@
 }
 
 @keyframes messageEnterSent {
-    from {
-        opacity: 0;
-        transform: translateX(10px) translateY(2px);
-    }
-    to {
-        opacity: 1;
-        transform: translateX(0) translateY(0);
-    }
+    from { opacity: 0; transform: translateX(10px) translateY(2px); }
+    to { opacity: 1; transform: translateX(0) translateY(0); }
 }
 
 @keyframes messageEnterReceived {
-    from {
-        opacity: 0;
-        transform: translateX(-10px) translateY(2px);
-    }
-    to {
-        opacity: 1;
-        transform: translateX(0) translateY(0);
-    }
+    from { opacity: 0; transform: translateX(-10px) translateY(2px); }
+    to { opacity: 1; transform: translateX(0) translateY(0); }
 }
 
+/* ============================================
+   MESSAGES WRAPPER
+   ============================================ */
 .messagesWrapper {
     display: flex;
     flex-direction: column;
@@ -500,7 +513,6 @@
     margin-bottom: 8px;
 }
 
-/* Prevent long content from blowing up flex layouts */
 .messageWrapper,
 .chatInfo,
 .chatInfoHeader,
@@ -517,20 +529,21 @@
     gap: 2px;
 }
 
-/* Group chat layout: avatar on left, message on right */
 .messageWrapperGroup {
     flex-direction: row;
     align-items: flex-end;
     gap: 10px;
 }
 
+/* ============================================
+   MESSAGE AVATAR (GROUP CHATS)
+   ============================================ */
 .messageAvatar {
     flex-shrink: 0;
     width: 36px;
     height: 36px;
     margin-bottom: 0;
     cursor: pointer;
-    transition: opacity 0.2s ease;
     display: flex;
     align-items: flex-end;
     justify-content: center;
@@ -545,10 +558,8 @@
     height: 36px;
     border-radius: 50%;
     object-fit: cover;
-    display: block;
 }
 
-/* Username inside message bubble */
 .messageSenderName {
     margin-bottom: 3px;
     padding-bottom: 2px;
@@ -559,12 +570,7 @@
     font-size: 13px;
     font-weight: 600;
     color: var(--text-link);
-    line-height: 1.2;
-    letter-spacing: -0.1px;
-    transition: color 0.2s ease;
-    user-select: none;
     cursor: pointer;
-    display: inline-block;
 }
 
 .senderUsername:hover {
@@ -572,6 +578,9 @@
     text-decoration: underline;
 }
 
+/* ============================================
+   LOADING STATES
+   ============================================ */
 .loadingMessages,
 .emptyMessages,
 .loadingMore {
@@ -618,13 +627,8 @@
     animation: dotPulse 1s ease-in-out infinite;
 }
 
-.loadingPulse span:nth-child(2) {
-    animation-delay: 0.15s;
-}
-
-.loadingPulse span:nth-child(3) {
-    animation-delay: 0.3s;
-}
+.loadingPulse span:nth-child(2) { animation-delay: 0.15s; }
+.loadingPulse span:nth-child(3) { animation-delay: 0.3s; }
 
 .loadingDots {
     display: inline-flex;
@@ -640,14 +644,36 @@
     animation: dotPulse 1s ease-in-out infinite;
 }
 
-.loadingDots span:nth-child(2) {
-    animation-delay: 0.15s;
+.loadingDots span:nth-child(2) { animation-delay: 0.15s; }
+.loadingDots span:nth-child(3) { animation-delay: 0.3s; }
+
+/* ============================================
+   MESSAGE STYLES
+   ============================================ */
+
+/* ============================================
+   DATE SEPARATOR
+   ============================================ */
+   .dateSeparator {
+    width: 100%;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    margin: 16px 0;
+    position: relative;
+    z-index: 2;
 }
 
-.loadingDots span:nth-child(3) {
-    animation-delay: 0.3s;
+.dateSeparatorText {
+    background-color: rgba(30, 30, 30, 0.85);
+    color: rgba(255, 255, 255, 0.6);
+    font-size: 12px;
+    font-weight: 500;
+    padding: 4px 12px;
+    border-radius: 8px;
+    backdrop-filter: blur(10px);
+    box-shadow: 0 2px 8px rgba(0,0,0,0.2);
 }
-
 .message {
     max-width: 70%;
     padding: 12px 16px;
@@ -673,12 +699,6 @@
     box-shadow: none !important;
 }
 
-.mediaOnly.sent,
-.mediaOnly.received {
-    background: transparent !important;
-    box-shadow: none !important;
-}
-
 .emojiOnly {
     background: transparent !important;
     box-shadow: none !important;
@@ -686,45 +706,29 @@
     border-radius: 0;
 }
 
-.emojiOnly.sent,
-.emojiOnly.received {
-    background: transparent !important;
-    box-shadow: none !important;
-}
-
 .emojiOnly p {
     font-size: 32px;
     line-height: 1.15;
-    letter-spacing: 0.02em;
 }
 
+/* ============================================
+   REPLY PREVIEW (Inside messages)
+   ============================================ */
 .replyPreview {
     display: flex;
     align-items: stretch;
-    gap: 10px;
-    padding: 8px 12px;
+    gap: 8px;
+    padding: 6px 8px;
     margin-bottom: 6px;
-    border-radius: 10px;
-    background: linear-gradient(135deg, rgba(255, 255, 255, 0.12), rgba(255, 255, 255, 0.04));
-    border: 1px solid rgba(255, 255, 255, 0.12);
-    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08);
-    animation: replyPop 0.18s ease-out;
+    border-radius: 8px;
+    background: transparent;
+    border-left: 3px solid rgba(77, 184, 255, 0.9);
     cursor: pointer;
+    animation: replyPop 0.18s ease-out;
 }
 
 .received .replyPreview {
-    background: linear-gradient(135deg, rgba(0, 0, 0, 0.28), rgba(0, 0, 0, 0.08));
-    border-color: rgba(255, 255, 255, 0.06);
-}
-
-.replyPreviewLine {
-    width: 4px;
-    border-radius: 6px;
-    background: linear-gradient(180deg, rgba(255, 255, 255, 0.85), rgba(255, 255, 255, 0.35));
-}
-
-.received .replyPreviewLine {
-    background: linear-gradient(180deg, rgba(255, 255, 255, 0.35), rgba(255, 255, 255, 0.12));
+    border-left-color: rgba(77, 184, 255, 0.6);
 }
 
 .replyPreviewContent {
@@ -751,14 +755,9 @@
     word-break: break-word;
 }
 
-.messageImage {
-    max-width: 100%;
-    max-height: 300px;
-    border-radius: 8px;
-    margin-bottom: 4px;
-    object-fit: cover;
-}
-
+/* ============================================
+   MESSAGE MEDIA
+   ============================================ */
 .messageMedia {
     max-width: 100%;
     border-radius: 10px;
@@ -795,6 +794,9 @@
     max-width: 100%;
 }
 
+/* ============================================
+   MESSAGE FOOTER
+   ============================================ */
 .messageFooter {
     display: flex !important;
     align-items: center;
@@ -807,67 +809,50 @@
 .editedBadge {
     font-size: 10px;
     color: var(--text-main);
-    letter-spacing: 0.04em;
 }
 
-.sent {
+/* ============================================
+   SENT MESSAGE
+   ============================================ */
+/* ============================================
+   SENT MESSAGE
+   ============================================ */
+   .sent {
     align-self: flex-end;
-    background-color: var(--buble-sent);
-    border-radius: 12px 12px 0px 12px;
+    background-color: rgb(9, 144, 234); /* iOS Blue */
+    border-radius: 18px 18px 4px 18px; /* Rounded with bottom-right tail */
     color: white;
-    box-shadow: 0 2px 4px rgba(45, 144, 228, 0.2);
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
 }
 
-.sent p {
-    color: white;
-}
-
-.sent .messageFooter {
-    justify-content: flex-end !important;
-    flex-direction: row;
-}
-
-.sent .seenIcon {
-    margin-left: 4px;
-    margin-right: 0;
-}
+.sent p { color: white; }
 
 .sent .timestamp {
-    margin-left: 0;
-    margin-right: 0;
-}
-
-.sent .timestamp {
-    color: rgba(255, 255, 255, 0.85);
+    color: rgba(255, 255, 255, 0.7);
     font-size: 11px;
-    opacity: 0.9;
+    opacity: 1;
 }
 
+/* ============================================
+   RECEIVED MESSAGE
+   ============================================ */
 .received {
     align-self: flex-start;
-    background-color: var(--bubble-received);
-    border-radius: 12px 12px 12px 0px;
-    color: var(--text-main);
+    background-color: #2C2C2E; /* Dark Charcoal Gray */
+    border-radius: 18px 18px 18px 4px; /* Rounded with bottom-left tail */
+    color: #FFFFFF;
     box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
 }
 
-.received p {
-    color: var(--text-main);
-}
-
-.received .messageFooter {
-    justify-content: flex-end !important;
-    flex-direction: row !important;
-}
+.received p { color: #FFFFFF; }
 
 .received .timestamp {
-    color: var(--text-muted);
+    color: rgba(255, 255, 255, 0.5);
     font-size: 11px;
-    opacity: 0.8;
+    opacity: 1;
     margin-left: auto !important;
 }
 
-/* Adjust message width when avatar is present (group chats) */
 .messageWrapperGroup .message {
     max-width: calc(70% - 44px);
 }
@@ -881,18 +866,19 @@
     margin-left: auto;
 }
 
+/* ============================================
+   SEEN ICONS
+   ============================================ */
 .seenIcon {
     display: inline-flex;
     align-items: center;
     justify-content: center;
     margin-left: 4px;
-    margin-right: 0;
 }
 
 .seenIconImage {
     width: 14px;
     height: 14px;
-    display: block;
     opacity: 0.9;
 }
 
@@ -929,7 +915,6 @@
     border-radius: 50%;
     border: 1.2px solid rgba(255, 255, 255, 0.7);
     box-sizing: border-box;
-    opacity: 0.85;
 }
 
 .deliveryClockHandShort,
@@ -953,156 +938,309 @@
     animation: clockHandTurn 1.2s linear infinite;
 }
 
+/* ============================================
+   INPUT BAR - Glassy bubble overlapping messages
+   ============================================ */
 .inputBar {
     display: flex;
-    align-items: center;
-    gap: 10px;
-    padding: 10px 16px 10px 16px;
-    background: var(--bg-panel);
-    border-top: 1px solid rgba(255, 255, 255, 0.06);
-    box-shadow: 0 -8px 18px rgba(0, 0, 0, 0.25);
-    position: relative;
-    z-index: 2;
+    align-items: flex-end;
+    gap: 8px;
+    padding: 10px 12px;
+    margin: 0 16px 16px 16px;
+    background: linear-gradient(180deg, rgba(255, 255, 255, 0.08), rgba(255, 255, 255, 0.03)), rgba(24, 24, 28, 0.55);
+    backdrop-filter: blur(18px) saturate(160%);
+    -webkit-backdrop-filter: blur(18px) saturate(160%);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    border-radius: 26px;
+    box-shadow: 0 2px 12px rgba(0, 0, 0, 0.18), inset 0 1px 0 rgba(255, 255, 255, 0.1);
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 10;
+    transition: background 0.3s ease, box-shadow 0.3s ease, border-color 0.3s ease;
 }
 
+/* Left/Right Actions */
+.inputActionsLeft, .inputActionsRight {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    flex-shrink: 0;
+    padding-bottom: 0;
+}
+
+/* Composer */
 .composer {
     flex: 1;
     display: flex;
     flex-direction: column;
     gap: 8px;
     min-width: 0;
+    padding: 0 4px;
+}
+
+/* Textarea - completely borderless inside the glass pill */
+.messageTextarea {
+    width: 100%;
+    min-height: 24px;
+    max-height: 120px;
+    resize: none;
+    border-radius: 0;
+    padding: 8px 0;
+    font-family: "Vazirmatn", "Outfit", sans-serif;
+    font-size: 15px;
+    line-height: 1.4;
+    color: #FFFFFF;
+    background: transparent !important;
+    border: none !important;
+    outline: none !important;
+    box-shadow: none !important;
+}
+
+.messageTextarea::placeholder {
+    color: rgba(255, 255, 255, 0.35);
+}
+
+.messageTextarea:focus {
+    background: transparent !important;
+}
+
+/* Action buttons */
+.actionButton {
+    width: 38px;
+    height: 38px;
+    min-width: 38px;
+    max-width: 38px;
+    border-radius: 50%;
+    border: none;
+    background: transparent;
+    color: rgba(255, 255, 255, 0.45);
+    font-size: 17px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: color 0.2s ease, transform 0.15s ease, background 0.2s ease;
+}
+
+.actionButton:hover {
+    color: #0A84FF;
+    background: rgba(10, 132, 255, 0.12);
+}
+
+.actionButton:active {
+    transform: scale(0.88);
+}
+
+
+/* Send/Mic Button - prominent filled circular button */
+.primaryButton {
+    width: 42px;
+    height: 42px;
+    min-width: 42px;
+    max-width: 42px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #0A84FF, #0066CC);
+    color: #fff !important;
+    font-size: 18px;
+    box-shadow: 0 4px 14px rgba(10, 132, 255, 0.4);
+    transition: transform 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275), box-shadow 0.2s ease, background 0.2s ease;
+}
+
+.primaryButton:hover {
+    background: linear-gradient(135deg, #1E90FF, #007AFF);
+    box-shadow: 0 6px 20px rgba(10, 132, 255, 0.55);
+    transform: translateY(-1px) scale(1.04);
+}
+
+.primaryButton:active {
+    transform: scale(0.92);
+}
+
+.primaryButton:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    box-shadow: none;
+    transform: none;
+}
+
+/* When text is typed, button brightens */
+.primaryButton.hasText {
+    background: linear-gradient(135deg, #1E90FF, #007AFF);
+    box-shadow: 0 4px 16px rgba(10, 132, 255, 0.5);
+}
+
+/* Switch animation when text appears */
+@keyframes buttonSwitchIn {
+    0% {
+        transform: scale(0.6) rotate(-90deg);
+        opacity: 0;
+    }
+    50% {
+        transform: scale(1.1) rotate(5deg);
+    }
+    100% {
+        transform: scale(1) rotate(0deg);
+        opacity: 1;
+    }
+}
+
+@keyframes buttonSwitchOut {
+    0% {
+        transform: scale(1) rotate(0deg);
+        opacity: 1;
+    }
+    50% {
+        transform: scale(1.1) rotate(-5deg);
+    }
+    100% {
+        transform: scale(0.6) rotate(90deg);
+        opacity: 0;
+    }
+}
+
+.sendButtonWrapper.switching-in .actionButton {
+    animation: buttonSwitchIn 0.35s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+}
+
+.sendButtonWrapper.switching-out .actionButton {
+    animation: buttonSwitchOut 0.25s cubic-bezier(0.6, -0.28, 0.735, 0.045) forwards;
+}
+
+/* Recording State */
+.primaryButton.recordingActive {
+    background: linear-gradient(135deg, #FF4D4D, #E02424);
+    box-shadow: 0 4px 14px rgba(255, 77, 77, 0.5);
+    animation: recordingPulse 1.5s ease-in-out infinite;
+}
+
+/* Edit Mode Buttons */
+.editCancelButton {
+    color: var(--text-muted);
+}
+
+.editCancelButton:hover {
+    background: rgba(255, 77, 77, 0.15);
+    color: var(--error-color);
+}
+
+.editSaveButton {
+    color: #2ecc71;
+}
+
+.editSaveButton:hover {
+    background: rgba(46, 204, 113, 0.15);
+    color: #27ae60;
+}
+
+.editSaveButton:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+}
+
+/* Send Icon */
+.sendIcon {
+    width: 18px;
+    height: 18px;
+    object-fit: contain;
+    transform: translate(1px, -1px);
+    filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.3));
+}
+
+/* ============================================
+   REPLY BAR - Integrated style
+   ============================================ */
+   .replyBar {
+    display: flex;
+    align-items: stretch;
+    gap: 10px;
+    padding: 8px 10px;
+    border-radius: 12px;
+    background: rgba(10, 132, 255, 0.08);
+    border: 1px solid rgba(10, 132, 255, 0.18);
+    border-left: 3px solid #0A84FF;
+    margin-bottom: 8px;
+    animation: replyBarSlideIn 0.2s ease-out;
     position: relative;
 }
 
-.replyBar {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 12px;
-    padding: 10px 14px;
-    border-radius: 14px;
-    background: linear-gradient(135deg, rgba(45, 144, 228, 0.18), rgba(255, 255, 255, 0.04));
-    border: 1px solid rgba(45, 144, 228, 0.25);
-    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.25);
-    animation: replyBarSlideIn 0.2s ease-out;
-    flex: 1;
-    margin: 0 180px 10px 42px;
-}
-
-.replyBarRow {
-    padding: 10px 16px 0 16px;
-    background: var(--bg-panel);
-    border-top: 1px solid rgba(255, 255, 255, 0.06);
-    display: flex;
-}
-
-@media (max-width: 768px) {
-    .replyBar {
-        margin: 0 88px 10px 44px;
-    }
-}
-
-
-.messageHighlight .message {
-    animation: highlightPulse 1.2s ease-out;
-}
-
-@keyframes highlightPulse {
-    0% {
-        box-shadow: 0 0 0 0 rgba(45, 144, 228, 0.65);
-        transform: translateY(-1px);
-    }
-    60% {
-        box-shadow: 0 0 0 12px rgba(45, 144, 228, 0);
-        transform: translateY(0);
-    }
-    100% {
-        box-shadow: none;
-    }
+.replyBarIndicator {
+    width: 3px;
+    min-height: 100%;
+    border-radius: 3px;
+    background: #0A84FF;
+    flex-shrink: 0;
 }
 
 .replyBarContent {
+    flex: 1;
     min-width: 0;
     display: flex;
     flex-direction: column;
-    gap: 2px;
+    gap: 3px;
+    overflow: hidden;
 }
 
-.replyBarTitle {
-    margin: 0;
+.replyBarHeader {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
+.replyBarLabel {
     font-size: 12px;
+    font-weight: 600;
+    color: rgba(77, 184, 255, 0.9);
+    letter-spacing: 0;
+}
+
+.replyBarType {
+    font-size: 10px;
     color: var(--text-muted);
-    letter-spacing: 0.02em;
-    text-transform: uppercase;
+    background: rgba(255, 255, 255, 0.06);
+    padding: 1px 6px;
+    border-radius: 4px;
 }
 
 .replyBarText {
     margin: 0;
     font-size: 13px;
-    color: var(--text-main);
+    color: var(--text-muted);
     overflow: hidden;
     text-overflow: ellipsis;
-    display: -webkit-box;
-    line-clamp: 1;
-    -webkit-line-clamp: 1;
-    -webkit-box-orient: vertical;
-    white-space: normal;
-    max-height: 1.4em;
-}
-
-.messageTextarea {
-    width: 100%;
-    min-height: 46px;
-    max-height: 160px;
-    resize: none;
-    border-radius: 12px;
-    padding: 12px 14px;
-    font-family: "Vazirmatn", "Outfit", sans-serif;
-    font-size: 15px;
-    line-height: 1.35;
-    color: var(--text-main);
-    background: rgba(255, 255, 255, 0.05);
-    border: 1px solid rgba(255, 255, 255, 0.1);
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1), inset 0 1px 1px rgba(255, 255, 255, 0.05);
-    outline: none;
-}
-
-.messageTextarea::placeholder {
-    color: var(--input-placeholder);
-}
-
-.messageTextarea:focus {
-    background: rgba(255, 255, 255, 0.08);
-    border-color: rgba(45, 144, 228, 0.3);
-    box-shadow: 0 2px 12px rgba(45, 144, 228, 0.15), inset 0 1px 1px rgba(255, 255, 255, 0.08);
+    white-space: nowrap;
+    line-height: 1.3;
 }
 
 .replyBarClose {
+    position: absolute;
+    top: 6px;
+    right: 6px;
     border: none;
     background: transparent;
     color: var(--text-muted);
     cursor: pointer;
-    padding: 6px;
-    border-radius: 10px;
-    transition: transform 0.18s ease, background-color 0.18s ease, color 0.18s ease;
+    padding: 4px;
+    border-radius: 6px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 24px;
+    height: 24px;
+    font-size: 12px;
+    transition: background-color 0.2s ease, color 0.2s ease;
 }
 
 .replyBarClose:hover {
-    background-color: rgba(255, 255, 255, 0.08);
+    background-color: rgba(255, 255, 255, 0.1);
     color: var(--text-main);
-    transform: scale(1.05);
 }
 
-@keyframes replyPop {
-    from { opacity: 0; transform: translateY(4px) scale(0.98); }
-    to { opacity: 1; transform: translateY(0) scale(1); }
-}
-
-@keyframes replyBarSlideIn {
-    from { opacity: 0; transform: translateY(6px); }
-    to { opacity: 1; transform: translateY(0); }
-}
-
+/* ============================================
+   CONTEXT MENUS
+   ============================================ */
 .messageContextMenu {
     position: fixed;
     z-index: 1000;
@@ -1115,6 +1253,11 @@
     padding: 6px;
 }
 
+.messageContextMenu .optionsMenuItem {
+    border-radius: 10px;
+    padding: 10px 12px;
+}
+
 .conversationContextMenu {
     position: fixed;
     z-index: 1000;
@@ -1124,213 +1267,20 @@
     border-radius: 8px;
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
     overflow: hidden;
-    padding: 0;
     animation: menuFade 0.18s ease-out;
 }
 
 .conversationContextMenu .optionsMenuItem {
-    border-radius: 0;
     padding: 12px 16px;
 }
 
-.conversationContextMenu .optionsMenuItem svg {
-    width: 16px;
-    height: 16px;
-    color: var(--text-muted);
-}
-
-.conversationContextMenu .optionsMenuItem:hover svg {
-    color: var(--text-main);
-}
-
-.confirmOverlay {
-    animation: fadeIn 0.18s ease-out;
-    position: fixed;
-    inset: 0;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    background: rgba(0, 0, 0, 0.4);
-    backdrop-filter: blur(1px);
-    z-index: 2000;
-    padding: 20px;
-}
-
-.confirmBox {
-    animation: popIn 0.22s ease-out;
-    width: 100%;
-    max-width: 340px;
-    padding: 1.25rem;
-    border-radius: 12px;
-    background: var(--bg-panel);
-    border: 1px solid var(--input-border);
-    box-shadow: 0 12px 36px rgba(0, 0, 0, 0.25);
-    color: var(--text-primary);
-}
-
-.confirmTitle {
-    margin: 0 0 0.35rem;
-    font-weight: 700;
-    font-size: 1rem;
-}
-
-.confirmText {
-    margin: 0 0 1rem;
-    color: var(--text-muted);
-    font-size: 0.9rem;
-}
-
-.confirmActions {
-    display: flex;
-    flex-direction: column;
-    gap: 12px;
-}
-
-.confirmButtons {
-    display: flex;
-    justify-content: flex-end;
-    gap: 0.5rem;
-}
-
-.cancelButton,
-.confirmButton {
-    padding: 0.45rem 0.9rem;
-    border-radius: 8px;
-    border: 1px solid var(--input-border);
-    background: transparent;
-    color: var(--text-primary);
-    cursor: pointer;
-    transition: background-color 0.2s ease, color 0.2s ease, border-color 0.2s ease;
-}
-
-.cancelButton:hover:not(:disabled) {
-    background: rgba(255, 255, 255, 0.08);
-    border-color: rgba(255, 255, 255, 0.12);
-}
-
-.confirmButton {
-    background: rgba(255, 18, 18, 0.1);
-    border-color: rgba(255, 18, 18, 0.4);
-    color: var(--text-primary);
-}
-
-.confirmButton:hover:not(:disabled) {
-    background: rgba(255, 18, 18, 0.2);
-    border-color: rgba(255, 18, 18, 0.6);
-}
-
-.cancelButton:disabled,
-.confirmButton:disabled {
-    opacity: 0.6;
-    cursor: not-allowed;
-}
-
-.deleteCheckbox {
-    display: inline-flex;
-    align-items: center;
-    gap: 10px;
-    color: var(--text-muted);
-    font-size: 0.9rem;
-}
-
-.deleteCheckbox input {
-    width: 20px;
-    height: 20px;
-    appearance: none;
-    border-radius: 50%;
-    border: 2px solid rgba(255, 255, 255, 0.2);
-    background: transparent;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    cursor: pointer;
-    transition: border-color 0.12s ease, background-color 0.12s ease, box-shadow 0.12s ease, transform 0.12s ease;
-}
-
-.deleteCheckbox input:checked {
-    border-color: rgba(255, 18, 18, 0.8);
-    background: transparent;
-    box-shadow: inset 0 0 0 5px rgba(255, 18, 18, 0.85);
-}
-
-.deleteCheckbox input:checked::after {
-    content: none;
-}
-
-.deleteCheckbox input:focus-visible {
-    outline: none;
-    box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.12);
-}
-
-@media (max-width: 640px) {
-    .confirmButtons {
-        flex-direction: column;
-        align-items: stretch;
-    }
-
-    .cancelButton,
-    .confirmButton {
-        width: 100%;
-    }
-}
-
-.messageContextMenu .optionsMenuItem {
-    border-radius: 10px;
-    padding: 10px 12px;
-}
-
-.messageContextMenu .optionsMenuItem svg {
-    width: 16px;
-    height: 16px;
-}
-
-.messageInput > div {
-    background: rgba(255, 255, 255, 0.05) !important;
-    backdrop-filter: blur(10px);
-    -webkit-backdrop-filter: blur(10px);
-    border: 1px solid rgba(255, 255, 255, 0.1) !important;
-    border-radius: 12px;
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1), inset 0 1px 1px rgba(255, 255, 255, 0.05);
-    transition: all 0.3s ease;
-}
-
-.messageInput > div:focus-within {
-    background: rgba(255, 255, 255, 0.08) !important;
-    border-color: rgba(45, 144, 228, 0.3) !important;
-    box-shadow: 0 2px 12px rgba(45, 144, 228, 0.15), inset 0 1px 1px rgba(255, 255, 255, 0.08);
-}
-
-.messageInput input {
-    border: none !important;
-    background: transparent !important;
-    color: var(--text-main);
-}
-
+/* ============================================
+   OPTIONS MENU
+   ============================================ */
 .optionsMenuContainer {
     position: relative;
     display: flex;
     align-items: center;
-}
-
-.optionsButton {
-    transform: translate(-5px);
-    background: none;
-    border: none;
-    color: var(--text-muted);
-    font-size: 24px;
-    cursor: pointer;
-    padding: 0;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    transition: color 0.3s ease;
-    width: 32px;
-    height: 32px;
-}
-
-.optionsButton:hover {
-    color: var(--text-main);
-    transition: color 0.6s ease;
 }
 
 .optionsMenu {
@@ -1339,12 +1289,12 @@
     left: 0;
     background-color: var(--bg-panel);
     border: 1px solid var(--input-border);
-    border-radius: 8px;
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    border-radius: 12px;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3);
     min-width: 180px;
     z-index: 1000;
     overflow: hidden;
-    animation: slideDown 0.2s ease-out;
+    animation: slideUpFade 0.2s ease-out;
 }
 
 .optionsMenuDown {
@@ -1354,7 +1304,6 @@
     left: auto;
     transform: translate(-8px, -50%);
     min-width: 200px;
-    animation: menuFade 0.18s ease-out;
 }
 
 .chatMenuWrapper {
@@ -1363,15 +1312,42 @@
     align-items: center;
 }
 
-@keyframes slideDown {
-    from {
-        opacity: 0;
-        transform: translateY(-8px);
-    }
-    to {
-        opacity: 1;
-        transform: translateY(0);
-    }
+/* ============================================
+   CHAT HEADER OPTIONS BUTTON (Three Dots)
+   ============================================ */
+   .optionsButton {
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    border: none;
+    background: transparent;
+    color: var(--text-muted);
+    font-size: 18px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background-color 0.2s ease, color 0.2s ease, transform 0.15s ease;
+    flex-shrink: 0;
+}
+
+.optionsButton:hover {
+    background-color: var(--item-hover);
+    color: var(--text-main);
+}
+
+.optionsButton:active {
+    transform: scale(0.92);
+}
+
+/* Fix the dropdown positioning so it opens downwards */
+.optionsMenuDown {
+    top: calc(100% + 8px); /* Push it below the button */
+    right: 0; /* Align it to the right edge of the button */
+    left: auto;
+    bottom: auto;
+    transform: none;
+    min-width: 200px;
 }
 
 .optionsMenuItem {
@@ -1385,7 +1361,6 @@
     color: var(--text-main);
     font-size: 14px;
     cursor: pointer;
-    transition: background-color 0.2s ease;
     text-align: left;
 }
 
@@ -1403,26 +1378,21 @@
     color: var(--text-main);
 }
 
-/* No Selected Chat */
+/* ============================================
+   NO CHAT SELECTED
+   ============================================ */
 .noChatSelected {
     flex: 1;
     display: flex;
     align-items: center;
     justify-content: center;
     padding: 40px 20px;
-    animation: fadeInUp 0.35s ease-out;
-}
-
-.noChatSelected h2 {
-    color: var(--text-muted);
-    font-size: 18px;
 }
 
 .emptyChatMessage {
     text-align: center;
     max-width: 400px;
     padding: 20px;
-    animation: fadeInUp 0.4s ease-out;
 }
 
 .emptyChatTitle {
@@ -1430,7 +1400,6 @@
     font-size: 24px;
     font-weight: 600;
     margin-bottom: 12px;
-    letter-spacing: -0.5px;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -1440,18 +1409,19 @@
 .welcomeIcon {
     width: 48px;
     height: 48px;
-    object-fit: contain;    
+    object-fit: contain;
     filter: invert(100%) sepia(0%) saturate(1552%) hue-rotate(333deg) brightness(112%) contrast(101%);
-    margin: 0px, 0px, 0px, 0px;
 }
 
 .emptyChatSubtitle {
     color: var(--text-muted);
     font-size: 16px;
-    line-height: 1.5;
     opacity: 0.8;
 }
 
+/* ============================================
+   UPLOAD PROGRESS
+   ============================================ */
 .uploadProgress {
     padding: 10px 16px;
     background-color: var(--bg-panel);
@@ -1471,7 +1441,6 @@
     height: 50px;
     border-radius: 4px;
     object-fit: cover;
-    animation: previewPop 0.2s ease-out;
 }
 
 .filePreviewVideo {
@@ -1523,7 +1492,6 @@
     height: 100%;
     background-color: var(--btn-color);
     border-radius: 2px;
-    transition: width 0.3s ease;
     animation: progressGlow 1.6s ease-in-out infinite;
 }
 
@@ -1540,93 +1508,19 @@
     align-items: center;
     justify-content: center;
     cursor: pointer;
-    transition: background-color 0.2s ease;
 }
 
 .cancelUpload:hover {
     background: var(--error-dark);
 }
 
-/* Emoji List Styles */
+/* ============================================
+   MEDIA PICKER
+   ============================================ */
 .mediaPickerWrapper {
     position: relative;
     display: flex;
     align-items: center;
-    margin-left: 4px;
-}
-
-.mediaButton {
-    height: 40px;
-    width: 40px;
-    border-radius: 50%;
-    border: 1px solid rgba(255, 255, 255, 0.12);
-    background: rgba(255, 255, 255, 0.06);
-    color: var(--text-main);
-    font-size: 18px;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    cursor: pointer;
-    transition: transform 0.2s ease, background-color 0.2s ease, border-color 0.2s ease;
-}
-
-.mediaButton:hover {
-    transform: translateY(-1px);
-    background: rgba(255, 255, 255, 0.12);
-    border-color: rgba(45, 144, 228, 0.35);
-}
-
-.recordingIndicator {
-    display: inline-flex;
-    align-items: center;
-    gap: 6px;
-    padding: 4px 8px;
-    border-radius: 999px;
-    background: rgba(255, 255, 255, 0.06);
-    border: 1px solid rgba(255, 255, 255, 0.12);
-    color: var(--text-main);
-    font-size: 12px;
-}
-
-.recordingDot {
-    width: 8px;
-    height: 8px;
-    border-radius: 50%;
-    background: var(--error-color);
-    box-shadow: 0 0 8px rgba(255, 77, 77, 0.65);
-    animation: recordingPulse 1.1s ease-in-out infinite;
-}
-
-.recordingTime {
-    font-variant-numeric: tabular-nums;
-    letter-spacing: 0.4px;
-}
-
-.recordButton {
-    height: 40px;
-    width: 40px;
-    border-radius: 50%;
-    border: 1px solid rgba(255, 255, 255, 0.12);
-    background: rgba(255, 255, 255, 0.06);
-    color: var(--text-main);
-    font-size: 16px;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    cursor: pointer;
-    transition: transform 0.2s ease, background-color 0.2s ease, border-color 0.2s ease;
-}
-
-.recordButton:hover {
-    transform: translateY(-1px);
-    background: rgba(255, 255, 255, 0.12);
-    border-color: rgba(255, 77, 77, 0.5);
-}
-
-.recordButtonActive {
-    background: rgba(255, 77, 77, 0.18);
-    border-color: rgba(255, 77, 77, 0.55);
-    color: var(--error-color);
 }
 
 .mediaPicker {
@@ -1634,6 +1528,7 @@
     bottom: 60px;
     right: 0;
     width: 320px;
+    max-height: 350px;
     padding: 12px;
     border-radius: 14px;
     background: var(--bg-panel);
@@ -1641,6 +1536,7 @@
     box-shadow: 0 16px 32px rgba(0, 0, 0, 0.35);
     animation: fadeInUp 0.22s ease-out;
     z-index: 1000;
+    overflow: hidden;
 }
 
 .mediaTabs {
@@ -1662,7 +1558,6 @@
     padding: 6px 8px;
     border-radius: 8px;
     cursor: pointer;
-    transition: background-color 0.2s ease, color 0.2s ease;
 }
 
 .mediaTabActive {
@@ -1674,9 +1569,8 @@
     display: grid;
     grid-template-columns: repeat(3, 1fr);
     gap: 8px;
-    max-height: 240px;
+    max-height: 150px;
     overflow-y: auto;
-    padding-right: 4px;
 }
 
 .mediaGrid::-webkit-scrollbar {
@@ -1697,13 +1591,10 @@
     align-items: center;
     justify-content: center;
     cursor: pointer;
-    transition: transform 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
 }
 
 .mediaItem:hover {
-    transform: translateY(-2px);
     border-color: rgba(45, 144, 228, 0.45);
-    box-shadow: 0 8px 16px rgba(0, 0, 0, 0.25);
 }
 
 .mediaItem img {
@@ -1727,36 +1618,24 @@
     padding: 0 10px;
     font-size: 12px;
     outline: none;
-    transition: border-color 0.2s ease, box-shadow 0.2s ease;
 }
 
 .mediaSearch input:focus {
     border-color: rgba(45, 144, 228, 0.4);
-    box-shadow: 0 0 0 3px rgba(45, 144, 228, 0.12);
 }
 
-.mediaError {
+.mediaError, .mediaLoading, .mediaEmpty {
     margin: 0 0 8px;
-    color: var(--error-color);
     font-size: 12px;
 }
 
-.mediaLoading {
-    margin: 0 0 8px;
-    color: var(--text-muted);
-    font-size: 12px;
-}
-
-.mediaEmpty {
-    margin: 0 0 8px;
-    color: var(--text-muted);
-    font-size: 12px;
-}
+.mediaError { color: var(--error-color); }
+.mediaLoading, .mediaEmpty { color: var(--text-muted); }
 
 .emojiPane {
     border-radius: 12px;
     overflow: hidden;
-    max-height: 360px;
+    max-height: 250px;
 }
 
 .emojiPicker {
@@ -1766,172 +1645,643 @@
     box-shadow: none !important;
 }
 
-.sendButton {
-    width: 46px;
-    height: 46px;
-    min-width: 46px;
-    max-width: 46px;
-    padding: 0;
-    margin: 0;
+/* ============================================
+   RECORDING INDICATOR
+   ============================================ */
+.recordingIndicator {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 12px;
+    border-radius: 20px;
+    border: 1px solid rgba(255, 77, 77, 0.2);
+    background: transparent;
+}
+
+.recordingDot {
+    width: 8px;
+    height: 8px;
     border-radius: 50%;
-    border: none;
-    background-color: var(--btn-color);
-    color: white;
-    cursor: pointer;
+    background: var(--error-color);
+    box-shadow: 0 0 6px rgba(255, 77, 77, 0.6);
+    animation: recordingPulse 1.1s ease-in-out infinite;
+}
+
+.recordingTime {
+    font-size: 13px;
+    font-weight: 500;
+    font-variant-numeric: tabular-nums;
+    color: var(--error-color);
+    letter-spacing: 0.5px;
+}
+
+/* ============================================
+   CONFIRM DIALOGS
+   ============================================ */
+.confirmOverlay {
+    position: fixed;
+    inset: 0;
     display: flex;
     align-items: center;
     justify-content: center;
-    flex-shrink: 0;
-    transition: var(--transition), transform 0.2s ease, box-shadow 0.2s ease;
-    box-shadow: 0 10px 24px rgba(45, 144, 228, 0.25);
+    background: rgba(0, 0, 0, 0.4);
+    backdrop-filter: blur(1px);
+    z-index: 2000;
+    padding: 20px;
 }
 
-.sendButton:disabled {
+.confirmBox {
+    width: 100%;
+    max-width: 340px;
+    padding: 1.25rem;
+    border-radius: 12px;
+    background: var(--bg-panel);
+    border: 1px solid var(--input-border);
+    box-shadow: 0 12px 36px rgba(0, 0, 0, 0.25);
+}
+
+.confirmTitle {
+    margin: 0 0 0.35rem;
+    font-weight: 700;
+    font-size: 1rem;
+}
+
+.confirmText {
+    margin: 0 0 1rem;
+    color: var(--text-muted);
+    font-size: 0.9rem;
+}
+
+.confirmActions {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.confirmButtons {
+    display: flex;
+    justify-content: flex-end;
+    gap: 0.5rem;
+}
+
+.cancelButton, .confirmButton {
+    padding: 0.45rem 0.9rem;
+    border-radius: 8px;
+    border: 1px solid var(--input-border);
+    background: transparent;
+    color: var(--text-primary);
+    cursor: pointer;
+}
+
+.cancelButton:hover:not(:disabled) {
+    background: rgba(255, 255, 255, 0.08);
+    border-color: rgba(255, 255, 255, 0.12);
+}
+
+.confirmButton {
+    background: rgba(255, 18, 18, 0.1);
+    border-color: rgba(255, 18, 18, 0.4);
+}
+
+.confirmButton:hover:not(:disabled) {
+    background: rgba(255, 18, 18, 0.2);
+    border-color: rgba(255, 18, 18, 0.6);
+}
+
+.cancelButton:disabled, .confirmButton:disabled {
     opacity: 0.6;
     cursor: not-allowed;
-    box-shadow: none;
 }
 
-.sendButton:hover {
-    background-color: var(--btn-hover);
-    transform: translateY(-1px);
-    box-shadow: 0 14px 28px rgba(45, 144, 228, 0.35);
+.deleteCheckbox {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    color: var(--text-muted);
+    font-size: 0.9rem;
 }
 
-
-.sendButton:active {
-    transform: scale(0.95);
-}
-
-.sendIcon {
-    transform: translate(2px);
+.deleteCheckbox input {
     width: 20px;
     height: 20px;
-    object-fit: contain;
-    display: block;
-    margin: 0;
-    padding: 0;
-    flex-shrink: 0;
+    appearance: none;
+    border-radius: 50%;
+    border: 2px solid rgba(255, 255, 255, 0.2);
+    background: transparent;
+    cursor: pointer;
 }
 
+.deleteCheckbox input:checked {
+    border-color: rgba(255, 18, 18, 0.8);
+    box-shadow: inset 0 0 0 5px rgba(255, 18, 18, 0.85);
+}
+
+/* ============================================
+   MESSAGE HIGHLIGHT
+   ============================================ */
+.messageHighlight .message {
+    animation: highlightPulse 1.2s ease-out;
+}
+
+@keyframes highlightPulse {
+    0% { box-shadow: 0 0 0 0 rgba(45, 144, 228, 0.65); }
+    60% { box-shadow: 0 0 0 12px rgba(45, 144, 228, 0); }
+    100% { box-shadow: none; }
+}
+
+/* ============================================
+   MESSAGE INPUT (LEGACY)
+   ============================================ */
+.messageInput > div {
+    background: rgba(255, 255, 255, 0.05) !important;
+    border: 1px solid rgba(255, 255, 255, 0.1) !important;
+    border-radius: 12px;
+}
+
+.messageInput > div:focus-within {
+    background: rgba(255, 255, 255, 0.08) !important;
+    border-color: rgba(45, 144, 228, 0.3) !important;
+}
+
+.messageInput input {
+    border: none !important;
+    background: transparent !important;
+    color: var(--text-main);
+}
+
+/* ============================================
+   MOBILE BACK BUTTON
+   ============================================ */
+.mobileBackButton {
+    display: none;
+    background: none;
+    border: none;
+    color: var(--text-main);
+    font-size: 18px;
+    padding: 10px;
+    margin-right: 4px;
+    cursor: pointer;
+    border-radius: 8px;
+    align-items: center;
+    justify-content: center;
+}
+
+.mobileBackButton:hover {
+    background-color: var(--item-hover);
+}
+
+/* ============================================
+   TABLET
+   ============================================ */
+@media (max-width: 1024px) {
+    .sidebar { flex: 0 0 70px; }
+    .chatListSidebar { width: 280px; min-width: 280px; }
+}
+
+/* ============================================
+   MOBILE
+   ============================================ */
 @media (max-width: 768px) {
     .chatListSidebar {
         width: 100%;
-        position: absolute;
-        z-index: 10;
-        transform: translateX(-100%);
-        transition: transform 0.3s ease;
+        min-width: 100%;
+        max-width: 100%;
+        height: 100%;
+        border-left: none;
     }
+    
+    .sidebar { display: none; }
 
-    .chatListSidebar.open {
-        transform: translateX(0);
-    }
-
-    .chatMain {
+    /* Mobile header with hamburger menu */
+    .mobileChatHeader {
+        display: flex;
+        align-items: center;
+        gap: 12px;
         width: 100%;
+        padding: 4px 4px 10px;
     }
-}
 
-.youText {
-    display: inline;
-    font-weight: bold;
-    margin-right: 4px;
-    display: inline;
-
-}
-  
-@keyframes panelSlideIn {
-    from { opacity: 0; transform: translateX(-10px); }
-    to { opacity: 1; transform: translateX(0); }
-}
-
-@keyframes panelFadeIn {
-    from { opacity: 0; transform: translateY(8px); }
-    to { opacity: 1; transform: translateY(0); }
-}
-
-@keyframes headerSlide {
-    from { opacity: 0; transform: translateY(-8px); }
-    to { opacity: 1; transform: translateY(0); }
-}
-
-@keyframes listItemIn {
-    from { opacity: 0; transform: translateY(6px); }
-    to { opacity: 1; transform: translateY(0); }
-}
-
-@keyframes messagesFade {
-    from { opacity: 0; }
-    to { opacity: 1; }
-}
-
-@keyframes fadeInUp {
-    from { opacity: 0; transform: translateY(10px); }
-    to { opacity: 1; transform: translateY(0); }
-}
-
-@keyframes menuFade {
-    from { opacity: 0; }
-    to { opacity: 1; }
-}
-
-@keyframes previewPop {
-    from { opacity: 0; transform: scale(0.96); }
-    to { opacity: 1; transform: scale(1); }
-}
-
-@keyframes floatPulse {
-    0%, 100% { transform: translateY(0); box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3); }
-    50% { transform: translateY(-3px); box-shadow: 0 8px 18px rgba(45, 144, 228, 0.28); }
-}
-
-@keyframes progressGlow {
-    0%, 100% { box-shadow: 0 0 0 rgba(45, 144, 228, 0.3); }
-    50% { box-shadow: 0 0 12px rgba(45, 144, 228, 0.4); }
-}
-
-@keyframes clockHandTurn {
-    from {
-        transform: rotate(0deg);
+    .mobileMenuButton {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 40px;
+        height: 40px;
+        border: none;
+        background: transparent;
+        color: var(--text-main);
+        font-size: 18px;
+        border-radius: 12px;
+        cursor: pointer;
+        transition: background-color 0.2s ease, transform 0.15s ease;
+        flex-shrink: 0;
     }
-    to {
-        transform: rotate(360deg);
-    }
-}
 
-@keyframes recordingPulse {
-    0%, 100% {
-        transform: scale(0.9);
-        opacity: 0.8;
+    .mobileMenuButton:hover {
+        background: rgba(255, 255, 255, 0.08);
     }
-    50% {
-        transform: scale(1.15);
+
+    .mobileMenuButton:active {
+        transform: scale(0.92);
+    }
+
+    .mobileChatHeaderTitle {
+        font-size: 16px;
+        font-weight: 600;
+        color: var(--text-main);
+        letter-spacing: 0.02em;
+    }
+    
+    .chatMain {
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        width: 100%;
+        z-index: 100;
+        transform: translateX(100%);
+        opacity: 0;
+        transition: transform 0.32s cubic-bezier(0.32, 0.72, 0, 1), opacity 0.32s ease;
+        background-color: var(--bg-color);
+        will-change: transform, opacity;
+    }
+    
+    .mobileChatOpen .chatMain {
+        transform: translateX(0);
         opacity: 1;
     }
+    .mobileChatOpen .chatListSidebar { display: none; }
+    
+    .mobileBackButton { display: flex; }
+    
+    .chatHeader { padding: 12px; }
+    
+    .message { max-width: 85%; }
+    .messageWrapperGroup .message { max-width: calc(85% - 44px); }
+    
+    .messageMediaImage { max-width: 100%; height: auto; }
+    .messageMediaVideo { width: 100%; max-height: 250px; }
+    
+    /* Input bar mobile */
+    .inputBar {
+        padding: 8px 10px;
+        gap: 6px;
+        align-items: center;
+        border-radius: 22px;
+    }
+    
+    .actionButton {
+        width: 38px;
+        height: 38px;
+        min-width: 38px;
+        max-width: 38px;
+        font-size: 16px;
+    }
+    
+    .primaryButton {
+        width: 40px;
+        height: 40px;
+        min-width: 40px;
+        max-width: 40px;
+    }
+    
+    .messageTextarea {
+        min-height: 40px;
+        padding: 10px 14px;
+        font-size: 16px;
+        line-height: 1.2;
+        border-radius: 18px;
+    }
+    
+    .sendIcon {
+        width: 16px;
+        height: 16px;
+    }
+    
+    .recordingIndicator {
+        padding: 5px 10px;
+        border-radius: 16px;
+        border: 1px solid rgba(255, 77, 77, 0.2);
+        background: transparent;
+    }
+    
+    .recordingTime {
+        font-size: 12px;
+    }
+    
+    /* Media Picker */
+    .mediaPicker {
+        position: fixed;
+        bottom: 70px;
+        left: 8px;
+        right: 8px;
+        width: auto;
+        max-height: 280px;
+        border-radius: 16px;
+    }
+    
+    .emojiPane {
+        max-height: 180px;
+        overflow: hidden;
+    }
+    
+    .mediaGrid {
+        max-height: 120px;
+    }
+    
+    .mediaItem img {
+        height: 45px;
+    }
+    
+    .messageContextMenu,
+    .conversationContextMenu {
+        max-width: calc(100vw - 24px);
+    }
+    
+    .optionsMenu {
+        position: fixed;
+        bottom: 70px;
+        left: 12px;
+        right: 12px;
+        width: auto;
+        border-radius: 16px;
+    }
+    
+    .optionsMenuDown {
+        bottom: auto;
+        top: 56px;
+        right: 12px;
+        left: auto;
+        width: 220px;
+        transform: none;
+    }
+    
+    .confirmBox { max-width: calc(100% - 32px); margin: 16px; }
+    
+    .uploadProgress { padding: 8px 12px; }
+    
+    .filePreview, .filePreviewVideo, .filePreviewFallback {
+        width: 40px;
+        height: 40px;
+    }
+    
+    /* Chat list overflow fix */
+    .chatItem {
+        padding: 10px !important;
+        gap: 10px !important;
+        overflow: hidden;
+        max-width: 100%;
+        box-sizing: border-box;
+    }
+    
+    .chatInfo {
+        min-width: 0 !important;
+        flex: 1 !important;
+        overflow: hidden;
+    }
+    
+    .chatInfoHeader {
+        min-width: 0 !important;
+        overflow: hidden;
+    }
+    
+    .chatInfoHeader h3 {
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        max-width: 100%;
+    }
+    
+    .chatInfoHeader p {
+        max-width: 100%;
+    }
+    
+    .chatInfoFooter {
+        flex-shrink: 0;
+        gap: 6px !important;
+    }
+    
+    .statusAvatar {
+        flex-shrink: 0;
+    }
+    
+    .chatItem {
+        box-sizing: border-box !important;
+        width: 100% !important;
+        max-width: 100% !important;
+        padding: 12px 10px !important;
+        margin: 0 !important;
+    }
+    
+    .chatListSidebar {
+        padding: 8px !important;
+        width: 100% !important;
+        min-width: 0 !important;
+        max-width: 100% !important;
+        overflow-x: hidden !important;
+        box-sizing: border-box !important;
+    }
+    
+    .newConversationButton {
+        bottom: 24px;
+        right: 24px;
+        width: 52px;
+        height: 52px;
+    }
+    
+    .chatTabs { padding: 4px; margin-bottom: 8px; }
+    .chatTab { padding: 8px 12px; font-size: 13px; }
+    .searchContainer { padding: 8px 0; }
+    
+    .noChatSelected { padding: 20px; }
+    .emptyChatTitle { font-size: 20px; }
+    .welcomeIcon { width: 56px; height: 56px; }
+    .emptyChatSubtitle { font-size: 14px; }
+    
+    .replyBar { margin: 0 8px 8px 8px; max-width: calc(100% - 16px); }
+    
+    .loadingMessages, .emptyMessages { min-height: 40vh; }
 }
 
+/* ============================================
+   SMALL MOBILE
+   ============================================ */
+@media (max-width: 400px) {
+    .chatTab { padding: 6px 10px; font-size: 12px; }
+    .chatItem { padding: 10px; gap: 10px; }
+    .chatInfoHeader h3 { font-size: 14px; }
+    .chatInfoHeader p { font-size: 12px; }
+    
+    .inputBar { padding: 8px 10px; gap: 4px; }
+    
+    .actionButton {
+        width: 34px;
+        height: 34px;
+        min-width: 34px;
+        max-width: 34px;
+        font-size: 14px;
+    }
+    
+    .primaryButton {
+        width: 36px;
+        height: 36px;
+        min-width: 36px;
+        max-width: 36px;
+    }
+    
+    .sendIcon { width: 14px; height: 14px; }
+    
+    .message { max-width: 90%; padding: 10px 12px; }
+    .messageWrapperGroup .message { max-width: calc(90% - 36px); }
+    
+    .messageAvatar, .messageAvatar img { width: 30px; height: 30px; }
+    
+    .mediaGrid { grid-template-columns: repeat(2, 1fr); }
+    .chatHeader h2 { font-size: 14px; }
+    .chatHeader .onlineStatus { font-size: 11px; }
+    
+    .mediaPicker { max-height: 240px; }
+    
+    /* Chat list small mobile */
+    .chatItem {
+        padding: 8px !important;
+        gap: 8px !important;
+    }
+    
+    .chatInfoHeader h3 {
+        font-size: 13px !important;
+    }
+    
+    .chatInfoHeader p {
+        font-size: 11px !important;
+    }
+    
+    .chatInfoFooter .timestamp {
+        font-size: 10px !important;
+    }
+    
+    .chatInfoFooter .notificationBadge {
+        width: 18px !important;
+        height: 18px !important;
+    }
+    
+    .chatInfoFooter .notificationBadge p {
+        font-size: 10px !important;
+    }
+    
+    .chatStatusIcon {
+        width: 12px !important;
+        height: 12px !important;
+    }
+    
+    .chatStatusIconImage {
+        width: 12px !important;
+        height: 12px !important;
+    }
+    
+    .chatListSidebar {
+        padding: 6px !important;
+    }
+    
+    .chatItem {
+        padding: 10px 8px !important;
+    }
+    
+    .newConversationButton {
+        right: 12px !important;
+        bottom: 16px !important;
+        width: 48px !important;
+        height: 48px !important;
+    }
+}
+
+/* ============================================
+   LANDSCAPE
+   ============================================ */
+@media (max-height: 500px) and (orientation: landscape) {
+    .mediaPicker { max-height: 200px; }
+    .emojiPane { max-height: 140px; }
+    
+    .inputBar { padding: 6px 10px; }
+    
+    .actionButton {
+        width: 34px;
+        height: 34px;
+        min-width: 34px;
+        max-width: 34px;
+    }
+    
+    .messageTextarea {
+        min-height: 36px;
+        max-height: 80px;
+        padding: 8px 12px;
+    }
+}
+
+/* ============================================
+   TOUCH
+   ============================================ */
+@media (hover: none) and (pointer: coarse) {
+    .chatItem { min-height: 60px; -webkit-tap-highlight-color: transparent; }
+    .optionsMenuItem { padding: 14px 16px; min-height: 48px; -webkit-tap-highlight-color: transparent; }
+    .chatTab { min-height: 40px; -webkit-tap-highlight-color: transparent; }
+    .mobileBackButton { min-width: 44px; min-height: 44px; }
+    
+    .chatItem:active { background-color: var(--item-hover); }
+    .optionsMenuItem:active { background-color: var(--item-hover); }
+    
+    .message:hover { transform: none; box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1); }
+    .chatItem:hover { transform: none; box-shadow: none; }
+}
+
+/* ============================================
+   SAFE AREA
+   ============================================ */
+@supports (padding: env(safe-area-inset-bottom)) {
+    @media (max-width: 768px) {
+        .inputBar { padding-bottom: calc(6px + env(safe-area-inset-bottom)); }
+        .newConversationButton { bottom: calc(24px + env(safe-area-inset-bottom)); right: calc(24px + env(safe-area-inset-right)); }
+    }
+}
+
+/* ============================================
+   MOBILE CONFIRM
+   ============================================ */
+@media (max-width: 640px) {
+    .confirmButtons { flex-direction: column; align-items: stretch; }
+    .cancelButton, .confirmButton { width: 100%; padding: 12px; font-size: 15px; }
+}
+
+/* ============================================
+   ANIMATIONS
+   ============================================ */
+@keyframes panelSlideIn { from { opacity: 0; transform: translateX(-10px); } to { opacity: 1; transform: translateX(0); } }
+@keyframes panelFadeIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+@keyframes headerSlide { from { opacity: 0; transform: translateY(-8px); } to { opacity: 1; transform: translateY(0); } }
+@keyframes messagesFade { from { opacity: 0; } to { opacity: 1; } }
+@keyframes fadeInUp { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+@keyframes menuFade { from { opacity: 0; } to { opacity: 1; } }
+@keyframes slideDown { from { opacity: 0; transform: translateY(-8px); } to { opacity: 1; transform: translateY(0); } }
+@keyframes slideUpFade { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+@keyframes previewPop { from { opacity: 0; transform: scale(0.96); } to { opacity: 1; transform: scale(1); } }
+@keyframes floatPulse { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-3px); } }
+@keyframes progressGlow { 0%, 100% { box-shadow: 0 0 0 rgba(45, 144, 228, 0.3); } 50% { box-shadow: 0 0 12px rgba(45, 144, 228, 0.4); } }
+@keyframes clockHandTurn { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+@keyframes recordingPulse { 0%, 100% { transform: scale(0.9); } 50% { transform: scale(1.15); } }
+@keyframes popIn { from { opacity: 0; transform: scale(0.95); } to { opacity: 1; transform: scale(1); } }
+@keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+@keyframes replyPop { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: translateY(0); } }
+@keyframes replyBarSlideIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
+@keyframes buttonSwitchIn { from { transform: scale(0.6) rotate(-90deg); opacity: 0; } 50% { transform: scale(1.1) rotate(5deg); } 100% { transform: scale(1) rotate(0deg); opacity: 1; } }
+@keyframes buttonSwitchOut { from { transform: scale(1) rotate(0deg); opacity: 1; } 50% { transform: scale(1.1) rotate(-5deg); } 100% { transform: scale(0.6) rotate(90deg); opacity: 0; } }
+@keyframes dotPulse { 0%, 100% { transform: scale(0.9); } 50% { transform: scale(1.15); } }
+
+/* ============================================
+   REDUCED MOTION
+   ============================================ */
 @media (prefers-reduced-motion: reduce) {
-    .chatListSidebar,
-    .chatMain,
-    .chatHeader,
-    .chatItem,
-    .messagesContainer,
-    .message,
-    .newConversationButton,
-    .sendButton,
-    .noChatSelected,
-    .emptyChatMessage,
-    .filePreview,
-    .progressFill,
-    .mediaButton,
-    .mediaPicker,
-    .emojiPicker,
-    .recordButton,
-    .recordingDot,
-    .deliveryClockHandShort,
-    .deliveryClockHandLong,
-    .confirmOverlay,
-    .confirmBox {
+    .chatListSidebar, .chatMain, .chatHeader, .chatItem, .messagesContainer, .message, .newConversationButton, .actionButton, .noChatSelected, .emptyChatMessage, .filePreview, .progressFill, .mediaPicker, .emojiPicker, .confirmOverlay, .confirmBox, .sidebar, .replyBar {
         animation: none !important;
         transition: none !important;
     }

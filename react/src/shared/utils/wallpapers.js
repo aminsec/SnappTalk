@@ -9,4 +9,6 @@ export const wallpapers = [
   { id: 'dusk', label: 'Dusk', src: withBase('wallpapers/dusk.svg') },
   { id: 'grid', label: 'Grid', src: withBase('wallpapers/grid.svg') },
   { id: 'dunes', label: 'Dunes', src: withBase('wallpapers/dunes.svg') },
+  { id: 'nebula', label: 'Nebula', src: withBase('wallpapers/nebula.svg') },
+  { id: 'ocean', label: 'Ocean', src: withBase('wallpapers/ocean.svg') },
 ];

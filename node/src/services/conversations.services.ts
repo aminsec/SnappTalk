@@ -3,13 +3,13 @@ import { ErrorResponse } from "../types/response.types";
 import { getConversationsCollection } from "../models/conversatations.model";
 import { ProtectedUserInfo } from "../types/user.types";
 import { getUserInfoById } from "./account.services";
-import { ObjectId } from "mongodb";
+import { Collection, ObjectId } from "mongodb";
 import { whiteListConversations } from "../utils/operations";
 import { deleteConversationMessages, getMessageById, getUnreadMessagesCount } from "./messages.services";
 
 export async function getUserConversations(userInfo: ProtectedUserInfo): Promise<[Conversation[] | null, ErrorResponse | null]> {
     try {
-        const conversationsCollection  = await getConversationsCollection();
+        const conversationsCollection = await getConversationsCollection();
         const conversations: Conversation[] = await conversationsCollection.find(
             {members: 
                 {$in: [new ObjectId(userInfo.id)]}
@@ -23,7 +23,12 @@ export async function getUserConversations(userInfo: ProtectedUserInfo): Promise
             var contactId = (conversation.members[0]).toString() !== userInfo.id ? conversation.members[0].toString() : conversation.members[1].toString();
             //Attaching last messsage to contact
             const lastMessageId = conversation.last_message_id;
-            const lastMessage = await getMessageById(lastMessageId);
+
+            const [lastMessage, error] = await getMessageById(lastMessageId);
+            if(error || lastMessage === null) {
+                const err: ErrorResponse = {message: "message not found", state: "failed", type: "not_found"};
+                return [null, err];
+            }
 
             //This check is for checking conversations that deleted last time or not
             if(conversation.deleted_for[userInfo.id] > lastMessage.created_at){
@@ -52,6 +57,11 @@ export async function getUserConversations(userInfo: ProtectedUserInfo): Promise
 
                 if(contactUserInfo){
                     const [unreadMessages, err] = await getUnreadMessagesCount(userInfo.id.toString(), conversation._id);
+                    if(err || unreadMessages === null){
+                        const err: ErrorResponse = {message: "message not found", state: "failed", type: "not_found"};
+                        return [null, err];
+                    }
+
                     conversation.unread_messages_count = unreadMessages;
                 }
             }

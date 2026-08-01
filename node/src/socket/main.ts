@@ -1,7 +1,7 @@
 // Entry point of every ws connection
 import { Socket, Server } from "socket.io";
 import { handleNewPvConversationEvent, handlePvConversationDelete } from "./events/conversation.event";
-import { handleMessageEdit, handleMessageSend, handleSeen, handleMessageDelete } from "./events/messag.event";
+import { handleMessageEdit, handleMessageSend, handleSeen, handleMessageDelete, handleMessageReply } from "./events/messag.event";
 import { sendUserStatusToRooms } from "../services/socket.services";
 import { setUserStatus } from "../services/account.services";
 import { ObjectId } from "mongodb";
@@ -9,8 +9,12 @@ import { ObjectId } from "mongodb";
 export function handleSocketConnection(socket: Socket, io: Server, onlineUsers: Map<string, string>): void{
 
   // Listen for message from the client
-  socket.on('message:send', (data) => {
+  socket.on("message:send", (data) => {
     handleMessageSend(socket, data);
+  });
+
+  socket.on("message:send:reply", (data) => {
+    handleMessageReply(socket, data);
   });
 
   socket.on("message:edit", (data) => {

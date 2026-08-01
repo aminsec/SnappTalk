@@ -2,16 +2,26 @@
     width: 100vw;
     height: 100vh;
     display: flex;
-    flex-direction: row;
+    flex-direction: column;
     flex-wrap: nowrap;
     align-items: stretch;
     overflow: hidden;
     background: var(--bg-color);
 }
 
+.settingsBody {
+    flex: 1 1 0;
+    min-height: 0;
+    display: flex;
+    flex-direction: row;
+    flex-wrap: nowrap;
+    align-items: stretch;
+    overflow: hidden;
+}
+
 .sidebar {
     flex: 0 0 80px;
-    height: 100vh;
+    height: 100%;
 }
 
 .settingsSidebar {
@@ -30,7 +40,7 @@
     flex: 0 0 320px;
     min-width: 220px;
     max-width: 400px;
-    height: 100vh;
+    height: 100%;
     overflow-y: auto;
     animation: panelSlideIn 0.35s ease-out;
     box-shadow: 8px 0 24px rgba(0, 0, 0, 0.2);
@@ -40,23 +50,156 @@
     background: var(--color-background);
 }
 
+/* Mobile top bar (hidden on desktop) */
+.mobileTopBar {
+    display: none;
+}
+
+.mobileMenuButton {
+    display: none;
+}
+
+.drawerHeader {
+    display: none;
+}
+
+.drawerOverlay {
+    display: none;
+}
+
+/* Logout button inside the settings drawer */
+.drawerLogoutButton {
+    display: none;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    width: 100%;
+    margin-top: auto;
+    padding: 12px 14px;
+    border: 1px solid rgba(255, 18, 18, 0.4);
+    border-radius: 12px;
+    background: rgba(255, 18, 18, 0.1);
+    color: var(--text-primary);
+    font-size: 15px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: background-color 0.2s ease, border-color 0.2s ease;
+}
+
+.drawerLogoutButton:hover:not(:disabled) {
+    background: rgba(255, 18, 18, 0.2);
+    border-color: rgba(255, 18, 18, 0.6);
+}
+
+.drawerLogoutButton:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+}
+
+/* Logout confirmation modal */
+.confirmOverlay {
+    position: fixed;
+    inset: 0;
+    z-index: 70;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(0, 0, 0, 0.4);
+    backdrop-filter: blur(1px);
+    animation: overlayFade 0.18s ease-out;
+}
+
+.confirmBox {
+    width: 90%;
+    max-width: 320px;
+    padding: 1.25rem;
+    border-radius: 12px;
+    background: var(--bg-panel);
+    border: 1px solid var(--input-border);
+    box-shadow: 0 12px 36px rgba(0, 0, 0, 0.25);
+    color: var(--text-primary);
+    animation: popIn 0.22s ease-out;
+}
+
+.confirmTitle {
+    margin: 0 0 0.35rem;
+    font-weight: 700;
+    font-size: 1rem;
+}
+
+.confirmText {
+    margin: 0 0 1rem;
+    color: var(--text-muted);
+    font-size: 0.9rem;
+}
+
+.confirmActions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 0.5rem;
+}
+
+.cancelButton,
+.confirmButton {
+    padding: 0.45rem 0.9rem;
+    border-radius: 8px;
+    border: 1px solid var(--input-border);
+    background: transparent;
+    color: var(--text-primary);
+    cursor: pointer;
+    transition: background-color 0.2s ease, color 0.2s ease, border-color 0.2s ease;
+}
+
+.cancelButton:hover:not(:disabled) {
+    background: rgba(255, 255, 255, 0.08);
+    border-color: rgba(255, 255, 255, 0.12);
+}
+
+.confirmButton {
+    background: rgba(255, 18, 18, 0.1);
+    border-color: rgba(255, 18, 18, 0.4);
+    color: var(--text-primary);
+}
+
+.confirmButton:hover:not(:disabled) {
+    background: rgba(255, 18, 18, 0.2);
+    border-color: rgba(255, 18, 18, 0.6);
+}
+
+.cancelButton:disabled,
+.confirmButton:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+}
+
+@keyframes overlayFade {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+
+@keyframes popIn {
+    from { opacity: 0; transform: scale(0.94); }
+    to { opacity: 1; transform: scale(1); }
+}
+
 .settingsContent {
     flex: 1 1 0;
     min-width: 0;
-    height: 100vh;
+    height: 100%;
     overflow-y: auto;
     display: flex;
     flex-direction: column;
+    padding: 24px;
     animation: panelFadeIn 0.35s ease-out;
 }
 
 .settingsTitle {
-    flex: 1;
+    flex: 0 0 auto;
     width: 100%;
-    max-height: 50px;
+    max-width: 860px;
+    margin: 0 auto 20px;
     text-align: center;
-    padding: 15px 0px;
-    background-color: var(--bg-panel);
+    padding: 0 0 12px;
     font-size: 18px;
     font-weight: 500;
     letter-spacing: 0.02em;
@@ -64,18 +207,31 @@
 }
 
 .settingsContents {
-    flex:2;
+    flex: 1 1 auto;
     width: 100%;
+    max-width: 860px;
+    margin: 0 auto;
     height: auto;
-    padding: 20px 50px;
-    border-radius: var(--border-radius);
-    background-color: var(--bg-color);
+    padding: 30px;
     color: var(--text-main);
-    transition: var(--transition);
-    border-top: solid 3px var(--input-border);
-    border-left: solid 3px var(--input-border);
     text-align: center;
     animation: contentFade 0.35s ease-out;
+}
+
+.emptyState {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 100%;
+    min-height: 60vh;
+}
+
+.emptyStateText {
+    margin: 0;
+    font-size: 17px;
+    font-weight: 500;
+    color: var(--text-muted);
+    letter-spacing: 0.02em;
 }
 
 @keyframes panelSlideIn {
@@ -98,11 +254,205 @@
     to { opacity: 1; transform: translateY(0); }
 }
 
+/* ============================================
+   TABLET & NON-DESKTOP (Hides Sidebar, Full-Width Content)
+   ============================================ */
+@media (max-width: 1024px) {
+    .sidebar {
+        display: none;
+    }
+
+    .settingsSidebar {
+        flex: 0 0 260px;
+        min-width: 0;
+        max-width: 260px;
+    }
+
+    /* Show the mobile top bar */
+    .mobileTopBar {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+        position: sticky;
+        top: 0;
+        z-index: 40;
+        height: 56px;
+        padding: 0 12px;
+        background: color-mix(in srgb, var(--bg-panel) 82%, transparent);
+        backdrop-filter: blur(14px) saturate(160%);
+        -webkit-backdrop-filter: blur(14px) saturate(160%);
+        border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+        flex-shrink: 0;
+    }
+    .mobileNavButton {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 40px;
+        height: 40px;
+        border: none;
+        background: transparent;
+        color: var(--text-main);
+        font-size: 18px;
+        border-radius: 12px;
+        cursor: pointer;
+        transition: background-color 0.2s ease, transform 0.15s ease;
+        flex-shrink: 0;
+    }
+
+    .mobileNavButton:hover {
+        background: rgba(255, 255, 255, 0.08);
+    }
+
+    .mobileNavButton:active {
+        transform: scale(0.92);
+    }
+
+    .mobileTopBarTitle {
+        position: absolute;
+        left: 50%;
+        transform: translateX(-50%);
+        font-size: 16px;
+        font-weight: 600;
+        color: var(--text-main);
+        letter-spacing: 0.02em;
+        pointer-events: none;
+        white-space: nowrap;
+    }
+}
+
+/* ============================================
+   MOBILE
+   ============================================ */
+@media (max-width: 768px) {
+    /* Hamburger only needed when the settings sidebar is hidden */
+    .mobileMenuButton {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 40px;
+        height: 40px;
+        border: none;
+        background: transparent;
+        color: var(--text-main);
+        font-size: 18px;
+        border-radius: 12px;
+        cursor: pointer;
+        transition: background-color 0.2s ease, transform 0.15s ease;
+        flex-shrink: 0;
+    }
+
+    .mobileMenuButton:hover {
+        background: rgba(255, 255, 255, 0.08);
+    }
+
+    .mobileMenuButton:active {
+        transform: scale(0.92);
+    }
+
+    .settingsSidebar {
+        position: fixed;
+        top: 0;
+        left: 0;
+        bottom: 0;
+        z-index: 60;
+        width: 78vw;
+        max-width: 320px;
+        min-width: 0;
+        flex: none;
+        transform: translateX(-100%);
+        transition: transform 0.32s cubic-bezier(0.32, 0.72, 0, 1);
+        box-shadow: 8px 0 24px rgba(0, 0, 0, 0.35);
+        animation: none;
+    }
+
+    .settingsSidebarOpen {
+        transform: translateX(0);
+    }
+
+    .drawerHeader {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        width: 100%;
+        padding: 8px 4px 12px;
+        font-size: 16px;
+        font-weight: 600;
+        color: var(--text-main);
+    }
+
+    .drawerCloseButton {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 40px;
+        height: 40px;
+        border: none;
+        background: transparent;
+        color: var(--text-main);
+        font-size: 18px;
+        border-radius: 12px;
+        cursor: pointer;
+        transition: background-color 0.2s ease, transform 0.15s ease;
+    }
+
+    .drawerCloseButton:hover {
+        background: rgba(255, 255, 255, 0.08);
+    }
+
+    .drawerCloseButton:active {
+        transform: scale(0.92);
+    }
+
+    .drawerOverlay {
+        display: block;
+        position: fixed;
+        inset: 0;
+        z-index: 50;
+        background: rgba(0, 0, 0, 0.5);
+        backdrop-filter: blur(2px);
+        -webkit-backdrop-filter: blur(2px);
+        animation: overlayFade 0.25s ease-out;
+    }
+
+    .drawerLogoutButton {
+        display: flex;
+    }
+
+    .settingsContent {
+        padding: 16px;
+    }
+
+    .settingsContents {
+        padding: 20px;
+    }
+}
+
+/* ============================================
+   SMALL MOBILE
+   ============================================ */
+@media (max-width: 400px) {
+    .settingsContent {
+        padding: 12px;
+    }
+
+    .settingsContents {
+        padding: 16px;
+    }
+}
+
+@keyframes overlayFade {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+
 @media (prefers-reduced-motion: reduce) {
     .settingsSidebar,
     .settingsContent,
     .settingsTitle,
-    .settingsContents {
+    .settingsContents,
+    .drawerOverlay {
         animation: none !important;
         transition: none !important;
     }

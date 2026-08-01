@@ -61,17 +61,23 @@
 .textContent {
   display: flex;
   flex-direction: column;
+  min-width: 0;
+  flex: 1;
 }
 
 .label {
   font-weight: 500;
   color: var(--text-primary);
+  overflow-wrap: anywhere;
+  word-break: break-word;
 }
 
 .description {
   font-size: 13px;
   color: var(--text-muted);
   margin-top: 3px;
+  overflow-wrap: anywhere;
+  word-break: break-word;
 }
 
 @keyframes optionFade {

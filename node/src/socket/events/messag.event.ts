@@ -1,17 +1,28 @@
 import { Socket, Server } from "socket.io";
-import { MessageDeleteEVT, MessageEditEVT, MessageSeenEVT, MessageSendEVT } from "../../types/socket.events.types";
+import { MessageDeleteEVT, MessageEditEVT, MessageReplyEVT, MessageSeenEVT, MessageSendEVT } from "../../types/socket.events.types";
 import { createNewMessage, deleteMessageById, editMessageById, getConversationMessagesByLimitedDate, getMessageById, seenMessageById } from "../../services/messages.services";
 import { ObjectId } from "mongodb";
 import { getConversationById, updateConversationLastMessageId } from "../../services/conversations.services";
 import { handlePvConversationDelete } from "./conversation.event";
+import { InsertMessage } from "../../types/messages.types";
 
 export async function handleMessageSend(socket: Socket, data: MessageSendEVT) {
     const { conversation_id, message_text, track_id } = data;
+    const { userInfo } = socket;
 
     //Checking user has access the conversation
     if(socket.rooms.has(conversation_id)){
-        //Inserting message to db
-        const [insertedMessageId, error] = await createNewMessage(new ObjectId(conversation_id), new ObjectId(socket.userInfo.id), "text", message_text, []);
+        //Inserting message
+        const insertData: InsertMessage = {
+            sender: new ObjectId(userInfo.id),
+            content: message_text,
+            conversation_id: new ObjectId(conversation_id),
+            replied_to: null,
+            attachments: [],
+            type: "text"
+        }
+
+        const [insertedMessageId, error] = await createNewMessage(insertData);
         if(error){
             socket.emit("error", {message: "Couldn't save the message"});
             return;
@@ -43,6 +54,64 @@ export async function handleMessageSend(socket: Socket, data: MessageSendEVT) {
     }
 };
 
+export async function handleMessageReply(socket: Socket, data: MessageReplyEVT) {
+    const { userInfo } = socket;
+    const { conversation_id, message_text, reply_to, track_id } = data;
+
+    //Checking user has access the conversation
+    if(socket.rooms.has(conversation_id)){
+        const [replyMessageInfo, error] = await getMessageById(new ObjectId(reply_to));
+        if(error || replyMessageInfo === null){
+            socket.emit("message:send:reply:error", {message: "Message not found", conversation_id, track_id});
+            return;
+        }
+
+        //Checking if the reply message is a message of conversation. User can not reply a message doesn't exist in the conversation
+        if(replyMessageInfo.conversation_id.toString() !== conversation_id){
+            socket.emit("message:send:reply:error", {message: "Message not found", conversation_id, track_id});
+            return;
+        }
+
+        //Inserting message
+        const insertData: InsertMessage = {
+            sender: new ObjectId(userInfo.id),
+            content: message_text,
+            conversation_id: new ObjectId(conversation_id),
+            replied_to: reply_to? new ObjectId(reply_to) : null,
+            attachments: [],
+            type: "text"
+        }
+
+        const [insertedMessageId, err] = await createNewMessage(insertData);
+        if(err || insertedMessageId === null){
+            socket.emit("error", {message: "Couldn't save the message", conversation_id, track_id});
+            return;
+        }
+
+        //Setting the message as last message of conversation
+        const [lastMessageUpdated, updateError] = await updateConversationLastMessageId(new ObjectId(conversation_id), new ObjectId(insertedMessageId));
+        if(updateError){
+            socket.emit("error", {message: "Couldn't send the message"});
+            return;
+        }
+
+        //Sending ack
+        socket.emit("message:send:reply:ack", {message_id: insertedMessageId, conversation_id, track_id});
+        socket.to(conversation_id).emit("message:receive:reply", {
+            conversation_id,
+            message_id: insertedMessageId,
+            message_text,
+            replied_to: reply_to,
+            when: new Date(),
+            sender_info: socket.userInfo
+        });
+
+    }else{
+        socket.emit("message:send:reply:error", {message: "Access denied", conversation_id, track_id});
+        return;
+    }
+};
+
 export async function handleSeen(socket: Socket, data: MessageSeenEVT) {
     const { conversation_id, message_id } = data;
 
@@ -66,7 +135,11 @@ export async function handleMessageEdit(socket: Socket, data: MessageEditEVT) {
     const { userInfo } = socket;
 
     //Checking user is sender of the message
-    const message = await getMessageById(new ObjectId(message_id));
+    const [message, error] = await getMessageById(new ObjectId(message_id));
+    if(error || message === null){
+        socket.emit("message:edit:error", {message: error?.message});
+        return;
+    }
 
     if(message.sender.toString() !== userInfo.id){
         const error = {message: "Access denied"};
@@ -100,8 +173,8 @@ export async function handleMessageDelete(socket: Socket, data: MessageDeleteEVT
     const { message_id } = data;
     const { userInfo } = socket;
     let isLastMessage = false
-    const messageInfo = await getMessageById(new ObjectId(message_id));
-    if(messageInfo === null){
+    const [messageInfo, error] = await getMessageById(new ObjectId(message_id));
+    if(messageInfo === null || error){
         socket.emit("message:delete:error", {message: "Message not found", message_id});
         return;
     }

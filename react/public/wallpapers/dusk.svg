@@ -1,27 +1,71 @@
-<svg width="1600" height="1000" viewBox="0 0 1600 1000" fill="none" xmlns="http://www.w3.org/2000/svg">
+<svg width="1920" height="1080" viewBox="0 0 1920 1080" fill="none" xmlns="http://www.w3.org/2000/svg">
   <defs>
-    <linearGradient id="sky" x1="0" y1="0" x2="1600" y2="1000" gradientUnits="userSpaceOnUse">
-      <stop offset="0" stop-color="#0A0E0F"/>
-      <stop offset="0.5" stop-color="#1B1C2D"/>
-      <stop offset="1" stop-color="#2B1826"/>
+    <linearGradient id="duskSky" x1="0" y1="0" x2="0" y2="1080" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#0B0E2A"/>
+      <stop offset="0.35" stop-color="#2A1B4E"/>
+      <stop offset="0.6" stop-color="#7A2E5E"/>
+      <stop offset="0.78" stop-color="#E85D4A"/>
+      <stop offset="0.9" stop-color="#FFB347"/>
+      <stop offset="1" stop-color="#FFD98E"/>
     </linearGradient>
-    <radialGradient id="sunset" cx="0" cy="0" r="1" gradientUnits="userSpaceOnUse" gradientTransform="translate(1200 260) rotate(20) scale(420 220)">
-      <stop stop-color="#FF5C5C" stop-opacity="0.32"/>
-      <stop offset="1" stop-color="#FF5C5C" stop-opacity="0"/>
+    <radialGradient id="sunGlow" cx="0" cy="0" r="1" gradientUnits="userSpaceOnUse" gradientTransform="translate(960 760) scale(520 300)">
+      <stop stop-color="#FFF3C4" stop-opacity="0.95"/>
+      <stop offset="0.25" stop-color="#FFC94D" stop-opacity="0.6"/>
+      <stop offset="0.6" stop-color="#FF7A59" stop-opacity="0.25"/>
+      <stop offset="1" stop-color="#FF7A59" stop-opacity="0"/>
     </radialGradient>
-    <linearGradient id="horizon" x1="0" y1="0" x2="1600" y2="0" gradientUnits="userSpaceOnUse">
-      <stop offset="0" stop-color="#2D90E4" stop-opacity="0.2"/>
-      <stop offset="0.6" stop-color="#FFCB00" stop-opacity="0.12"/>
-      <stop offset="1" stop-color="#FF5C5C" stop-opacity="0.18"/>
+    <linearGradient id="sunDisc" x1="0" y1="0" x2="0" y2="1" gradientUnits="objectBoundingBox">
+      <stop offset="0" stop-color="#FFF6D8"/>
+      <stop offset="1" stop-color="#FFB347"/>
     </linearGradient>
+    <linearGradient id="cloudFar" x1="0" y1="0" x2="0" y2="1080" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#FF9E6B" stop-opacity="0.5"/>
+      <stop offset="1" stop-color="#7A2E5E" stop-opacity="0.15"/>
+    </linearGradient>
+    <linearGradient id="cloudNear" x1="0" y1="0" x2="0" y2="1080" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#FFC98A" stop-opacity="0.55"/>
+      <stop offset="1" stop-color="#B84A5E" stop-opacity="0.2"/>
+    </linearGradient>
+    <linearGradient id="sea" x1="0" y1="0" x2="0" y2="1080" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#FF9E6B"/>
+      <stop offset="0.3" stop-color="#7A2E5E"/>
+      <stop offset="1" stop-color="#1A1030"/>
+    </linearGradient>
+    <filter id="sunBlur" x="-50%" y="-50%" width="200%" height="200%">
+      <feGaussianBlur stdDeviation="30"/>
+    </filter>
+    <filter id="cloudBlur" x="-50%" y="-50%" width="200%" height="200%">
+      <feGaussianBlur stdDeviation="14"/>
+    </filter>
   </defs>
-  <rect width="1600" height="1000" fill="url(#sky)"/>
-  <rect width="1600" height="1000" fill="url(#sunset)"/>
-  <path d="M0 520C240 500 440 560 660 620C880 680 1080 720 1280 680C1440 650 1540 600 1600 570V1000H0V520Z" fill="url(#horizon)"/>
-  <path d="M0 640C260 620 460 680 680 740C900 800 1120 840 1320 800C1460 770 1540 720 1600 690V1000H0V640Z" fill="#0D1216"/>
-  <circle cx="360" cy="240" r="2" fill="#FFFFFF" fill-opacity="0.4"/>
-  <circle cx="520" cy="190" r="1.5" fill="#FFFFFF" fill-opacity="0.35"/>
-  <circle cx="700" cy="260" r="2" fill="#FFFFFF" fill-opacity="0.3"/>
-  <circle cx="960" cy="180" r="1.8" fill="#FFFFFF" fill-opacity="0.35"/>
-  <circle cx="1120" cy="220" r="1.2" fill="#FFFFFF" fill-opacity="0.3"/>
+
+  <!-- Sky gradient -->
+  <rect width="1920" height="1080" fill="url(#duskSky)"/>
+
+  <!-- Sun glow -->
+  <rect width="1920" height="1080" fill="url(#sunGlow)"/>
+
+  <!-- Sun disc -->
+  <circle cx="960" cy="760" r="120" fill="url(#sunDisc)"/>
+  <circle cx="960" cy="760" r="150" fill="#FFD98E" opacity="0.25" filter="url(#sunBlur)"/>
+
+  <!-- Distant clouds -->
+  <g filter="url(#cloudBlur)">
+    <path d="M-100 620C120 580 260 640 420 610C580 580 700 640 880 600C1060 560 1200 630 1380 600C1560 570 1700 630 2020 590V700C1800 740 1600 690 1400 720C1200 750 1000 690 800 720C600 750 400 700 200 720C0 740 -100 700 -100 700Z" fill="url(#cloudFar)"/>
+    <path d="M-100 700C160 660 320 730 520 700C720 670 880 740 1100 700C1320 660 1480 740 1700 700C1860 670 1960 720 2020 700V820C1800 850 1600 800 1400 830C1200 860 1000 800 800 830C600 860 400 810 200 830C0 850 -100 810 -100 810Z" fill="url(#cloudNear)"/>
+  </g>
+
+  <!-- Sea / horizon -->
+  <path d="M0 820C240 810 480 830 720 820C960 810 1200 830 1440 820C1680 810 1840 825 1920 820V1080H0V820Z" fill="url(#sea)"/>
+
+  <!-- Sun reflection on water -->
+  <g opacity="0.5">
+    <rect x="880" y="840" width="160" height="6" rx="3" fill="#FFD98E"/>
+    <rect x="900" y="860" width="120" height="5" rx="2.5" fill="#FFC94D"/>
+    <rect x="920" y="880" width="80" height="4" rx="2" fill="#FFB347"/>
+    <rect x="940" y="900" width="40" height="3" rx="1.5" fill="#FF9E6B"/>
+  </g>
+
+  <!-- Foreground silhouette -->
+  <path d="M0 940C200 900 400 960 620 930C840 900 1040 970 1260 940C1480 910 1700 960 1920 930V1080H0V940Z" fill="#0D0A1E"/>
 </svg>

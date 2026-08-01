@@ -145,32 +145,122 @@
   padding: 40px 20px;
 }
 
-@media (max-width: 900px) {
-  .profileContent {
-    padding: 20px;
-  }
-
-  .profileCard {
-    padding: 20px;
-  }
+/* ============================================
+   MOBILE BACK BUTTON (hidden on desktop)
+   ============================================ */
+.mobileBackButton {
+  display: none;
 }
 
-@media (max-width: 640px) {
-  .profilePage {
-    flex-direction: column;
-  }
+/* ============================================
+   TABLET & NON-DESKTOP (Shows Back Button, Hides Sidebar)
+   ============================================ */
+   @media (max-width: 1024px) {
+    /* Hide the sidebar on all non-desktop screens */
+    .sidebar {
+      display: none;
+    }
 
-  .sidebar {
-    width: 100%;
-    height: auto;
-  }
+    /* Back button sits inline in the header row, next to the avatar */
+    .mobileBackButton {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 40px;
+      height: 40px;
+      border: none;
+      background: transparent;
+      color: var(--text-main);
+      font-size: 18px;
+      border-radius: 12px;
+      cursor: pointer;
+      transition: background-color 0.2s ease, transform 0.15s ease;
+      flex-shrink: 0;
+      align-self: flex-start;
+      margin: -4px 0 0 -4px;
+    }
 
-  .header {
-    align-items: flex-start;
-  }
+    .mobileBackButton:hover {
+      background: rgba(255, 255, 255, 0.08);
+    }
 
-  .messageButton {
-    width: 100%;
-    justify-content: center;
+    .mobileBackButton:active {
+      transform: scale(0.92);
+    }
+
+    .profileContent {
+      padding: 24px;
+      width: 100%;
+      height: 100vh;
+      height: 100dvh;
+    }
+
+    .profileCard {
+      padding: 24px;
+    }
   }
-}
+  
+  /* ============================================
+     MOBILE
+     ============================================ */
+  @media (max-width: 768px) {
+    .profileContent {
+      padding: 16px;
+    }
+  
+    .profileCard {
+      padding: 20px;
+      border-radius: 16px;
+    }
+  
+    /* Stack the header vertically */
+    .header {
+      flex-direction: column;
+      align-items: center;
+      text-align: center;
+      gap: 12px;
+    }
+  
+    .titleBlock h1 {
+      font-size: 22px;
+      margin: 0;
+    }
+  
+    .messageButton {
+      width: 100%;
+      justify-content: center;
+    }
+  }
+  
+  /* ============================================
+     SMALL MOBILE
+     ============================================ */
+  @media (max-width: 400px) {
+    .profileContent {
+      padding: 12px;
+    }
+  
+    .profileCard {
+      padding: 16px;
+    }
+  
+    .titleBlock h1 {
+      font-size: 20px;
+    }
+  
+    /* Stack the meta grid vertically on very small screens */
+    .metaGrid {
+      grid-template-columns: 1fr;
+    }
+  }
+  
+  /* ============================================
+     SAFE AREA (Notches & Bottom Bars)
+     ============================================ */
+  @supports (padding: env(safe-area-inset-top)) {
+    @media (max-width: 1024px) {
+      .profileContent {
+        padding-top: calc(24px + env(safe-area-inset-top));
+      }
+    }
+  }

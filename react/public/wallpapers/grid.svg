@@ -1,21 +1,70 @@
-<svg width="1600" height="1000" viewBox="0 0 1600 1000" fill="none" xmlns="http://www.w3.org/2000/svg">
+<svg width="1920" height="1080" viewBox="0 0 1920 1080" fill="none" xmlns="http://www.w3.org/2000/svg">
   <defs>
-    <linearGradient id="gridBase" x1="0" y1="0" x2="1600" y2="1000" gradientUnits="userSpaceOnUse">
-      <stop offset="0" stop-color="#0A0E0F"/>
-      <stop offset="1" stop-color="#14191B"/>
+    <linearGradient id="meshBase" x1="0" y1="0" x2="1920" y2="1080" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#05070D"/>
+      <stop offset="0.5" stop-color="#0A1220"/>
+      <stop offset="1" stop-color="#0B0F1A"/>
     </linearGradient>
-    <pattern id="fineGrid" width="60" height="60" patternUnits="userSpaceOnUse">
-      <path d="M60 0H0V60" stroke="rgba(255,255,255,0.05)" stroke-width="1"/>
+    <pattern id="fineGrid" width="80" height="80" patternUnits="userSpaceOnUse">
+      <path d="M80 0H0V80" stroke="rgba(120,180,255,0.06)" stroke-width="1"/>
     </pattern>
-    <linearGradient id="beam" x1="0" y1="0" x2="1600" y2="0" gradientUnits="userSpaceOnUse">
-      <stop offset="0" stop-color="#2D90E4" stop-opacity="0.12"/>
-      <stop offset="0.5" stop-color="#00C897" stop-opacity="0.08"/>
-      <stop offset="1" stop-color="#2D90E4" stop-opacity="0.12"/>
+    <pattern id="dotGrid" width="40" height="40" patternUnits="userSpaceOnUse">
+      <circle cx="1.5" cy="1.5" r="1.5" fill="rgba(120,180,255,0.12)"/>
+    </pattern>
+    <radialGradient id="glowCyan" cx="0" cy="0" r="1" gradientUnits="userSpaceOnUse" gradientTransform="translate(480 300) scale(520 520)">
+      <stop stop-color="#22D3EE" stop-opacity="0.28"/>
+      <stop offset="1" stop-color="#22D3EE" stop-opacity="0"/>
+    </radialGradient>
+    <radialGradient id="glowBlue" cx="0" cy="0" r="1" gradientUnits="userSpaceOnUse" gradientTransform="translate(1440 760) scale(560 560)">
+      <stop stop-color="#3B82F6" stop-opacity="0.26"/>
+      <stop offset="1" stop-color="#3B82F6" stop-opacity="0"/>
+    </radialGradient>
+    <radialGradient id="glowPurple" cx="0" cy="0" r="1" gradientUnits="userSpaceOnUse" gradientTransform="translate(960 200) scale(700 400)">
+      <stop stop-color="#8B5CF6" stop-opacity="0.18"/>
+      <stop offset="1" stop-color="#8B5CF6" stop-opacity="0"/>
+    </radialGradient>
+    <linearGradient id="beam" x1="0" y1="0" x2="1920" y2="0" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#22D3EE" stop-opacity="0"/>
+      <stop offset="0.5" stop-color="#3B82F6" stop-opacity="0.5"/>
+      <stop offset="1" stop-color="#8B5CF6" stop-opacity="0"/>
     </linearGradient>
+    <filter id="glowFilter" x="-50%" y="-50%" width="200%" height="200%">
+      <feGaussianBlur stdDeviation="6"/>
+    </filter>
   </defs>
-  <rect width="1600" height="1000" fill="url(#gridBase)"/>
-  <rect width="1600" height="1000" fill="url(#fineGrid)"/>
-  <path d="M0 520C260 520 460 560 680 620C900 680 1120 740 1600 760V1000H0V520Z" fill="url(#beam)"/>
-  <circle cx="1180" cy="240" r="180" fill="#2D90E4" fill-opacity="0.08"/>
-  <circle cx="320" cy="720" r="220" fill="#00C897" fill-opacity="0.06"/>
+
+  <!-- Base -->
+  <rect width="1920" height="1080" fill="url(#meshBase)"/>
+
+  <!-- Grids -->
+  <rect width="1920" height="1080" fill="url(#fineGrid)"/>
+  <rect width="1920" height="1080" fill="url(#dotGrid)"/>
+
+  <!-- Color glows -->
+  <rect width="1920" height="1080" fill="url(#glowCyan)"/>
+  <rect width="1920" height="1080" fill="url(#glowBlue)"/>
+  <rect width="1920" height="1080" fill="url(#glowPurple)"/>
+
+  <!-- Horizon beam -->
+  <path d="M0 560C320 540 640 600 960 580C1280 560 1600 620 1920 580V640C1600 680 1280 620 960 640C640 660 320 600 0 620V560Z" fill="url(#beam)" opacity="0.5"/>
+
+  <!-- Glowing nodes -->
+  <g filter="url(#glowFilter)">
+    <circle cx="480" cy="300" r="4" fill="#22D3EE"/>
+    <circle cx="1440" cy="760" r="4" fill="#3B82F6"/>
+    <circle cx="960" cy="200" r="3" fill="#8B5CF6"/>
+    <circle cx="300" cy="820" r="3" fill="#22D3EE"/>
+    <circle cx="1620" cy="320" r="3" fill="#8B5CF6"/>
+  </g>
+
+  <!-- Connecting lines -->
+  <g stroke="rgba(120,180,255,0.18)" stroke-width="1.5" fill="none">
+    <path d="M480 300L960 200L1440 760"/>
+    <path d="M480 300L300 820"/>
+    <path d="M960 200L1620 320"/>
+    <path d="M1440 760L1620 320"/>
+  </g>
+
+  <!-- Bottom fade -->
+  <rect x="0" y="900" width="1920" height="180" fill="url(#meshBase)" opacity="0.6"/>
 </svg>

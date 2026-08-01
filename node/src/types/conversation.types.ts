@@ -9,7 +9,7 @@ export interface Conversation {
     contact_info?: any,
     last_message_id: ObjectId,
     last_message?: Object,
-    deleted_for: Record<string, string>,
+    deleted_for: Record<string, Date>,
     created_at: string,
     unread_messages_count?: Number
 };
