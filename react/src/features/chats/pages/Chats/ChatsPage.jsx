@@ -290,6 +290,8 @@ function ChatsPage() {
   const [deleteConfirm, setDeleteConfirm] = useState({ open: false, conversationId: null });
   const [isDeletingConversation, setIsDeletingConversation] = useState(false);
   const [deleteForEveryone, setDeleteForEveryone] = useState(false);
+  const [messageDeleteConfirm, setMessageDeleteConfirm] = useState({ open: false, message: null });
+  const [deleteMessageForEveryone, setDeleteMessageForEveryone] = useState(false);
   const [conversationContextMenu, setConversationContextMenu] = useState(null);
   const [isMediaPickerOpen, setIsMediaPickerOpen] = useState(false);
   const [mediaTab, setMediaTab] = useState('gifs');
@@ -704,7 +706,7 @@ function ChatsPage() {
   }, []);
 
   const performDeleteMessage = useCallback(
-    (message) => {
+    (message, scope = 'me') => {
       const messageId = getMessageId(message);
       if (!messageId) return;
 
@@ -741,6 +743,7 @@ function ChatsPage() {
 
       socket.emit(SOCKET_EVENTS.MESSAGE_DELETE, {
         message_id: messageId,
+        delete_for: scope,
       });
     },
     [selectedChat, socket]
@@ -771,11 +774,29 @@ function ChatsPage() {
         return;
       }
 
-      performDeleteMessage(message);
+      // Ask the user whether to delete for themselves or for everyone
+      setMessageDeleteConfirm({ open: true, message });
+      setDeleteMessageForEveryone(false);
       setMessageContextMenu(null);
     },
-    [performDeleteMessage]
+    []
   );
+
+  const handleConfirmDeleteMessage = useCallback(() => {
+    if (messageDeleteConfirm?.message) {
+      performDeleteMessage(
+        messageDeleteConfirm.message,
+        deleteMessageForEveryone ? 'all' : 'me'
+      );
+    }
+    setMessageDeleteConfirm({ open: false, message: null });
+    setDeleteMessageForEveryone(false);
+  }, [messageDeleteConfirm, deleteMessageForEveryone, performDeleteMessage]);
+
+  const handleCancelDeleteMessage = useCallback(() => {
+    setMessageDeleteConfirm({ open: false, message: null });
+    setDeleteMessageForEveryone(false);
+  }, []);
 
   const handleConfirmDeleteLastMessage = useCallback(() => {
     if (deleteLastMessageAlert?.message) {
@@ -4793,6 +4814,42 @@ function ChatsPage() {
                 >
                   Anyway
                 </button>
+              </div>
+            </div>
+          </div>
+        )}
+        {messageDeleteConfirm.open && (
+          <div className={styles.confirmOverlay} role="dialog" aria-modal="true">
+            <div className={styles.confirmBox}>
+              <p className={styles.confirmTitle}>Delete message?</p>
+              <p className={styles.confirmText}>
+                Choose whether to delete this message just for you or for everyone.
+              </p>
+              <div className={styles.confirmActions}>
+                <label className={styles.deleteCheckbox}>
+                  <input
+                    type="checkbox"
+                    checked={deleteMessageForEveryone}
+                    onChange={(event) => setDeleteMessageForEveryone(event.target.checked)}
+                  />
+                  <span>Delete for everyone</span>
+                </label>
+                <div className={styles.confirmButtons}>
+                  <button
+                    type="button"
+                    className={styles.cancelButton}
+                    onClick={handleCancelDeleteMessage}
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="button"
+                    className={styles.confirmButton}
+                    onClick={handleConfirmDeleteMessage}
+                  >
+                    Delete
+                  </button>
+                </div>
               </div>
             </div>
           </div>
