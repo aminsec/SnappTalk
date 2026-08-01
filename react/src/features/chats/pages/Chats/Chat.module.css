@@ -961,13 +961,6 @@
     transition: background 0.3s ease, box-shadow 0.3s ease, border-color 0.3s ease;
 }
 
-/* Modern touch: Bar becomes slightly more solid and glows blue when typing */
-.inputBar:has(.messageTextarea:focus) {
-    background: linear-gradient(180deg, rgba(255, 255, 255, 0.09), rgba(255, 255, 255, 0.03)), rgba(24, 24, 28, 0.65);
-    border-color: rgba(10, 132, 255, 0.35);
-    box-shadow: 0 2px 16px rgba(0, 0, 0, 0.2), 0 0 0 1px rgba(10, 132, 255, 0.2), inset 0 1px 0 rgba(255, 255, 255, 0.12);
-}
-
 /* Left/Right Actions */
 .inputActionsLeft, .inputActionsRight {
     display: flex;
