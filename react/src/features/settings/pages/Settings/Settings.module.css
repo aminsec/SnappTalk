@@ -2,16 +2,26 @@
     width: 100vw;
     height: 100vh;
     display: flex;
-    flex-direction: row;
+    flex-direction: column;
     flex-wrap: nowrap;
     align-items: stretch;
     overflow: hidden;
     background: var(--bg-color);
 }
 
+.settingsBody {
+    flex: 1 1 0;
+    min-height: 0;
+    display: flex;
+    flex-direction: row;
+    flex-wrap: nowrap;
+    align-items: stretch;
+    overflow: hidden;
+}
+
 .sidebar {
     flex: 0 0 80px;
-    height: 100vh;
+    height: 100%;
 }
 
 .settingsSidebar {
@@ -30,7 +40,7 @@
     flex: 0 0 320px;
     min-width: 220px;
     max-width: 400px;
-    height: 100vh;
+    height: 100%;
     overflow-y: auto;
     animation: panelSlideIn 0.35s ease-out;
     box-shadow: 8px 0 24px rgba(0, 0, 0, 0.2);
@@ -40,10 +50,27 @@
     background: var(--color-background);
 }
 
+/* Mobile top bar (hidden on desktop) */
+.mobileTopBar {
+    display: none;
+}
+
+.mobileMenuButton {
+    display: none;
+}
+
+.drawerHeader {
+    display: none;
+}
+
+.drawerOverlay {
+    display: none;
+}
+
 .settingsContent {
     flex: 1 1 0;
     min-width: 0;
-    height: 100vh;
+    height: 100%;
     overflow-y: auto;
     display: flex;
     flex-direction: column;
@@ -109,14 +136,154 @@
         min-width: 0;
         max-width: 260px;
     }
+
+    /* Show the mobile top bar */
+    .mobileTopBar {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+        position: sticky;
+        top: 0;
+        z-index: 40;
+        height: 56px;
+        padding: 0 12px;
+        background: color-mix(in srgb, var(--bg-panel) 82%, transparent);
+        backdrop-filter: blur(14px) saturate(160%);
+        -webkit-backdrop-filter: blur(14px) saturate(160%);
+        border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+        flex-shrink: 0;
+    }
+    .mobileNavButton {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 40px;
+        height: 40px;
+        border: none;
+        background: transparent;
+        color: var(--text-main);
+        font-size: 18px;
+        border-radius: 12px;
+        cursor: pointer;
+        transition: background-color 0.2s ease, transform 0.15s ease;
+        flex-shrink: 0;
+    }
+
+    .mobileNavButton:hover {
+        background: rgba(255, 255, 255, 0.08);
+    }
+
+    .mobileNavButton:active {
+        transform: scale(0.92);
+    }
+
+    .mobileTopBarTitle {
+        position: absolute;
+        left: 50%;
+        transform: translateX(-50%);
+        font-size: 16px;
+        font-weight: 600;
+        color: var(--text-main);
+        letter-spacing: 0.02em;
+        pointer-events: none;
+        white-space: nowrap;
+    }
 }
 
 /* ============================================
    MOBILE
    ============================================ */
 @media (max-width: 768px) {
+    /* Hamburger only needed when the settings sidebar is hidden */
+    .mobileMenuButton {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 40px;
+        height: 40px;
+        border: none;
+        background: transparent;
+        color: var(--text-main);
+        font-size: 18px;
+        border-radius: 12px;
+        cursor: pointer;
+        transition: background-color 0.2s ease, transform 0.15s ease;
+        flex-shrink: 0;
+    }
+
+    .mobileMenuButton:hover {
+        background: rgba(255, 255, 255, 0.08);
+    }
+
+    .mobileMenuButton:active {
+        transform: scale(0.92);
+    }
+
     .settingsSidebar {
         display: none;
+        position: fixed;
+        top: 0;
+        left: 0;
+        bottom: 0;
+        z-index: 60;
+        width: 78vw;
+        max-width: 320px;
+        min-width: 0;
+        flex: none;
+        transform: translateX(-100%);
+        transition: transform 0.32s cubic-bezier(0.32, 0.72, 0, 1);
+        box-shadow: 8px 0 24px rgba(0, 0, 0, 0.35);
+    }
+
+    .settingsSidebarOpen {
+        display: flex;
+        transform: translateX(0);
+    }
+
+    .drawerHeader {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        width: 100%;
+        padding: 8px 4px 12px;
+        font-size: 16px;
+        font-weight: 600;
+        color: var(--text-main);
+    }
+
+    .drawerCloseButton {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 40px;
+        height: 40px;
+        border: none;
+        background: transparent;
+        color: var(--text-main);
+        font-size: 18px;
+        border-radius: 12px;
+        cursor: pointer;
+        transition: background-color 0.2s ease, transform 0.15s ease;
+    }
+
+    .drawerCloseButton:hover {
+        background: rgba(255, 255, 255, 0.08);
+    }
+
+    .drawerCloseButton:active {
+        transform: scale(0.92);
+    }
+
+    .drawerOverlay {
+        display: block;
+        position: fixed;
+        inset: 0;
+        z-index: 50;
+        background: rgba(0, 0, 0, 0.5);
+        backdrop-filter: blur(2px);
+        -webkit-backdrop-filter: blur(2px);
+        animation: overlayFade 0.25s ease-out;
     }
 
     .settingsContent {
@@ -141,11 +308,17 @@
     }
 }
 
+@keyframes overlayFade {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+
 @media (prefers-reduced-motion: reduce) {
     .settingsSidebar,
     .settingsContent,
     .settingsTitle,
-    .settingsContents {
+    .settingsContents,
+    .drawerOverlay {
         animation: none !important;
         transition: none !important;
     }

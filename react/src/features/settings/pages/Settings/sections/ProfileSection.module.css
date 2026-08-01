@@ -62,14 +62,23 @@
 }
 
 .avatarRow {
+  display: flex;
+  flex-direction: column;
   align-items: center;
-  gap: 20px;
+  justify-content: center;
+  gap: 12px;
+  max-width: 100%;
+  min-width: 0;
   animation: avatarPop 0.3s ease-out;
 }
 
 .avatarRow h3 {
   font-size: 20px;
   margin-bottom: 5px;
+  max-width: 100%;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+  text-align: center;
 }
 
 .online {
@@ -100,6 +109,7 @@
   border-radius: 10px;
   font-size: 15px;
   color: var(--text-sub);
+  min-width: 0;
   transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
 }
 
@@ -111,17 +121,24 @@
 
 .infoRow span {
   min-width: 80px;
+  flex-shrink: 0;
   font-weight: 500;
   color: var(--text-muted);
 }
 
 .infoRow strong {
   color: var(--text-main);
+  min-width: 0;
+  overflow-wrap: anywhere;
+  word-break: break-word;
 }
 
 .infoRow p {
   margin: 0;
   color: var(--text-sub);
+  min-width: 0;
+  overflow-wrap: anywhere;
+  word-break: break-word;
 }
 
 .editInputCart {
