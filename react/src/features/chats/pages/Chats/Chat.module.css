@@ -1925,8 +1925,9 @@
     
     /* Input bar mobile */
     .inputBar {
-        padding: 0 12px 12px 12px;
+        padding: 6px 12px;
         gap: 6px;
+        align-items: center;
     }
     
     .actionButton {
@@ -1941,6 +1942,7 @@
         min-height: 40px;
         padding: 10px 14px;
         font-size: 16px;
+        line-height: 1.2;
         border-radius: 18px;
     }
     
@@ -2223,7 +2225,7 @@
    ============================================ */
 @supports (padding: env(safe-area-inset-bottom)) {
     @media (max-width: 768px) {
-        .inputBar { padding-bottom: calc(12px + env(safe-area-inset-bottom)); }
+        .inputBar { padding-bottom: calc(6px + env(safe-area-inset-bottom)); }
         .newConversationButton { bottom: calc(24px + env(safe-area-inset-bottom)); right: calc(24px + env(safe-area-inset-right)); }
     }
 }
