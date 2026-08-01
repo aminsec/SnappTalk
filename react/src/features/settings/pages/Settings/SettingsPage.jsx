@@ -1,7 +1,6 @@
 import { Outlet, useLocation, useNavigate } from 'react-router-dom';
-import { faSearch } from '@fortawesome/free-solid-svg-icons';
 
-import { Sidebar, Input, UserCard, OptionItem } from '@/shared/components';
+import { Sidebar, UserCard, OptionItem } from '@/shared/components';
 
 import { settingsOptions } from './data/options';
 import styles from './Settings.module.css';
@@ -15,8 +14,6 @@ function SettingsPage() {
       <Sidebar className={styles.sidebar}/>
 
       <aside className={styles.settingsSidebar}>
-        <Input type="text" name="text" id="search" placeholder="Search..." icon={faSearch} size="lg" fullWidth className="mb-3"/>
-
         <UserCard fullWidth className="mb-4"/>
 
         {settingsOptions.map(({ label, icon, iconBg, path }) => (
