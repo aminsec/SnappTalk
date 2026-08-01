@@ -818,7 +818,7 @@
    ============================================ */
    .sent {
     align-self: flex-end;
-    background-color: #0A84FF; /* iOS Blue */
+    background-color: rgb(9, 144, 234); /* iOS Blue */
     border-radius: 18px 18px 4px 18px; /* Rounded with bottom-right tail */
     color: white;
     box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
