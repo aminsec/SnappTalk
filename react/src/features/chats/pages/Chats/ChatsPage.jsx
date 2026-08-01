@@ -21,9 +21,10 @@ import {
   faMicrophone,
   faStop,
   faArrowLeft,
+  faBars,
 } from '@fortawesome/free-solid-svg-icons';
 import { faFaceSmile } from '@fortawesome/free-regular-svg-icons';
-import { Sidebar, Input, Button, ProfileAvatar } from '@/shared/components';
+import { Sidebar, MobileMenu, Input, Button, ProfileAvatar } from '@/shared/components';
 import { useAuth } from '@/shared/state/useAuth';
 import toast from 'react-hot-toast';
 import { useSocket } from '@/shared/state/useSocket';
@@ -285,6 +286,7 @@ function ChatsPage() {
   const [activeTab, setActiveTab] = useState('all');
   const [isOptionsMenuOpen, setIsOptionsMenuOpen] = useState(false);
   const [isChatMenuOpen, setIsChatMenuOpen] = useState(false);
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [deleteConfirm, setDeleteConfirm] = useState({ open: false, conversationId: null });
   const [isDeletingConversation, setIsDeletingConversation] = useState(false);
   const [deleteForEveryone, setDeleteForEveryone] = useState(false);
@@ -3730,8 +3732,21 @@ function ChatsPage() {
     <div className={`${styles.chatsPageContainer} ${isMobileChatOpen ? styles.mobileChatOpen : ''}`}>  
   
       <Sidebar className={styles.sidebar} />
-  
+
+      <MobileMenu open={isMobileMenuOpen} onClose={() => setIsMobileMenuOpen(false)} />
+
       <aside className={styles.chatListSidebar}>
+        <div className={styles.mobileChatHeader}>
+          <button
+            type="button"
+            className={styles.mobileMenuButton}
+            onClick={() => setIsMobileMenuOpen(true)}
+            aria-label="Open menu"
+          >
+            <FontAwesomeIcon icon={faBars} />
+          </button>
+          <span className={styles.mobileChatHeaderTitle}>Chats</span>
+        </div>
         <div className={styles.searchContainer}>
           <Input
             type="text"

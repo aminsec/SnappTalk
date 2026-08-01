@@ -133,6 +133,10 @@
 /* ============================================
    SEARCH & CHAT LIST
    ============================================ */
+.mobileChatHeader {
+    display: none;
+}
+
 .searchContainer {
     width: 100%;
 }
@@ -1847,6 +1851,46 @@
     }
     
     .sidebar { display: none; }
+
+    /* Mobile header with hamburger menu */
+    .mobileChatHeader {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        width: 100%;
+        padding: 4px 4px 10px;
+    }
+
+    .mobileMenuButton {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 40px;
+        height: 40px;
+        border: none;
+        background: transparent;
+        color: var(--text-main);
+        font-size: 18px;
+        border-radius: 12px;
+        cursor: pointer;
+        transition: background-color 0.2s ease, transform 0.15s ease;
+        flex-shrink: 0;
+    }
+
+    .mobileMenuButton:hover {
+        background: rgba(255, 255, 255, 0.08);
+    }
+
+    .mobileMenuButton:active {
+        transform: scale(0.92);
+    }
+
+    .mobileChatHeaderTitle {
+        font-size: 16px;
+        font-weight: 600;
+        color: var(--text-main);
+        letter-spacing: 0.02em;
+    }
     
     .chatMain {
         position: fixed;
