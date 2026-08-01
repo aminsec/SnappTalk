@@ -353,7 +353,12 @@ function ChatsPage() {
   const unreadCountsRef = useRef({});
   const hasFetchedContactsRef = useRef(false);
   // Mobile responsive states
-  const [isMobileChatOpen, setIsMobileChatOpen] = useState(false);
+  const [isMobileChatOpen, setIsMobileChatOpen] = useState(() => {
+    // If arriving via a deep link (startUser), open the chat pane immediately
+    // so it doesn't slide in from the right on first render.
+    const params = new URLSearchParams(window.location.search);
+    return Boolean(params.get('startUser'));
+  });
   const isAtBottomRef = useRef(false);
   const startConversationRef = useRef(null);
   const deleteTargetName = useMemo(() => {
@@ -3260,6 +3265,7 @@ function ChatsPage() {
     const existingChat = findExisting(contacts);
     if (existingChat) {
       setSelectedChat(existingChat);
+      setIsMobileChatOpen(true);
       params.delete('startUser');
       navigate('/chats', { replace: true });
       return;
@@ -3269,6 +3275,7 @@ function ChatsPage() {
       const serverChat = findExisting(serverChats || []);
       if (serverChat) {
         setSelectedChat(serverChat);
+        setIsMobileChatOpen(true);
         params.delete('startUser');
         navigate('/chats', { replace: true });
         return;
@@ -3300,6 +3307,7 @@ function ChatsPage() {
         return [optimisticChat, ...prev];
       });
       setSelectedChat(optimisticChat);
+      setIsMobileChatOpen(true);
 
       const cacheBuster = `cb=${Date.now()}`;
       fetch(`/api/v1/members/${startUserId}/info?${cacheBuster}`, {

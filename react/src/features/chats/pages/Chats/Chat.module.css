@@ -1857,11 +1857,16 @@
         width: 100%;
         z-index: 100;
         transform: translateX(100%);
-        transition: transform 0.3s ease;
+        opacity: 0;
+        transition: transform 0.32s cubic-bezier(0.32, 0.72, 0, 1), opacity 0.32s ease;
         background-color: var(--bg-color);
+        will-change: transform, opacity;
     }
     
-    .mobileChatOpen .chatMain { transform: translateX(0); }
+    .mobileChatOpen .chatMain {
+        transform: translateX(0);
+        opacity: 1;
+    }
     .mobileChatOpen .chatListSidebar { display: none; }
     
     .mobileBackButton { display: flex; }
