@@ -9,7 +9,7 @@ import { useAuth } from '@/shared/state/useAuth';
 import SidebarItem from './SidebarItem';
 import styles from './Sidebar.module.css';
 
-function Sidebar() {
+function Sidebar({ className }) {
   const navigate = useNavigate();
   const { user, refreshUser } = useAuth();
   const [isLoggingOut, setIsLoggingOut] = useState(false);
@@ -55,7 +55,7 @@ function Sidebar() {
   }, [isLoggingOut]);
 
   return (
-    <aside className={styles.sidebar}>
+    <aside className={`${styles.sidebar} ${className || ''}`.trim()}>
       {/* Top Logo */}
       <div className={styles.logoWrapper}>
         <img src={Logo} alt="Logo" className={styles.logo} onClick={() => navigate('/chats')} />

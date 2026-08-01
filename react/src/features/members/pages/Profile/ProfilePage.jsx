@@ -3,6 +3,7 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faPaperPlane, faCalendarDays } from '@fortawesome/free-solid-svg-icons';
 import toast from 'react-hot-toast';
+import { faArrowLeft } from '@fortawesome/free-solid-svg-icons';
 
 import { Sidebar, Button, ProfileAvatar } from '@/shared/components';
 import { useAuth } from '@/shared/state/useAuth';
@@ -144,6 +145,14 @@ function ProfilePage() {
           ) : profile ? (
             <>
               <div className={styles.header}>
+                <button
+                  type="button"
+                  className={styles.mobileBackButton}
+                  onClick={() => navigate(-1)}
+                  aria-label="Back"
+                >
+                  <FontAwesomeIcon icon={faArrowLeft} />
+                </button>
                 <ProfileAvatar size={96} src={profile.profile_pic} className={styles.avatar} />
                 <div className={styles.titleBlock}>
                   <h1>@{profile.username || 'unknown'}</h1>
