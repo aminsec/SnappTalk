@@ -47,16 +47,17 @@
     overflow-y: auto;
     display: flex;
     flex-direction: column;
+    padding: 24px;
     animation: panelFadeIn 0.35s ease-out;
 }
 
 .settingsTitle {
-    flex: 1;
+    flex: 0 0 auto;
     width: 100%;
-    max-height: 50px;
+    max-width: 860px;
+    margin: 0 auto 20px;
     text-align: center;
-    padding: 15px 0px;
-    background-color: var(--bg-panel);
+    padding: 0 0 12px;
     font-size: 18px;
     font-weight: 500;
     letter-spacing: 0.02em;
@@ -64,16 +65,13 @@
 }
 
 .settingsContents {
-    flex:2;
+    flex: 1 1 auto;
     width: 100%;
+    max-width: 860px;
+    margin: 0 auto;
     height: auto;
-    padding: 20px 50px;
-    border-radius: var(--border-radius);
-    background-color: var(--bg-color);
+    padding: 30px;
     color: var(--text-main);
-    transition: var(--transition);
-    border-top: solid 3px var(--input-border);
-    border-left: solid 3px var(--input-border);
     text-align: center;
     animation: contentFade 0.35s ease-out;
 }
@@ -96,6 +94,51 @@
 @keyframes contentFade {
     from { opacity: 0; transform: translateY(6px); }
     to { opacity: 1; transform: translateY(0); }
+}
+
+/* ============================================
+   TABLET & NON-DESKTOP (Hides Sidebar, Full-Width Content)
+   ============================================ */
+@media (max-width: 1024px) {
+    .sidebar {
+        display: none;
+    }
+
+    .settingsSidebar {
+        flex: 0 0 260px;
+        min-width: 0;
+        max-width: 260px;
+    }
+}
+
+/* ============================================
+   MOBILE
+   ============================================ */
+@media (max-width: 768px) {
+    .settingsSidebar {
+        display: none;
+    }
+
+    .settingsContent {
+        padding: 16px;
+    }
+
+    .settingsContents {
+        padding: 20px;
+    }
+}
+
+/* ============================================
+   SMALL MOBILE
+   ============================================ */
+@media (max-width: 400px) {
+    .settingsContent {
+        padding: 12px;
+    }
+
+    .settingsContents {
+        padding: 16px;
+    }
 }
 
 @media (prefers-reduced-motion: reduce) {
