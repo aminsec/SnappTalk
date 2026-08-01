@@ -209,15 +209,21 @@
   font-size: 14px;
 }
 
+/* ============================================
+   MOBILE - SAME CENTERED DIALOG AS DESKTOP
+   ============================================ */
 @media (max-width: 768px) {
   .modalOverlay {
-    padding: 0;
+    padding: 16px;
+    align-items: center;
   }
 
   .modalContent {
-    max-width: 100%;
-    max-height: 100vh;
-    border-radius: 0;
+    width: 100%;
+    max-width: 500px;
+    max-height: 85vh;
+    border-radius: 16px;
+    animation: slideUp 0.3s ease-out;
   }
 
   .modalHeader {
@@ -226,6 +232,123 @@
 
   .modalBody {
     padding: 16px 20px;
+  }
+
+  .modalTitle {
+    font-size: 18px;
+  }
+
+  .closeButton {
+    width: 36px;
+    height: 36px;
+    font-size: 18px;
+  }
+
+  .userItem {
+    padding: 12px;
+    min-height: 56px;
+  }
+
+  .username {
+    font-size: 15px;
+  }
+
+  .userBio {
+    font-size: 13px;
+  }
+}
+
+/* ============================================
+   SMALL MOBILE
+   ============================================ */
+@media (max-width: 480px) {
+  .modalOverlay {
+    padding: 12px;
+  }
+
+  .modalContent {
+    max-height: 88vh;
+  }
+
+  .modalHeader {
+    padding: 14px 16px;
+  }
+
+  .modalBody {
+    padding: 14px 16px;
+  }
+
+  .modalTitle {
+    font-size: 17px;
+  }
+
+  .userItem {
+    padding: 12px 10px;
+    gap: 10px;
+  }
+
+  .username {
+    font-size: 14px;
+  }
+
+  .userBio {
+    font-size: 12px;
+  }
+}
+
+/* ============================================
+   VERY SMALL PHONES
+   ============================================ */
+@media (max-width: 380px) {
+  .modalOverlay {
+    padding: 8px;
+  }
+
+  .modalHeader {
+    padding: 12px 14px;
+  }
+
+  .modalBody {
+    padding: 12px 14px;
+  }
+
+  .modalTitle {
+    font-size: 16px;
+  }
+
+  .userItem {
+    padding: 10px 8px;
+  }
+}
+
+/* ============================================
+   TOUCH
+   ============================================ */
+@media (hover: none) and (pointer: coarse) {
+  .closeButton {
+    min-width: 44px;
+    min-height: 44px;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  .userItem {
+    min-height: 56px;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  .userItem:active {
+    background-color: var(--item-hover);
+  }
+}
+
+/* ============================================
+   REDUCED MOTION
+   ============================================ */
+@media (prefers-reduced-motion: reduce) {
+  .modalOverlay,
+  .modalContent {
+    animation: none !important;
+    transition: none !important;
   }
 }
 
