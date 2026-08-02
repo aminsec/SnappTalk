@@ -1,7 +1,7 @@
 // Entry point of every ws connection
 import { Socket, Server } from "socket.io";
 import { handleNewPvConversationEvent, handlePvConversationDelete } from "./events/conversation.event";
-import { handleMessageEdit, handleMessageSend, handleSeen, handleMessageDelete, handleMessageReply } from "./events/messag.event";
+import { handleMessageEdit, handleMessageSend, handleSeen, handleMessageDeleteForAll, handleMessageReply, handleMessageDeleteForMe } from "./events/messag.event";
 import { sendUserStatusToRooms } from "../services/socket.services";
 import { setUserStatus } from "../services/account.services";
 import { ObjectId } from "mongodb";
@@ -21,8 +21,12 @@ export function handleSocketConnection(socket: Socket, io: Server, onlineUsers: 
     handleMessageEdit(socket, data);
   });
 
-  socket.on("message:delete", (data) => {
-    handleMessageDelete(socket, data, io);
+  socket.on("message:delete:for_all", (data) => {
+    handleMessageDeleteForAll(socket, data, io);
+  });
+
+  socket.on("message:delete:for_me", (data) => {
+    handleMessageDeleteForMe(socket, data);
   });
 
   socket.on("conversation:pv:delete", (data) => {

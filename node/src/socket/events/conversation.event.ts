@@ -44,7 +44,8 @@ export async function handleNewPvConversationEvent(socket: Socket, data: NewPvCo
             conversation_id: newPvConversationId,
             replied_to: null,
             attachments: [],
-            type: "text"
+            type: "text",
+            deleted_for: []
         };
 
         const [newMessageId, err] = await createNewMessage(insertData);

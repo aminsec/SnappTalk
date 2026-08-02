@@ -1,6 +1,6 @@
 import { Socket, Server } from "socket.io";
 import { MessageDeleteEVT, MessageEditEVT, MessageReplyEVT, MessageSeenEVT, MessageSendEVT } from "../../types/socket.events.types";
-import { createNewMessage, deleteMessageById, editMessageById, getConversationMessagesByLimitedDate, getMessageById, seenMessageById } from "../../services/messages.services";
+import { createNewMessage, deleteMessageById, editMessageById, getConversationMessagesByLimitedDate, getMessageById, seenMessageById, softDeleteMessage } from "../../services/messages.services";
 import { ObjectId } from "mongodb";
 import { getConversationById, updateConversationLastMessageId } from "../../services/conversations.services";
 import { handlePvConversationDelete } from "./conversation.event";
@@ -19,7 +19,8 @@ export async function handleMessageSend(socket: Socket, data: MessageSendEVT) {
             conversation_id: new ObjectId(conversation_id),
             replied_to: null,
             attachments: [],
-            type: "text"
+            type: "text",
+            deleted_for: []
         }
 
         const [insertedMessageId, error] = await createNewMessage(insertData);
@@ -79,8 +80,9 @@ export async function handleMessageReply(socket: Socket, data: MessageReplyEVT) 
             conversation_id: new ObjectId(conversation_id),
             replied_to: reply_to? new ObjectId(reply_to) : null,
             attachments: [],
-            type: "text"
-        }
+            type: "text",
+            deleted_for: []
+        };
 
         const [insertedMessageId, err] = await createNewMessage(insertData);
         if(err || insertedMessageId === null){
@@ -169,16 +171,18 @@ export async function handleMessageEdit(socket: Socket, data: MessageEditEVT) {
     return;
 };
 
-export async function handleMessageDelete(socket: Socket, data: MessageDeleteEVT, io: Server) {
+export async function handleMessageDeleteForAll(socket: Socket, data: MessageDeleteEVT, io: Server) {
     const { message_id } = data;
     const { userInfo } = socket;
-    let isLastMessage = false
+    let isLastMessage = false;
+
     const [messageInfo, error] = await getMessageById(new ObjectId(message_id));
     if(messageInfo === null || error){
         socket.emit("message:delete:error", {message: "Message not found", message_id});
         return;
     }
 
+    //Checking user is sender of the message
     if(messageInfo.sender.toString() === userInfo.id){
         const [conversationOfMessage, error] = await getConversationById(messageInfo.conversation_id);
         if(error || conversationOfMessage === null){
@@ -186,7 +190,7 @@ export async function handleMessageDelete(socket: Socket, data: MessageDeleteEVT
             return;
         }
 
-        var [oneMessageBeforeLastMessage, err] = await getConversationMessagesByLimitedDate(conversationOfMessage._id, "0", 2, 0); //This will be an array with one element
+        var [oneMessageBeforeLastMessage, err] = await getConversationMessagesByLimitedDate(conversationOfMessage._id, "0", 2, 0); //This will be an array with two elements, if the message is not the only message left in converstion
         if(err || oneMessageBeforeLastMessage === null){
             socket.emit("message:delete:error", {message: "Coudn't delete message"});
             return;
@@ -222,6 +226,37 @@ export async function handleMessageDelete(socket: Socket, data: MessageDeleteEVT
 
     }else{
         socket.emit("message:delete:error", {message: "Access denied"});
+        return;
+    }
+};
+
+export async function handleMessageDeleteForMe(socket: Socket, data: MessageDeleteEVT) {
+    const { message_id } = data;
+    const { userInfo } = socket;
+
+    //Security check, user can only delete messages that has access to its conversation
+    const [messageInfo, err] = await getMessageById(new ObjectId(message_id));
+    if(messageInfo === null || err){
+        socket.emit("message:delete:for_me:error", {message: "Message not found", message_id});
+        return;
+    }
+
+    if(!socket.rooms.has(messageInfo.conversation_id.toString())){
+        socket.emit("message:delete:for_me:error", {message: "Access denied", message_id});
+        return;
+    }
+
+    const [softDeleteResult, error] = await softDeleteMessage(new ObjectId(message_id), new ObjectId(userInfo.id));
+    if(error){
+        socket.emit("message:delete:for_me:error", {message: error.message, message_id});
+        return;
+    }
+    
+    if(softDeleteResult){
+        socket.emit("message:delete:for_me:ack", {message: "Message deleted successfully", message_id});
+        return;
+    }else{
+        socket.emit("message:delete:for_me:error", {message: "Couldn't delete message", message_id});
         return;
     }
 };
