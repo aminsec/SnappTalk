@@ -30,7 +30,7 @@ export async function handleMessageSend(socket: Socket, data: MessageSendEVT) {
         }
 
         if(insertedMessageId){
-            const [lastMessageUpdated, err] = await updateConversationLastMessageId(new ObjectId(conversation_id), new ObjectId(insertedMessageId));
+            const [lastMessageUpdated, err] = await updateConversationLastMessageId([new ObjectId(userInfo.id)], new ObjectId(conversation_id), new ObjectId(insertedMessageId));
             if(err){
                 socket.emit("error", {message: "Couldn't send the message"});
                 return;
@@ -91,7 +91,7 @@ export async function handleMessageReply(socket: Socket, data: MessageReplyEVT) 
         }
 
         //Setting the message as last message of conversation
-        const [lastMessageUpdated, updateError] = await updateConversationLastMessageId(new ObjectId(conversation_id), new ObjectId(insertedMessageId));
+        const [lastMessageUpdated, updateError] = await updateConversationLastMessageId([new ObjectId(userInfo.id)], new ObjectId(conversation_id), new ObjectId(insertedMessageId));
         if(updateError){
             socket.emit("error", {message: "Couldn't send the message"});
             return;
@@ -205,7 +205,7 @@ export async function handleMessageDeleteForAll(socket: Socket, data: MessageDel
         //Checking if the message is last message of conversation because if it is we need to update last message of conversation
         if(conversationOfMessage.last_message_id.toString() === messageInfo._id.toString()){
             isLastMessage = true;
-            const [updateResult, err] = await updateConversationLastMessageId(conversationOfMessage._id, oneMessageBeforeLastMessage[1]._id);
+            const [updateResult, err] = await updateConversationLastMessageId([new ObjectId(userInfo.id)], conversationOfMessage._id, oneMessageBeforeLastMessage[1]._id);
             if(err){
                 socket.emit("message:delete:error", {message: err.message, message_id});
                 return;
