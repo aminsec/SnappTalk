@@ -1,7 +1,7 @@
 import * as jwt from "jsonwebtoken";
 import { Request, Response, NextFunction } from "express";
 import { ProtectedUserInfo } from "../types/user.types";
-import { getDeadSessionsCollection } from "../models/dead_sessions.model";
+import { DeadSession } from "../models/dead_sessions.model";
 
 //A middleware to validate JWT token
 export default async function validateJWT(req: Request, resp: Response, next: NextFunction){
@@ -15,8 +15,7 @@ export default async function validateJWT(req: Request, resp: Response, next: Ne
   const token = req.cookies.token;
 
   //Checking if token is not in dead_sessions list
-  const dead_sessionsCL = await getDeadSessionsCollection();
-  const isTokenIsInDeadSessions = await dead_sessionsCL.findOne({token: token});
+  const isTokenIsInDeadSessions = await DeadSession.findOne({token: token}).lean();
   if(isTokenIsInDeadSessions){
       resp.redirect("/login");
       return;

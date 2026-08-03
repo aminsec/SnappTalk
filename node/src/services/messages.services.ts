@@ -1,14 +1,13 @@
-import { Collection, ObjectId } from "mongodb";
-import { getMessagesCollection } from "../models/messages.model";
+import { Types } from "mongoose";
+import { Message as MessageModel } from "../models/messages.model";
 import { ErrorResponse } from "../types/response.types";
 import { InsertMessage, Message } from "../types/messages.types";
 
-export async function getMessageById(messageId: ObjectId): Promise<[Message | null, ErrorResponse | null]> {
+export async function getMessageById(messageId: Types.ObjectId): Promise<[Message | null, ErrorResponse | null]> {
     try {
-        const messagesCollection: Collection<Message> = await getMessagesCollection();
-        const message = await messagesCollection.findOne({
+        const message: Message | null = await MessageModel.findOne({
             _id: messageId
-        });
+        }).lean();
         
         return [message, null];
     } catch (error) {
@@ -18,10 +17,9 @@ export async function getMessageById(messageId: ObjectId): Promise<[Message | nu
     }
 };
 
-export async function getConversationMessagesByLimitedDate(conversationId: ObjectId, deletedConversationDate: string, limit: number, offset: number, userId: ObjectId): Promise<[Message[] | null, ErrorResponse | null]> {
+export async function getConversationMessagesByLimitedDate(conversationId: Types.ObjectId, deletedConversationDate: string, limit: number, offset: number, userId: Types.ObjectId): Promise<[Message[] | null, ErrorResponse | null]> {
     try {
-        const messagesCollection: Collection<Message> = await getMessagesCollection();
-        const messages = await messagesCollection.aggregate<Message>([
+        const messages: Message[] = await MessageModel.aggregate<Message>([
             {
                 $match: {
                   conversation_id: conversationId,
@@ -65,7 +63,7 @@ export async function getConversationMessagesByLimitedDate(conversationId: Objec
               }
             },
             { $project: { replied_to_doc: 0 } }
-          ]).toArray();
+          ]);
 
           return [messages, null];
           
@@ -76,10 +74,9 @@ export async function getConversationMessagesByLimitedDate(conversationId: Objec
     }
 };
 
-export async function createNewMessage(data: InsertMessage): Promise<[ObjectId | null, ErrorResponse | null]> {
+export async function createNewMessage(data: InsertMessage): Promise<[Types.ObjectId | null, ErrorResponse | null]> {
     try {
-        const messagesCollection: Collection = await getMessagesCollection();
-        const message = await messagesCollection.insertOne({
+        const message = await MessageModel.create({
             conversation_id: data.conversation_id,
             sender: data.sender,
             type: data.type,
@@ -92,8 +89,8 @@ export async function createNewMessage(data: InsertMessage): Promise<[ObjectId |
             deleted_for: []
         });
 
-        if(message.acknowledged === true){
-            return [message.insertedId, null];
+        if(message){
+            return [message._id, null];
         }else{
             const err: ErrorResponse = {message: "Couldn't create message", state: "failed", type: "system_error"};
             return [null, err];
@@ -106,10 +103,9 @@ export async function createNewMessage(data: InsertMessage): Promise<[ObjectId |
     }
 };
 
-export async function seenMessageById(message_id: ObjectId, conversation_id: ObjectId, userid: string): Promise<[Boolean | null, ErrorResponse | null]> {
+export async function seenMessageById(message_id: Types.ObjectId, conversation_id: Types.ObjectId, userid: string): Promise<[Boolean | null, ErrorResponse | null]> {
     try {
-        const messagesCollection: Collection = await getMessagesCollection();
-        const updateResult = await messagesCollection.updateOne({
+        const updateResult = await MessageModel.updateOne({
             conversation_id,
             _id: message_id,
         }, {
@@ -132,12 +128,11 @@ export async function seenMessageById(message_id: ObjectId, conversation_id: Obj
     }
 };
 
-export async function getUnreadMessagesCount(userId: string, conversationId: ObjectId): Promise<[Number | null, ErrorResponse | null]> {
+export async function getUnreadMessagesCount(userId: string, conversationId: Types.ObjectId): Promise<[Number | null, ErrorResponse | null]> {
     try {
-        const messagesCollection: Collection = await getMessagesCollection();
-        const count = await messagesCollection.countDocuments({
+        const count = await MessageModel.countDocuments({
           conversation_id: conversationId,
-          sender: { $ne: new ObjectId(userId) },                 
+          sender: { $ne: new Types.ObjectId(userId) },                 
           [`seen_by.${userId}`]: { $exists: false }
         });
     
@@ -149,10 +144,9 @@ export async function getUnreadMessagesCount(userId: string, conversationId: Obj
     }
 };
 
-export async function deleteConversationMessages(conversationId: ObjectId): Promise<[Boolean | null, ErrorResponse | null]> {
+export async function deleteConversationMessages(conversationId: Types.ObjectId): Promise<[Boolean | null, ErrorResponse | null]> {
     try {
-        const messagesCollection: Collection = await getMessagesCollection();
-        const result = await messagesCollection.deleteMany({
+        await MessageModel.deleteMany({
             conversation_id: conversationId
         });
 
@@ -164,10 +158,9 @@ export async function deleteConversationMessages(conversationId: ObjectId): Prom
     }
 };
 
-export async function editMessageById(messageId: ObjectId, new_message: string): Promise<[Boolean | null, null | ErrorResponse]> {
+export async function editMessageById(messageId: Types.ObjectId, new_message: string): Promise<[Boolean | null, null | ErrorResponse]> {
     try {
-        const messagesCollection: Collection = await getMessagesCollection();
-        const result = await messagesCollection.updateOne({
+        await MessageModel.updateOne({
             _id: messageId
         }, {
             $set: {
@@ -186,10 +179,9 @@ export async function editMessageById(messageId: ObjectId, new_message: string):
     }
 };
 
-export async function deleteMessageById(messageId: ObjectId): Promise<[Boolean | null, ErrorResponse | null]> {
+export async function deleteMessageById(messageId: Types.ObjectId): Promise<[Boolean | null, ErrorResponse | null]> {
     try {
-        const messagesCollection: Collection = await getMessagesCollection();
-        const result = await messagesCollection.deleteOne({
+        const result = await MessageModel.deleteOne({
             _id: messageId
         });
 
@@ -205,10 +197,9 @@ export async function deleteMessageById(messageId: ObjectId): Promise<[Boolean |
     }
 };
 
-export async function softDeleteMessage(messageId: ObjectId, userId: ObjectId): Promise<[Boolean | null, ErrorResponse | null]> {
+export async function softDeleteMessage(messageId: Types.ObjectId, userId: Types.ObjectId): Promise<[Boolean | null, ErrorResponse | null]> {
     try {
-        const messagesCollection: Collection = await getMessagesCollection();
-        const result = await messagesCollection.updateOne({
+        await MessageModel.updateOne({
             _id: messageId
         }, {
             $addToSet: {

@@ -4,7 +4,7 @@ import http from "http";
 import { authenticateSocket } from "../../middlewares/socket.middlewares";
 import { connectUserToRooms, sendUserStatusToRooms } from '../../services/socket.services';
 import { setUserStatus } from '../../services/account.services';
-import { ObjectId } from "mongodb";
+import { Types } from "mongoose";
 
 export function initSocket(server: http.Server){
 // Socket Setup
@@ -39,7 +39,7 @@ export function initSocket(server: http.Server){
 
       //Sending online status to all rooms
       sendUserStatusToRooms(socket, "online");
-      await setUserStatus(new ObjectId(socket.userInfo.id), "online");
+      await setUserStatus(new Types.ObjectId(socket.userInfo.id), "online");
       handleSocketConnection(socket, io, onlineUsers);
     }else{
       socket.emit("error", {message: "Couldn't connect to rooms"});

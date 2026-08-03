@@ -1,6 +1,6 @@
 import request from "supertest";
 import app from "../app";
-import { getUsersCollection } from "../models/users.model";
+import { User } from "../models/users.model";
 import { expect } from "chai";
 import { after } from "node:test";
 
@@ -54,8 +54,7 @@ describe('Authentication Tests', () => {
 
         after(async () => {
             //Cleaning up the database after tests
-            const usersCollection = await getUsersCollection();
-            const deleteResult = await usersCollection.deleteOne({ email: sampleValidEmail });
+            const deleteResult = await User.deleteOne({ email: sampleValidEmail });
 
             //Expectings
             expect(deleteResult.acknowledged).to.equal(true);

@@ -1,20 +1,19 @@
 import { Conversation } from "../types/conversation.types";
 import { ErrorResponse } from "../types/response.types";
-import { getConversationsCollection } from "../models/conversatations.model";
+import { Conversation as ConversationModel } from "../models/conversatations.model";
 import { ProtectedUserInfo } from "../types/user.types";
 import { getUserInfoById } from "./account.services";
-import { Collection, ObjectId } from "mongodb";
+import { Types } from "mongoose";
 import { whiteListConversations } from "../utils/operations";
 import { deleteConversationMessages, getMessageById, getUnreadMessagesCount } from "./messages.services";
 
 export async function getUserConversations(userInfo: ProtectedUserInfo): Promise<[Conversation[] | null, ErrorResponse | null]> {
     try {
-        const conversationsCollection = await getConversationsCollection();
-        const conversations: Conversation[] = await conversationsCollection.find(
+        const conversations: Conversation[] = await ConversationModel.find(
             {members: 
-                {$in: [new ObjectId(userInfo.id)]}
+                {$in: [new Types.ObjectId(userInfo.id)]}
             }
-        ).toArray();
+        ).lean();
 
         let detailedConversations: Conversation[] = [];
 
@@ -34,7 +33,7 @@ export async function getUserConversations(userInfo: ProtectedUserInfo): Promise
                 continue;
             }
             
-            const [senderOfLastMessage, _] = await getUserInfoById(new ObjectId(lastMessage.sender));
+            const [senderOfLastMessage, _] = await getUserInfoById(new Types.ObjectId(lastMessage.sender));
 
             conversation.last_message = {
                 content: lastMessage.content,
@@ -46,7 +45,7 @@ export async function getUserConversations(userInfo: ProtectedUserInfo): Promise
 
             //Extracting contact userid by checking !userid
             if(conversation.type === "pv" && conversation.members){    
-                const [contactUserInfo, error] = await getUserInfoById(new ObjectId(contactId));
+                const [contactUserInfo, error] = await getUserInfoById(new Types.ObjectId(contactId));
                 if(error){
                     console.log(error);
                     throw new Error();
@@ -78,17 +77,16 @@ export async function getUserConversations(userInfo: ProtectedUserInfo): Promise
     }
 };
 
-export async function checkIsThereConversation(firstUserId: ObjectId, secondUserId: ObjectId): Promise<[ObjectId | null, null | ErrorResponse]> {
+export async function checkIsThereConversation(firstUserId: Types.ObjectId, secondUserId: Types.ObjectId): Promise<[Types.ObjectId | null, null | ErrorResponse]> {
     try {
-        const conversationsCollection  = await getConversationsCollection();
-        const conversation: Conversation = await conversationsCollection.findOne(
+        const conversation: Conversation | null = await ConversationModel.findOne(
             {
                 members: {
                     $all: [firstUserId, secondUserId]
                 },
                 type: "pv"
             }
-        );
+        ).lean();
     
         if(conversation){
             return [conversation._id, null];
@@ -104,10 +102,9 @@ export async function checkIsThereConversation(firstUserId: ObjectId, secondUser
     }
 };
 
-export async function createNewPvConversation(firstUserId: ObjectId, secondUserId: ObjectId, lastMessageId: ObjectId): Promise<[ObjectId | null, ErrorResponse | null]> {
+export async function createNewPvConversation(firstUserId: Types.ObjectId, secondUserId: Types.ObjectId, lastMessageId: Types.ObjectId): Promise<[Types.ObjectId | null, ErrorResponse | null]> {
     try {
-        const conversationsCollection  = await getConversationsCollection();
-        const conversation = await conversationsCollection.insertOne({
+        const conversation = await ConversationModel.create({
             group_name: null,
             group_avatar: null,
             members: [firstUserId, secondUserId],
@@ -123,8 +120,8 @@ export async function createNewPvConversation(firstUserId: ObjectId, secondUserI
             created_at: new Date()
         });
 
-        if(conversation.acknowledged === true){
-            return [conversation.insertedId, null];
+        if(conversation){
+            return [conversation._id, null];
         }else{
             const err: ErrorResponse = {message: "Couldn't create conversation", state: "failed", type: "system_error"};
             return [null, err];
@@ -137,10 +134,8 @@ export async function createNewPvConversation(firstUserId: ObjectId, secondUserI
     }
 };
 
-export async function updateConversationLastMessageId(conversationId: ObjectId, lastMessageId: ObjectId, side: "one" | "both", userId?: ObjectId,): Promise<[true | false | null, ErrorResponse | null]> {
+export async function updateConversationLastMessageId(conversationId: Types.ObjectId, lastMessageId: Types.ObjectId, side: "one" | "both", userId?: Types.ObjectId,): Promise<[true | false | null, ErrorResponse | null]> {
     try {
-        const conversationsCollection = await getConversationsCollection();
-
         let result;
 
         if (side === "one") {
@@ -150,13 +145,13 @@ export async function updateConversationLastMessageId(conversationId: ObjectId, 
             }
 
             console.log(conversationId, lastMessageId, userId);
-            result = await conversationsCollection.updateOne(
+            result = await ConversationModel.updateOne(
                 {_id: conversationId},
                 {$set: {[`last_message_id.${userId.toString()}`]: lastMessageId}}
             );
             console.log("update result:", result);
         } else if (side === "both") {
-            result = await conversationsCollection.updateOne(
+            result = await ConversationModel.updateOne(
                 {_id: conversationId},
                 [
                     {
@@ -194,10 +189,9 @@ export async function updateConversationLastMessageId(conversationId: ObjectId, 
     }
 };
 
-export async function softDeleteConversation(userInfo: ProtectedUserInfo, conversationId: ObjectId): Promise<[Boolean | null, null | ErrorResponse]> {
+export async function softDeleteConversation(userInfo: ProtectedUserInfo, conversationId: Types.ObjectId): Promise<[Boolean | null, null | ErrorResponse]> {
     try {
-        const conversationsCollection  = await getConversationsCollection();
-        conversationsCollection.updateOne({
+        await ConversationModel.updateOne({
             _id: conversationId
         }, {
             $set: {
@@ -213,17 +207,15 @@ export async function softDeleteConversation(userInfo: ProtectedUserInfo, conver
     }
 };
 
-export async function hardDeleteConversation(conversationId: ObjectId): Promise<[Boolean | null, null | ErrorResponse]> {
+export async function hardDeleteConversation(conversationId: Types.ObjectId): Promise<[Boolean | null, null | ErrorResponse]> {
     try {
-        const conversationsCollection  = await getConversationsCollection();
-
         //Deleting conversation all messages
         const [messageDeleteResult, error] = await deleteConversationMessages(conversationId);
         if(error){
             return [null, error];
         }
 
-        const convDeleteResult = await conversationsCollection.deleteOne({
+        await ConversationModel.deleteOne({
             _id: conversationId
         });
 
@@ -235,12 +227,11 @@ export async function hardDeleteConversation(conversationId: ObjectId): Promise<
     }
 };
 
-export async function getConversationById(convId: ObjectId): Promise<[Conversation | null, ErrorResponse | null]> {
+export async function getConversationById(convId: Types.ObjectId): Promise<[Conversation | null, ErrorResponse | null]> {
     try {
-        const conversationsCollection  = await getConversationsCollection();
-        const conversation = await conversationsCollection.findOne({
+        const conversation: Conversation | null = await ConversationModel.findOne({
             _id: convId
-        });
+        }).lean();
     
         if(conversation){
             return [conversation, null];

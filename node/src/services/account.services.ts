@@ -1,14 +1,13 @@
-import { ObjectId } from "mongodb";
-import { getDeadSessionsCollection } from "../models/dead_sessions.model";
-import { getUsersCollection } from "../models/users.model";
+import { Types } from "mongoose";
+import { DeadSession } from "../models/dead_sessions.model";
+import { User } from "../models/users.model";
 import { ProtectedUserInfo, RawUserInfo } from "../types/user.types";
 import { ErrorResponse } from "../types/response.types";
 import { makeBcryptHash, whiteListUserInfo } from "../utils/operations";
 
 export async function getRawUserInfo(userid: string): Promise<[RawUserInfo | null, ErrorResponse | null]> {
     try {
-        const usersCollection  = await getUsersCollection();
-        const user: RawUserInfo = await usersCollection.findOne({_id: new ObjectId(userid)});
+        const user: RawUserInfo | null = await User.findOne({_id: new Types.ObjectId(userid)}).lean();
         if(user){
             return [user, null];
 
@@ -24,10 +23,9 @@ export async function getRawUserInfo(userid: string): Promise<[RawUserInfo | nul
     }
 };
 
-export async function getUserInfoById(id: ObjectId): Promise<[ProtectedUserInfo | null, ErrorResponse | null]> {
+export async function getUserInfoById(id: Types.ObjectId): Promise<[ProtectedUserInfo | null, ErrorResponse | null]> {
     try {
-        const usersCollection  = await getUsersCollection();
-        const user: RawUserInfo = await usersCollection.findOne({_id: id});
+        const user: RawUserInfo | null = await User.findById(id).lean();
 
         if(user){
             //White listing user data
@@ -48,8 +46,7 @@ export async function getUserInfoById(id: ObjectId): Promise<[ProtectedUserInfo 
 
 export async function getUserInfoByUsername(username: string): Promise<[ProtectedUserInfo | null, ErrorResponse | null]> {
     try {
-        const usersCollection  = await getUsersCollection();
-        const user: RawUserInfo = await usersCollection.findOne({username: username});
+        const user: RawUserInfo | null = await User.findOne({username: username}).lean();
         if(user){
             //White listing user data
             const userData: ProtectedUserInfo = whiteListUserInfo(user);
@@ -69,10 +66,9 @@ export async function getUserInfoByUsername(username: string): Promise<[Protecte
 
 export async function checkUserExistsByUsername(username: string): Promise<[true | false | null, null | ErrorResponse]> {
     try {
-        const usersCollection  = await getUsersCollection();
-        const userExist: RawUserInfo = await usersCollection.findOne({
+        const userExist: RawUserInfo | null = await User.findOne({
             username: username
-        });
+        }).lean();
 
         if(userExist){
             return [true, null];
@@ -88,10 +84,9 @@ export async function checkUserExistsByUsername(username: string): Promise<[true
     }
 };
 
-export async function updateUsername(userid: ObjectId, newUsername: string): Promise<[true | false | null, null | ErrorResponse]> {
+export async function updateUsername(userid: Types.ObjectId, newUsername: string): Promise<[true | false | null, null | ErrorResponse]> {
     try {
-        const usersCollection  = await getUsersCollection();
-        const result = await usersCollection.updateOne(
+        const result = await User.updateOne(
             {_id: userid},
             {$set: {username: newUsername}}
         );
@@ -111,9 +106,8 @@ export async function updateUsername(userid: ObjectId, newUsername: string): Pro
 
 export async function updateEmail(userid: string, newEmail: string): Promise<[true | false | null, null | ErrorResponse]> {
     try {
-        const usersCollection  = await getUsersCollection();
-        const result = await usersCollection.updateOne(
-            {_id: new ObjectId(userid)},
+        const result = await User.updateOne(
+            {_id: new Types.ObjectId(userid)},
             {$set: {email: newEmail}}
         );
 
@@ -133,9 +127,8 @@ export async function updateEmail(userid: string, newEmail: string): Promise<[tr
 export async function updatePassword(userid: string, newPassword: string): Promise<[true | false | null, null | ErrorResponse]> {
     try {
         const newPasswordHash = await makeBcryptHash(newPassword);
-        const usersCollection  = await getUsersCollection();
-        const result = await usersCollection.updateOne(
-            {_id: new ObjectId(userid)},
+        const result = await User.updateOne(
+            {_id: new Types.ObjectId(userid)},
             {$set: {password: newPasswordHash}}
         );
 
@@ -154,9 +147,8 @@ export async function updatePassword(userid: string, newPassword: string): Promi
 
 export async function updateBio(userid: string, newBio: string): Promise<[true | false | null, null | ErrorResponse]> {
     try {
-        const usersCollection  = await getUsersCollection();
-        const result = await usersCollection.updateOne(
-            {_id: new ObjectId(userid)},
+        const result = await User.updateOne(
+            {_id: new Types.ObjectId(userid)},
             {$set: {bio: newBio}}
         );
 
@@ -173,10 +165,9 @@ export async function updateBio(userid: string, newBio: string): Promise<[true |
     }
 };
 
-export async function updateProfilePicAddress(userid: ObjectId, newProfilePicAddress: string): Promise<[true | false | null, null | ErrorResponse]> {
+export async function updateProfilePicAddress(userid: Types.ObjectId, newProfilePicAddress: string): Promise<[true | false | null, null | ErrorResponse]> {
     try {
-        const usersCollection  = await getUsersCollection();
-        const result = await usersCollection.updateOne(
+        const result = await User.updateOne(
             {_id: userid},
             {$set: {profile_pic: "/statics/images/" + newProfilePicAddress}}
         );
@@ -196,13 +187,12 @@ export async function updateProfilePicAddress(userid: ObjectId, newProfilePicAdd
 
 export async function revokeUserToken(token: string): Promise<[true | false | null, null | ErrorResponse]> {
     try {
-        const dead_sessionsCL = await getDeadSessionsCollection();
-        const revoked = await dead_sessionsCL.insertOne({
+        const revoked = await DeadSession.create({
             token: token,
             createdAt: new Date()
         });
 
-        if(revoked.acknowledged){
+        if(revoked){
             return [true, null];
         }else{
             const err: ErrorResponse = {message: "Failed to revoke token", state: "failed", type: "system_error"};
@@ -217,8 +207,7 @@ export async function revokeUserToken(token: string): Promise<[true | false | nu
 
 export async function getUserContacts(userid: string) {
     try {
-        const usersCollection  = await getUsersCollection();
-        const contacts = await usersCollection.find({_id: {$ne: new ObjectId(userid)}}).toArray();
+        const contacts = await User.find({_id: {$ne: new Types.ObjectId(userid)}}).lean();
         return [contacts, null];
     } catch (error) {
         console.log(error);
@@ -227,10 +216,9 @@ export async function getUserContacts(userid: string) {
     }
 };
 
-export async function setUserStatus(userId: ObjectId, status: string): Promise<[Boolean | null, null | ErrorResponse]> {
+export async function setUserStatus(userId: Types.ObjectId, status: string): Promise<[Boolean | null, null | ErrorResponse]> {
     try {
-        const usersCollection  = await getUsersCollection();
-        const result = await usersCollection.updateOne({
+        await User.updateOne({
             _id: userId
         }, {
             $set: {
@@ -246,10 +234,9 @@ export async function setUserStatus(userId: ObjectId, status: string): Promise<[
     }
 };
 
-export async function setAccountDeleted(userId: ObjectId): Promise<[Boolean | null, null | ErrorResponse]> {
+export async function setAccountDeleted(userId: Types.ObjectId): Promise<[Boolean | null, null | ErrorResponse]> {
     try {
-        const usersCollection  = await getUsersCollection();
-        const result = await usersCollection.updateOne({
+        await User.updateOne({
             _id: userId
         }, {
             $set: {

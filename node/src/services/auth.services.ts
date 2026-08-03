@@ -1,14 +1,13 @@
-import { getUsersCollection } from "../models/users.model";
+import { User } from "../models/users.model";
 import { makeBcryptHash, checkBcrypt, whiteListUserInfo } from "../utils/operations";
 import { checkEmailIsValid } from "../utils/validate";
 import { ProtectedUserInfo, RawUserInfo, InsertUserInfo } from "../types/user.types";
 import { ErrorResponse } from "../types/response.types";
-import { getDeadSessionsCollection } from "../models/dead_sessions.model";
+import { DeadSession } from "../models/dead_sessions.model";
 
 export async function checkUserExistsByEmail(email: string): Promise<[true | false | null, null |ErrorResponse]>  {
     try {
-        const usersCollection  = await getUsersCollection();
-        const user: RawUserInfo = await usersCollection.findOne({email: email});
+        const user: RawUserInfo | null = await User.findOne({email: email}).lean();
         if(user){
             return [true, null];
         }else{
@@ -24,8 +23,7 @@ export async function checkUserExistsByEmail(email: string): Promise<[true | fal
 
 export async function checkCredentials(email: string, password: string): Promise<[true | false | null, null |ErrorResponse]> {
     try {
-        const usersCollection  = await getUsersCollection();
-        const user: RawUserInfo = await usersCollection.findOne({email: email, deleted_account: false});
+        const user: RawUserInfo | null = await User.findOne({email: email, deleted_account: false}).lean();
         if(user){
             const isPasswordCorrect = await checkBcrypt(password, user.password)
             if(isPasswordCorrect === true){
@@ -45,9 +43,13 @@ export async function checkCredentials(email: string, password: string): Promise
 
 export async function getUserInfoByEmail(email: string): Promise<[ProtectedUserInfo | null,ErrorResponse | null]>{
     try {
-        const usersCollection = await getUsersCollection();
-        const user: RawUserInfo = await usersCollection.findOne({email: email});
+        const user: RawUserInfo | null = await User.findOne({email: email}).lean();
         
+        if(!user){
+            const err: ErrorResponse = {message: "User not found", state: "failed", type: "not_found"};
+            return [null, err];
+        }
+
         //White listing user data
         const userData: ProtectedUserInfo = whiteListUserInfo(user);
 
@@ -69,7 +71,6 @@ export async function createUser(email: string, password: string): Promise<[Prot
 
         if(isEmaillCorrect === true){
             const hashedPassword = await makeBcryptHash(password);
-            const usersCollection = await getUsersCollection();
             const userInfoToInsert: InsertUserInfo = {
                 email: email,
                 password: hashedPassword,
@@ -82,18 +83,18 @@ export async function createUser(email: string, password: string): Promise<[Prot
                 deleted_account: false
             };
 
-            const createdUserInfoResult = await usersCollection.insertOne(userInfoToInsert);
+            const createdUser = await User.create(userInfoToInsert);
 
-            if(createdUserInfoResult.acknowledged === true){
+            if(createdUser){
                 const userInfo: ProtectedUserInfo = { 
-                    id: createdUserInfoResult.insertedId.toString(),
-                    email: userInfoToInsert.email,
-                    username: userInfoToInsert.username,
-                    profile_pic: userInfoToInsert.profile_pic,
-                    role: userInfoToInsert.role,
-                    joined_at: userInfoToInsert.joined_at,
-                    bio: userInfoToInsert.bio,
-                    status: userInfoToInsert.status
+                    id: createdUser._id.toString(),
+                    email: createdUser.email,
+                    username: createdUser.username,
+                    profile_pic: createdUser.profile_pic,
+                    role: createdUser.role,
+                    joined_at: createdUser.joined_at,
+                    bio: createdUser.bio,
+                    status: createdUser.status
                 };
                 
                 return [userInfo, null];
@@ -117,12 +118,11 @@ export async function createUser(email: string, password: string): Promise<[Prot
 
 export async function revokeToken(token: string):  Promise<[Boolean | null, ErrorResponse | null]> {
     try {
-        const dead_sessionsCL = await getDeadSessionsCollection();
-        const insertedToken = await dead_sessionsCL.insertOne({
+        const insertedToken = await DeadSession.create({
             token: token
         });
     
-        if(insertedToken.acknowledged === true){
+        if(insertedToken){
             return [true, null];
     
         }else{

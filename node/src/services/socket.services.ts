@@ -1,12 +1,11 @@
 import { Socket } from "socket.io";
-import { getConversationsCollection } from "../models/conversatations.model";
-import { ObjectId } from "mongodb";
+import { Conversation as ConversationModel } from "../models/conversatations.model";
+import { Types } from "mongoose";
 import { ErrorResponse } from "../types/response.types";
 
 export async function connectUserToRooms(socket: Socket): Promise<[true | false | null, ErrorResponse | null]> {
     try {
-        const conversationsCollection  = await getConversationsCollection();
-        const userConversations = await conversationsCollection.find({members: {$in: [new ObjectId(socket.userInfo.id)]}}).toArray();
+        const userConversations = await ConversationModel.find({members: {$in: [new Types.ObjectId(socket.userInfo.id)]}}).lean();
         if(userConversations){
             for(let conversation of userConversations){
                 socket.join(conversation._id.toString());

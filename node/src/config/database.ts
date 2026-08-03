@@ -1,20 +1,12 @@
-import { MongoClient } from 'mongodb';
-import { Db } from 'mongodb';
+import mongoose from "mongoose";
 
-const { DB_PASS, DB_USER, DB_IP, DB_PORT } = process.env;
-const uri = `mongodb://${DB_USER}:${DB_PASS}@${DB_IP}:${DB_PORT}`;
-
-//Returning db connection once connected
-let SnappTalkDB: Db; 
+const { DB_PASS, DB_USER, DB_IP, DB_PORT, DB_NAME } = process.env;
+const uri = `mongodb://${DB_USER}:${DB_PASS}@${DB_IP}:${DB_PORT}/${DB_NAME}?authSource=admin`;
 
 export async function connectToSnappTalkDB() {
-    if(!SnappTalkDB){
-        const client = new MongoClient(uri);
-        await client.connect();
-        SnappTalkDB = client.db("SnappTalk");
+    if (mongoose.connection.readyState === 0) {
+        await mongoose.connect(uri);
         console.log("connected to dbs");
-        return SnappTalkDB;
-    }else{
-        return SnappTalkDB;
     }
-};
+    return mongoose.connection;
+}

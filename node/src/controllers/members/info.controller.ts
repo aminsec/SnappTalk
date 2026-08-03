@@ -3,11 +3,11 @@ import { getUserInfoById } from "../../services/account.services";
 import { searchMemberByUsername } from "../../services/members.services";
 import { sendResponse, showError } from "../../utils/operations";
 import { Request, Response } from "express";
-import { ObjectId } from "mongodb";
+import { Types } from "mongoose";
 
 export async function showMemberInfo(req: Request, resp: Response) {
     const { userid } = req.params;
-    const [memberInfo, error] = await getUserInfoById(new ObjectId(userid));
+    const [memberInfo, error] = await getUserInfoById(new Types.ObjectId(userid));
     if(error){
         showError(error, resp);
         return;
