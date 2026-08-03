@@ -23,7 +23,7 @@ export async function showUserConversationMessages(req: Request, resp: Response)
     }
 
     const messagesDeletedSinceForUser = conversation?.deleted_for?.[userInfo.id]?.toString(); // This can be null because of groups 
-    const [messages, error]: [Message[] | null, ErrorResponse | null] = await getConversationMessagesByLimitedDate(new ObjectId(conversationId), messagesDeletedSinceForUser || "0", limit, offset);
+    const [messages, error]: [Message[] | null, ErrorResponse | null] = await getConversationMessagesByLimitedDate(new ObjectId(conversationId), messagesDeletedSinceForUser || "0", limit, offset, new ObjectId(userInfo.id));
     if(error){
         showError(error, resp);
         return;
@@ -31,7 +31,6 @@ export async function showUserConversationMessages(req: Request, resp: Response)
 
     //Filtering messages that are deleted for the user
     const filteredMessages = await filterMessagesDeletedForUser(messages || [], new ObjectId(userInfo.id));
-    console.log(filteredMessages);
     const responseData = {state: "success", messages: filteredMessages};
     sendResponse(responseData, {}, 200, resp);
 };

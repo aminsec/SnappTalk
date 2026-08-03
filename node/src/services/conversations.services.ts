@@ -23,7 +23,6 @@ export async function getUserConversations(userInfo: ProtectedUserInfo): Promise
             var contactId = (conversation.members[0]).toString() !== userInfo.id ? conversation.members[0].toString() : conversation.members[1].toString();
             //Attaching last messsage to contact
             const lastMessageId = conversation.last_message_id[userInfo.id.toString()];
-
             const [lastMessage, error] = await getMessageById(lastMessageId);
             if(error || lastMessage === null) {
                 const err: ErrorResponse = {message: "message not found", state: "failed", type: "not_found"};
@@ -114,8 +113,8 @@ export async function createNewPvConversation(firstUserId: ObjectId, secondUserI
             members: [firstUserId, secondUserId],
             type: "pv",
             last_message_id: {
-                firstUserId: lastMessageId,
-                secondUserId: lastMessageId
+                [firstUserId.toString()]: lastMessageId,
+                [secondUserId.toString()]: lastMessageId
             },
             deleted_for: {
                 [firstUserId.toString()]: new Date(),
@@ -138,26 +137,50 @@ export async function createNewPvConversation(firstUserId: ObjectId, secondUserI
     }
 };
 
-export async function updateConversationLastMessageId(userIds: ObjectId[], conversationId: ObjectId, lastMessageId: ObjectId): Promise<[true | false | null, ErrorResponse | null]> {
+export async function updateConversationLastMessageId(conversationId: ObjectId, lastMessageId: ObjectId, side: "one" | "both", userId?: ObjectId,): Promise<[true | false | null, ErrorResponse | null]> {
     try {
-        if (!userIds.length || userIds.length > 2) {
-            const err: ErrorResponse = {message: "userIds must contain 1 or 2 user ids", state: "failed", type: "input_error"};
+        const conversationsCollection = await getConversationsCollection();
+
+        let result;
+
+        if (side === "one") {
+            if (!userId) {
+                const err: ErrorResponse = {message: "userId is required when side is 'one'", state: "failed", type: "input_error"};
+                return [null, err];
+            }
+
+            console.log(conversationId, lastMessageId, userId);
+            result = await conversationsCollection.updateOne(
+                {_id: conversationId},
+                {$set: {[`last_message_id.${userId.toString()}`]: lastMessageId}}
+            );
+            console.log("update result:", result);
+        } else if (side === "both") {
+            result = await conversationsCollection.updateOne(
+                {_id: conversationId},
+                [
+                    {
+                        $set: {
+                            last_message_id: {
+                                $arrayToObject: {
+                                    $map: {
+                                        input: {$objectToArray: "$last_message_id"},
+                                        as: "kv",
+                                        in: {k: "$$kv.k", v: lastMessageId}
+                                    }
+                                }
+                            }
+                        }
+                    }
+                ]
+            );
+
+        } else {
+            const err: ErrorResponse = {message: "Invalid side value", state: "failed", type: "input_error"};
             return [null, err];
         }
 
-        const conversationsCollection = await getConversationsCollection();
-
-        const setFields: Record<string, ObjectId> = {};
-        for (const userId of userIds) {
-            setFields[`last_message_id.${userId.toString()}`] = lastMessageId;
-        }
-
-        const conversation = await conversationsCollection.updateOne(
-            {_id: conversationId},
-            {$set: setFields}
-        );
-
-        if (conversation.acknowledged === true) {
+        if (result.acknowledged === true) {
             return [true, null];
         } else {
             const err: ErrorResponse = {message: "Couldn't update conversation last message id", state: "failed", type: "system_error"};

@@ -26,7 +26,7 @@ export function handleSocketConnection(socket: Socket, io: Server, onlineUsers: 
   });
 
   socket.on("message:delete:for_me", (data) => {
-    handleMessageDeleteForMe(socket, data);
+    handleMessageDeleteForMe(socket, data, io);
   });
 
   socket.on("conversation:pv:delete", (data) => {
@@ -47,7 +47,4 @@ export function handleSocketConnection(socket: Socket, io: Server, onlineUsers: 
     onlineUsers.delete(socket.userInfo.id);
   });
 
-  socket.on('disconnect', () => {
-    console.log('Client disconnected:', socket.id);
-  });
 };
