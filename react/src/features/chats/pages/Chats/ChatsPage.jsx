@@ -4269,6 +4269,22 @@ function ChatsPage() {
                             >
                               <div className={styles.replyPreviewLine} />
                               <div className={styles.replyPreviewContent}>
+                                <div className={styles.replyPreviewHeader}>
+                                  <span className={styles.replyPreviewLabel}>
+                                    {(() => {
+                                      const replySenderId = getSenderId(replyPreview)?.toString();
+                                      if (replySenderId && replySenderId === user?.id?.toString()) return 'You';
+                                      if (selectedChat?.type === 'pv') {
+                                        return selectedChat?.contact_info?.username || 'User';
+                                      }
+                                      return replyPreview?.sender_info?.username
+                                        || replyPreview?.sender_name
+                                        || replyPreview?.sender_username
+                                        || replyPreview?.sender
+                                        || 'Member';
+                                    })()}
+                                  </span>
+                                </div>
                                 <p className={styles.replyPreviewText}>
                                   {replyPreviewText}
                                 </p>
