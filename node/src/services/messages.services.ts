@@ -18,7 +18,7 @@ export async function getMessageById(messageId: ObjectId): Promise<[Message | nu
     }
 };
 
-export async function getConversationMessagesByLimitedDate(conversationId: ObjectId, deletedConversationDate: string, limit: number, offset: number): Promise<[Message[] | null, ErrorResponse | null]> {
+export async function getConversationMessagesByLimitedDate(conversationId: ObjectId, deletedConversationDate: string, limit: number, offset: number, userId: ObjectId): Promise<[Message[] | null, ErrorResponse | null]> {
     try {
         const messagesCollection: Collection<Message> = await getMessagesCollection();
         const messages = await messagesCollection.aggregate<Message>([
@@ -27,7 +27,8 @@ export async function getConversationMessagesByLimitedDate(conversationId: Objec
                   conversation_id: conversationId,
                   created_at: {
                         $gt: new Date(deletedConversationDate)
-                    }
+                    },
+                  deleted_for: {$nin: [userId]}
                 }
               },
             
@@ -87,7 +88,8 @@ export async function createNewMessage(data: InsertMessage): Promise<[ObjectId |
             seen_by: {[data.sender.toString()]: new Date()},
             edited: false,
             created_at: new Date(),
-            replied_to: data.replied_to
+            replied_to: data.replied_to,
+            deleted_for: []
         });
 
         if(message.acknowledged === true){
@@ -196,6 +198,25 @@ export async function deleteMessageById(messageId: ObjectId): Promise<[Boolean |
         }else{
             return [false, null];
         }
+    } catch (error) {
+        console.log(error);
+        const err: ErrorResponse = {message: "A system error occurred", state: "failed", type: "system_error"};
+        return [null, err];
+    }
+};
+
+export async function softDeleteMessage(messageId: ObjectId, userId: ObjectId): Promise<[Boolean | null, ErrorResponse | null]> {
+    try {
+        const messagesCollection: Collection = await getMessagesCollection();
+        const result = await messagesCollection.updateOne({
+            _id: messageId
+        }, {
+            $addToSet: {
+                deleted_for: userId
+            }
+        });
+
+        return [true, null];
     } catch (error) {
         console.log(error);
         const err: ErrorResponse = {message: "A system error occurred", state: "failed", type: "system_error"};

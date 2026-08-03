@@ -22,8 +22,7 @@ export async function getUserConversations(userInfo: ProtectedUserInfo): Promise
         for(let conversation of conversations){
             var contactId = (conversation.members[0]).toString() !== userInfo.id ? conversation.members[0].toString() : conversation.members[1].toString();
             //Attaching last messsage to contact
-            const lastMessageId = conversation.last_message_id;
-
+            const lastMessageId = conversation.last_message_id[userInfo.id.toString()];
             const [lastMessage, error] = await getMessageById(lastMessageId);
             if(error || lastMessage === null) {
                 const err: ErrorResponse = {message: "message not found", state: "failed", type: "not_found"};
@@ -113,7 +112,10 @@ export async function createNewPvConversation(firstUserId: ObjectId, secondUserI
             group_avatar: null,
             members: [firstUserId, secondUserId],
             type: "pv",
-            last_message_id: lastMessageId,
+            last_message_id: {
+                [firstUserId.toString()]: lastMessageId,
+                [secondUserId.toString()]: lastMessageId
+            },
             deleted_for: {
                 [firstUserId.toString()]: new Date(),
                 [secondUserId.toString()]: new Date()
@@ -135,13 +137,52 @@ export async function createNewPvConversation(firstUserId: ObjectId, secondUserI
     }
 };
 
-export async function updateConversationLastMessageId(conversationId: ObjectId, lastMessageId: ObjectId): Promise<[true | false | null, ErrorResponse | null]> {
+export async function updateConversationLastMessageId(conversationId: ObjectId, lastMessageId: ObjectId, side: "one" | "both", userId?: ObjectId,): Promise<[true | false | null, ErrorResponse | null]> {
     try {
-        const conversationsCollection  = await getConversationsCollection();
-        const conversation = await conversationsCollection.updateOne({_id: conversationId}, {$set: {last_message_id: lastMessageId}});
-        if(conversation.acknowledged === true){
+        const conversationsCollection = await getConversationsCollection();
+
+        let result;
+
+        if (side === "one") {
+            if (!userId) {
+                const err: ErrorResponse = {message: "userId is required when side is 'one'", state: "failed", type: "input_error"};
+                return [null, err];
+            }
+
+            console.log(conversationId, lastMessageId, userId);
+            result = await conversationsCollection.updateOne(
+                {_id: conversationId},
+                {$set: {[`last_message_id.${userId.toString()}`]: lastMessageId}}
+            );
+            console.log("update result:", result);
+        } else if (side === "both") {
+            result = await conversationsCollection.updateOne(
+                {_id: conversationId},
+                [
+                    {
+                        $set: {
+                            last_message_id: {
+                                $arrayToObject: {
+                                    $map: {
+                                        input: {$objectToArray: "$last_message_id"},
+                                        as: "kv",
+                                        in: {k: "$$kv.k", v: lastMessageId}
+                                    }
+                                }
+                            }
+                        }
+                    }
+                ]
+            );
+
+        } else {
+            const err: ErrorResponse = {message: "Invalid side value", state: "failed", type: "input_error"};
+            return [null, err];
+        }
+
+        if (result.acknowledged === true) {
             return [true, null];
-        }else{
+        } else {
             const err: ErrorResponse = {message: "Couldn't update conversation last message id", state: "failed", type: "system_error"};
             return [null, err];
         }

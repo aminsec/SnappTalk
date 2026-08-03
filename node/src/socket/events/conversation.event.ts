@@ -44,7 +44,8 @@ export async function handleNewPvConversationEvent(socket: Socket, data: NewPvCo
             conversation_id: newPvConversationId,
             replied_to: null,
             attachments: [],
-            type: "text"
+            type: "text",
+            deleted_for: []
         };
 
         const [newMessageId, err] = await createNewMessage(insertData);
@@ -55,7 +56,7 @@ export async function handleNewPvConversationEvent(socket: Socket, data: NewPvCo
 
         if(newMessageId){
             //Updating conversation with new last_message id
-            const [updatedConversation, err] = await updateConversationLastMessageId(newPvConversationId, newMessageId);
+            const [updatedConversation, err] = await updateConversationLastMessageId(newPvConversationId, newMessageId, "both");
             if(err){
                 socket.emit("error", {message: "There was a problem in our backend"});
                 return;

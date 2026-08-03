@@ -11,7 +11,8 @@ export interface Message {
     edited: Boolean,
     edited_at: Date,
     created_at: Date,
-    replied_to: Object | null
+    replied_to: Object | null,
+    deleted_for: ObjectId[]
 };
 
 export interface InsertMessage {
@@ -20,5 +21,6 @@ export interface InsertMessage {
     conversation_id: ObjectId,
     attachments: string[],
     content: string,
-    replied_to: ObjectId | null
+    replied_to: ObjectId | null,
+    deleted_for: ObjectId[]
 };

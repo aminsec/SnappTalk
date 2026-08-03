@@ -21,6 +21,7 @@ export interface MessageReplyEVT {
     conversation_id: string
     message_text: string
     reply_to: string
+    track_id: string
 };
 
 export interface MessageSeenEVT {

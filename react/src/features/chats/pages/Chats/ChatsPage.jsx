@@ -741,10 +741,15 @@ function ChatsPage() {
         return;
       }
 
-      socket.emit(SOCKET_EVENTS.MESSAGE_DELETE, {
-        message_id: messageId,
-        delete_for: scope,
-      });
+      if (scope === 'all') {
+        socket.emit(SOCKET_EVENTS.MESSAGE_DELETE_FOR_ALL, {
+          message_id: messageId,
+        });
+      } else {
+        socket.emit(SOCKET_EVENTS.MESSAGE_DELETE_FOR_ME, {
+          message_id: messageId,
+        });
+      }
     },
     [selectedChat, socket]
   );
@@ -2244,6 +2249,8 @@ function ChatsPage() {
     socket.on(SOCKET_EVENTS.MESSAGE_RECEIVE_REPLY, handleMessageReceiveReply);
     socket.on('message:delete:ack', handleMessageDeleteAck);
     socket.on('message:delete:error', handleMessageDeleteError);
+    socket.on(SOCKET_EVENTS.MESSAGE_DELETE_FOR_ME_ACK, handleMessageDeleteAck);
+    socket.on(SOCKET_EVENTS.MESSAGE_DELETE_FOR_ME_ERROR, handleMessageDeleteError);
     socket.on(SOCKET_EVENTS.CONVERSATION_PV_DELETED, handleConversationDeleted);
     socket.on(SOCKET_EVENTS.CONVERSATION_PV_DELETE_ACK, handleConversationDeleteAck);
     socket.on(SOCKET_EVENTS.CONVERSATION_PV_DELETE_ERROR, handleConversationDeleteError);
@@ -2290,6 +2297,8 @@ function ChatsPage() {
     socket.off(SOCKET_EVENTS.MESSAGE_RECEIVE_REPLY, handleMessageReceiveReply);
       socket.off('message:delete:ack', handleMessageDeleteAck);
       socket.off('message:delete:error', handleMessageDeleteError);
+      socket.off(SOCKET_EVENTS.MESSAGE_DELETE_FOR_ME_ACK, handleMessageDeleteAck);
+      socket.off(SOCKET_EVENTS.MESSAGE_DELETE_FOR_ME_ERROR, handleMessageDeleteError);
       socket.off(SOCKET_EVENTS.CONVERSATION_PV_DELETED, handleConversationDeleted);
       socket.off(SOCKET_EVENTS.CONVERSATION_PV_DELETE_ACK, handleConversationDeleteAck);
       socket.off(SOCKET_EVENTS.CONVERSATION_PV_DELETE_ERROR, handleConversationDeleteError);

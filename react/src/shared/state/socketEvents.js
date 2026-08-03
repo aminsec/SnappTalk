@@ -26,6 +26,9 @@ export const SOCKET_EVENTS = {
   MESSAGE_EDIT: 'message:edit',
   MESSAGE_EDITED: 'message:edited',
 
-  MESSAGE_DELETE: 'message:delete',
+  MESSAGE_DELETE_FOR_ALL: 'message:delete:for_all',
+  MESSAGE_DELETE_FOR_ME: 'message:delete:for_me',
+  MESSAGE_DELETE_FOR_ME_ACK: 'message:delete:for_me:ack',
+  MESSAGE_DELETE_FOR_ME_ERROR: 'message:delete:for_me:error',
   MESSAGE_DELETED: 'message:deleted',
 };

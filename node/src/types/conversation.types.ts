@@ -7,7 +7,7 @@ export interface Conversation {
     group_avatar: string | null,
     members: string[],
     contact_info?: any,
-    last_message_id: ObjectId,
+    last_message_id: Record<string, ObjectId>,
     last_message?: Object,
     deleted_for: Record<string, Date>,
     created_at: string,
