@@ -1,15 +1,15 @@
-import { ObjectId } from "mongodb";
+import { Types } from "mongoose";
 
 export interface Conversation {
-    _id: ObjectId,
+    _id: Types.ObjectId,
     type: "group" | "pv",
     group_name: string | null,
     group_avatar: string | null,
-    members: string[],
+    members: Types.ObjectId[],
     contact_info?: any,
-    last_message_id: Record<string, ObjectId>,
+    last_message_id: Record<string, Types.ObjectId>,
     last_message?: Object,
     deleted_for: Record<string, Date>,
-    created_at: string,
+    created_at: Date,
     unread_messages_count?: Number
 };

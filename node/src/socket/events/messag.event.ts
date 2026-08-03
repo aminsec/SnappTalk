@@ -1,7 +1,7 @@
 import { Socket, Server } from "socket.io";
 import { MessageDeleteEVT, MessageEditEVT, MessageReplyEVT, MessageSeenEVT, MessageSendEVT } from "../../types/socket.events.types";
 import { createNewMessage, deleteMessageById, editMessageById, getConversationMessagesByLimitedDate, getMessageById, seenMessageById, softDeleteMessage } from "../../services/messages.services";
-import { ObjectId } from "mongodb";
+import { Types } from "mongoose";
 import { getConversationById, updateConversationLastMessageId } from "../../services/conversations.services";
 import { handlePvConversationDelete } from "./conversation.event";
 import { InsertMessage } from "../../types/messages.types";
@@ -14,9 +14,9 @@ export async function handleMessageSend(socket: Socket, data: MessageSendEVT) {
     if(socket.rooms.has(conversation_id)){
         //Inserting message
         const insertData: InsertMessage = {
-            sender: new ObjectId(userInfo.id),
+            sender: new Types.ObjectId(userInfo.id),
             content: message_text,
-            conversation_id: new ObjectId(conversation_id),
+            conversation_id: new Types.ObjectId(conversation_id),
             replied_to: null,
             attachments: [],
             type: "text",
@@ -30,7 +30,7 @@ export async function handleMessageSend(socket: Socket, data: MessageSendEVT) {
         }
 
         if(insertedMessageId){
-            const [lastMessageUpdated, err] = await updateConversationLastMessageId(new ObjectId(conversation_id), new ObjectId(insertedMessageId), "both");
+            const [lastMessageUpdated, err] = await updateConversationLastMessageId(new Types.ObjectId(conversation_id), new Types.ObjectId(insertedMessageId), "both");
             if(err){
                 socket.emit("error", {message: "Couldn't send the message"});
                 return;
@@ -61,7 +61,7 @@ export async function handleMessageReply(socket: Socket, data: MessageReplyEVT) 
 
     //Checking user has access the conversation
     if(socket.rooms.has(conversation_id)){
-        const [replyMessageInfo, error] = await getMessageById(new ObjectId(reply_to));
+        const [replyMessageInfo, error] = await getMessageById(new Types.ObjectId(reply_to));
         if(error || replyMessageInfo === null){
             socket.emit("message:send:reply:error", {message: "Message not found", conversation_id, track_id});
             return;
@@ -75,10 +75,10 @@ export async function handleMessageReply(socket: Socket, data: MessageReplyEVT) 
 
         //Inserting message
         const insertData: InsertMessage = {
-            sender: new ObjectId(userInfo.id),
+            sender: new Types.ObjectId(userInfo.id),
             content: message_text,
-            conversation_id: new ObjectId(conversation_id),
-            replied_to: reply_to? new ObjectId(reply_to) : null,
+            conversation_id: new Types.ObjectId(conversation_id),
+            replied_to: reply_to? new Types.ObjectId(reply_to) : null,
             attachments: [],
             type: "text",
             deleted_for: []
@@ -91,7 +91,7 @@ export async function handleMessageReply(socket: Socket, data: MessageReplyEVT) 
         }
 
         //Setting the message as last message of conversation
-        const [lastMessageUpdated, updateError] = await updateConversationLastMessageId(new ObjectId(conversation_id), new ObjectId(insertedMessageId), "both");
+        const [lastMessageUpdated, updateError] = await updateConversationLastMessageId(new Types.ObjectId(conversation_id), new Types.ObjectId(insertedMessageId), "both");
         if(updateError){
             socket.emit("error", {message: "Couldn't send the message"});
             return;
@@ -119,7 +119,7 @@ export async function handleSeen(socket: Socket, data: MessageSeenEVT) {
 
     //This controls access to conversaion 
     if(socket.rooms.has(conversation_id)){
-        const [_, error] = await seenMessageById(new ObjectId(message_id), new ObjectId(conversation_id), socket.userInfo.id.toString());
+        const [_, error] = await seenMessageById(new Types.ObjectId(message_id), new Types.ObjectId(conversation_id), socket.userInfo.id.toString());
         if(error){
             socket.emit("seen:error", error);
             return;
@@ -137,7 +137,7 @@ export async function handleMessageEdit(socket: Socket, data: MessageEditEVT) {
     const { userInfo } = socket;
 
     //Checking user is sender of the message
-    const [message, error] = await getMessageById(new ObjectId(message_id));
+    const [message, error] = await getMessageById(new Types.ObjectId(message_id));
     if(error || message === null){
         socket.emit("message:edit:error", {message: error?.message});
         return;
@@ -156,7 +156,7 @@ export async function handleMessageEdit(socket: Socket, data: MessageEditEVT) {
     }
 
     //Editing message
-    const [editResult, err] = await editMessageById(new ObjectId(message._id), new_message);
+    const [editResult, err] = await editMessageById(new Types.ObjectId(message._id), new_message);
 
     if(err){
         socket.emit("message:edit:error", {message_id, error: err.message});
@@ -176,7 +176,7 @@ export async function handleMessageDeleteForAll(socket: Socket, data: MessageDel
     const { userInfo } = socket;
     let isLastMessage = false;
 
-    const [messageInfo, error] = await getMessageById(new ObjectId(message_id));
+    const [messageInfo, error] = await getMessageById(new Types.ObjectId(message_id));
     if(messageInfo === null || error){
         socket.emit("message:delete:error", {message: "Message not found", message_id});
         return;
@@ -190,7 +190,7 @@ export async function handleMessageDeleteForAll(socket: Socket, data: MessageDel
             return;
         }
 
-        var [oneMessageBeforeLastMessage, err] = await getConversationMessagesByLimitedDate(conversationOfMessage._id, "0", 2, 0, new ObjectId(userInfo.id)); //This will be an array with two elements, if the message is not the only message left in converstion
+        var [oneMessageBeforeLastMessage, err] = await getConversationMessagesByLimitedDate(conversationOfMessage._id, "0", 2, 0, new Types.ObjectId(userInfo.id)); //This will be an array with two elements, if the message is not the only message left in converstion
         if(err || oneMessageBeforeLastMessage === null){
             socket.emit("message:delete:error", {message: "Coudn't delete message"});
             return;
@@ -235,7 +235,7 @@ export async function handleMessageDeleteForMe(socket: Socket, data: MessageDele
     const { userInfo } = socket;
     let isLastMessage = false;
 
-    const [messageInfo, err] = await getMessageById(new ObjectId(message_id));
+    const [messageInfo, err] = await getMessageById(new Types.ObjectId(message_id));
     if(messageInfo === null || err){
         socket.emit("message:delete:for_me:error", {message: "Message not found", message_id});
         return;
@@ -256,7 +256,7 @@ export async function handleMessageDeleteForMe(socket: Socket, data: MessageDele
 
     if(conversationOfMessage.last_message_id[userInfo.id.toString()].toString() === message_id){
         isLastMessage = true;
-        const [oneMessageBeforeLastMessage, error] = await getConversationMessagesByLimitedDate(conversationOfMessage._id, "0", 2, 0, new ObjectId(userInfo.id));
+        const [oneMessageBeforeLastMessage, error] = await getConversationMessagesByLimitedDate(conversationOfMessage._id, "0", 2, 0, new Types.ObjectId(userInfo.id));
         if(error || oneMessageBeforeLastMessage === null){
             socket.emit("message:delete:error", {message: "Coudn't delete message"});
             return;
@@ -268,14 +268,14 @@ export async function handleMessageDeleteForMe(socket: Socket, data: MessageDele
             return;
         }
 
-        const [updateResult, err] = await updateConversationLastMessageId(conversationOfMessage._id, oneMessageBeforeLastMessage[1]._id, "one", new ObjectId(userInfo.id));
+        const [updateResult, err] = await updateConversationLastMessageId(conversationOfMessage._id, oneMessageBeforeLastMessage[1]._id, "one", new Types.ObjectId(userInfo.id));
         if(err){
             socket.emit("message:delete:error", {message: err.message, message_id});
             return;
         }
     }
 
-    const [softDeleteResult, error] = await softDeleteMessage(new ObjectId(message_id), new ObjectId(userInfo.id));
+    const [softDeleteResult, error] = await softDeleteMessage(new Types.ObjectId(message_id), new Types.ObjectId(userInfo.id));
     if(error){
         socket.emit("message:delete:error", {message: error.message, message_id});
         return;

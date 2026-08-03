@@ -6,7 +6,7 @@ import * as fs from 'fs';
 import * as jwt from "jsonwebtoken";
 import { Conversation } from '../types/conversation.types';
 import { Message } from '../types/messages.types';
-import { ObjectId } from 'mongodb';
+import { Types } from 'mongoose';
 const saltRounds = 10;
 
 // Function to send normall messages
@@ -155,7 +155,7 @@ export async function checkBcrypt(plainText: string, hash: string): Promise<bool
     return await bcrypt.compare(plainText, hash);
 };
 
-export async function filterMessagesDeletedForUser(messages: Message[], userId: ObjectId): Promise<Message[]> {
+export async function filterMessagesDeletedForUser(messages: Message[], userId: Types.ObjectId): Promise<Message[]> {
     const filteredMessages = messages.filter((message) => {
         return !message.deleted_for.some((id) => id.equals(userId));
     });

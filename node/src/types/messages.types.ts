@@ -1,26 +1,26 @@
-import { ObjectId } from "mongodb";
+import { Types } from "mongoose";
 
 export interface Message {
-    _id: ObjectId,
-    sender: ObjectId,
+    _id: Types.ObjectId,
+    sender: Types.ObjectId,
     type: "text" | "image" | "audio" | "video" | "file" | "location" | "contact" | "event" | "system",
-    conversation_id: ObjectId,
+    conversation_id: Types.ObjectId,
     attachments: string[],
     content: string,
     seen_by: Object,
     edited: Boolean,
-    edited_at: Date,
+    edited_at?: Date,
     created_at: Date,
     replied_to: Object | null,
-    deleted_for: ObjectId[]
+    deleted_for: Types.ObjectId[]
 };
 
 export interface InsertMessage {
-    sender: ObjectId,
+    sender: Types.ObjectId,
     type: "text" | "image" | "audio" | "video" | "file" | "location" | "contact" | "event" | "system",
-    conversation_id: ObjectId,
+    conversation_id: Types.ObjectId,
     attachments: string[],
     content: string,
-    replied_to: ObjectId | null,
-    deleted_for: ObjectId[]
+    replied_to: Types.ObjectId | null,
+    deleted_for: Types.ObjectId[]
 };

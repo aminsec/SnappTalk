@@ -1,15 +1,14 @@
-import { getUsersCollection } from "../models/users.model";
+import { User } from "../models/users.model";
 import { ErrorResponse } from "../types/response.types";
 import { ProtectedUserInfo, RawUserInfo } from "../types/user.types";
 import { whiteListUserInfo } from "../utils/operations";
 
 export async function searchMemberByUsername(username: string): Promise<[ProtectedUserInfo[] | null, ErrorResponse | null]> {
-    const usersCL = await getUsersCollection();
     try {
-        const foundMembers = await usersCL.find({ 
+        const foundMembers: RawUserInfo[] = await User.find({ 
             username: { $regex: `.*${username}.*`, $options: "i" },
             deleted_account: false
-        }).toArray();
+        }).lean();
         const protectedMembers: ProtectedUserInfo[] = foundMembers.map((member: RawUserInfo) =>  whiteListUserInfo(member));
         return [protectedMembers, null];
 

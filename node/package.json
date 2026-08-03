@@ -19,6 +19,7 @@
     "helmet": "^8.1.0",
     "jsonwebtoken": "^9.0.2",
     "mongodb": "^6.15.0",
+    "mongoose": "^9.9.1",
     "sequelize": "^6.37.6",
     "validate.js": "^0.13.1",
     "ws": "^8.18.1"

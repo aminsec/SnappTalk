@@ -1,17 +1,13 @@
-import { connectToSnappTalkDB } from "../config/database";
+import mongoose, { Schema, Model } from "mongoose";
 
-let deadSessionsCollection: any;
-
-export async function getDeadSessionsCollection() {
-  try {
-    if (!deadSessionsCollection) {
-      const db = await connectToSnappTalkDB();
-      const connection = db.collection("dead_sessions");
-      deadSessionsCollection = connection;
-    }
-
-    return deadSessionsCollection;
-  } catch (error) {
-    console.error("Error connecting to dead_sessions collection:", error);
-  }
+export interface IDeadSession {
+    token: string;
+    createdAt: Date;
 }
+
+const deadSessionSchema = new Schema<IDeadSession>({
+    token: { type: String, required: true },
+    createdAt: { type: Date, default: Date.now }
+});
+
+export const DeadSession: Model<IDeadSession> = mongoose.model<IDeadSession>("DeadSession", deadSessionSchema);

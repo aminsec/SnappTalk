@@ -1,10 +1,10 @@
-import { ObjectId } from "mongodb";
-import { getConversationsCollection } from "../models/conversatations.model";
+import { Types } from "mongoose";
+import { Conversation as ConversationModel } from "../models/conversatations.model";
 import {ErrorResponse } from "../types/response.types";
 import { Conversation } from "../types/conversation.types";
 import * as jwt from "jsonwebtoken";
 import { ProtectedUserInfo } from "../types/user.types";
-import { getDeadSessionsCollection } from "../models/dead_sessions.model";
+import { DeadSession } from "../models/dead_sessions.model";
 
 export async function checkEmailIsValid(email: string): Promise<[true | false | null,ErrorResponse | null]> {
     try {
@@ -25,15 +25,14 @@ export async function checkEmailIsValid(email: string): Promise<[true | false | 
     }
 };
 
-export async function checkUserHasAccessToConversation(conversationId: ObjectId, userId: string): Promise<[Conversation | null, ErrorResponse | null]> {
+export async function checkUserHasAccessToConversation(conversationId: Types.ObjectId, userId: string): Promise<[Conversation | null, ErrorResponse | null]> {
     try {
-        const conversationsCollection = await getConversationsCollection();
-        const conversation = await conversationsCollection.findOne({
+        const conversation: Conversation | null = await ConversationModel.findOne({
             _id: conversationId,
             members: {
-                $in: [new ObjectId(userId)]
+                $in: [new Types.ObjectId(userId)]
             }
-        });
+        }).lean();
 
         if(conversation){
             return [conversation, null];
@@ -51,8 +50,7 @@ export async function checkUserHasAccessToConversation(conversationId: ObjectId,
 
 export async function validateJWT(token: string): Promise<ProtectedUserInfo | boolean> {
     // Checking if token is not in dead_sessions list
-    const dead_sessionsCL = await getDeadSessionsCollection();
-    const isTokenIsInDeadSessions = await dead_sessionsCL.findOne({token: token});
+    const isTokenIsInDeadSessions = await DeadSession.findOne({token: token}).lean();
     if(isTokenIsInDeadSessions){
         return false;
     }

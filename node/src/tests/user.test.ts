@@ -1,6 +1,6 @@
 import request from "supertest";
 import app from "../app";
-import { getUsersCollection } from "../models/users.model";
+import { User } from "../models/users.model";
 import { expect } from "chai";
 import { after, before } from "node:test";
 
@@ -363,8 +363,7 @@ describe('Account tests', () => {
 
     after(async () => {
         //Cleaning up the database after tests
-        const usersCollection = await getUsersCollection();
-        const deleteResult = await usersCollection.deleteMany({
+        const deleteResult = await User.deleteMany({
             email: {
                 $in: [sampleValidEmail, sampleTakenEmail]
             }

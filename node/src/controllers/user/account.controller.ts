@@ -3,11 +3,11 @@ import { showError, sendResponse, checkBcrypt, uploadFile, deleteFileFromUploads
 import { Request, Response } from "express";
 import {ErrorResponse } from "../../types/response.types";
 import { checkUserExistsByEmail } from "../../services/auth.services";
-import { ObjectId } from "mongodb";
+import { Types } from "mongoose";
 
 export async function showUserInfo(req: Request, resp: Response) {
     const userid = req.userInfo.id;
-    const [userInfo, error] = await getUserInfoById(new ObjectId(userid));
+    const [userInfo, error] = await getUserInfoById(new Types.ObjectId(userid));
     if(error){
         showError(error, resp);
         return;
@@ -58,7 +58,7 @@ export async function updateUserInfo(req: Request, resp: Response) {
 
     //Updating username if was not equal to the current one
     if(username !== userInfo.username){
-        const [usernameUpdatedResult, usernameUpdateError] = await updateUsername(new ObjectId(userInfo.id), username);
+        const [usernameUpdatedResult, usernameUpdateError] = await updateUsername(new Types.ObjectId(userInfo.id), username);
         if(usernameUpdateError){
             showError(usernameUpdateError, resp);
             return;
@@ -99,7 +99,7 @@ export async function updateUserInfo(req: Request, resp: Response) {
 
         if(revoked === true){
             //Getting new user info
-            const [newUserInfo, error] = await getUserInfoById(new ObjectId(userInfo.id));
+            const [newUserInfo, error] = await getUserInfoById(new Types.ObjectId(userInfo.id));
             if(error){
                 showError(error, resp);
                 return;
@@ -187,7 +187,7 @@ export async function updateUserProfile(req: Request, resp: Response) {
 
         if(updateProfileResult){
             //Updating user profilePic address in db
-            const [updateResult, error] = await updateProfilePicAddress(new ObjectId(userInfo.id), updateProfileResult);
+            const [updateResult, error] = await updateProfilePicAddress(new Types.ObjectId(userInfo.id), updateProfileResult);
             if(error){
                 showError(error, resp);
                 return;
@@ -202,7 +202,7 @@ export async function updateUserProfile(req: Request, resp: Response) {
                 }
 
                 if(revoked === true){
-                    const [userData, err] = await getUserInfoById(new ObjectId(userInfo.id));
+                    const [userData, err] = await getUserInfoById(new Types.ObjectId(userInfo.id));
                     if(err){
                         showError(err, resp);
                         return;
@@ -245,19 +245,19 @@ export async function updateUserProfile(req: Request, resp: Response) {
 export async function deleteUserAccount(req: Request, resp: Response) {
     const { userInfo } = req;
     
-    const [ usernameUpdateResult, error ] = await updateUsername(new ObjectId(userInfo.id), "Deleted Account");
+    const [ usernameUpdateResult, error ] = await updateUsername(new Types.ObjectId(userInfo.id), "Deleted Account");
     if(error){
         showError(error, resp);
         return;
     }
 
-    const [ profilePicUpdateResult, err ] = await updateProfilePicAddress(new ObjectId(userInfo.id), "deleted_account.png");
+    const [ profilePicUpdateResult, err ] = await updateProfilePicAddress(new Types.ObjectId(userInfo.id), "deleted_account.png");
     if(err){
         showError(err, resp);
         return;
     }
 
-    const [ statusResult, Error] = await setAccountDeleted(new ObjectId(userInfo.id));
+    const [ statusResult, Error] = await setAccountDeleted(new Types.ObjectId(userInfo.id));
     if(Error){
         showError(Error, resp);
         return;

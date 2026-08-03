@@ -4,7 +4,7 @@ import { handleNewPvConversationEvent, handlePvConversationDelete } from "./even
 import { handleMessageEdit, handleMessageSend, handleSeen, handleMessageDeleteForAll, handleMessageReply, handleMessageDeleteForMe } from "./events/messag.event";
 import { sendUserStatusToRooms } from "../services/socket.services";
 import { setUserStatus } from "../services/account.services";
-import { ObjectId } from "mongodb";
+import { Types } from "mongoose";
 
 export function handleSocketConnection(socket: Socket, io: Server, onlineUsers: Map<string, string>): void{
 
@@ -43,7 +43,7 @@ export function handleSocketConnection(socket: Socket, io: Server, onlineUsers: 
 
   socket.on("disconnecting", async () => {
     sendUserStatusToRooms(socket, "offline");
-    await setUserStatus(new ObjectId(socket.userInfo.id), "offline");
+    await setUserStatus(new Types.ObjectId(socket.userInfo.id), "offline");
     onlineUsers.delete(socket.userInfo.id);
   });
 
