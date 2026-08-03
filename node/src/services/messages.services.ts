@@ -61,7 +61,7 @@ export async function getConversationMessagesByLimitedDate(conversationId: Objec
             },
             {
               $addFields: {
-                replied_to: { $first: "$replied_to_doc" } // convert array -> single object
+                replied_to: { $first: "$replied_to_doc" } // convert array -> single object. The $first operator returns the first element of the array we created replied_to_doc. If the array is empty, it returns null.
               }
             },
             { $project: { replied_to_doc: 0 } }
