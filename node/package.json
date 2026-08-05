@@ -22,6 +22,7 @@
     "jsonwebtoken": "^9.0.2",
     "mongodb": "^6.15.0",
     "mongoose": "^9.9.1",
+    "multer": "^2.2.0",
     "sequelize": "^6.37.6",
     "validate.js": "^0.13.1",
     "ws": "^8.18.1"
@@ -34,6 +35,7 @@
     "@types/express": "^5.0.2",
     "@types/jsonwebtoken": "^9.0.9",
     "@types/mocha": "^10.0.10",
+    "@types/multer": "^2.2.0",
     "@types/node": "^22.15.29",
     "@types/supertest": "^6.0.3",
     "@types/ws": "^8.18.1",
