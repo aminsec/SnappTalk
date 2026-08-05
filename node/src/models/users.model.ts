@@ -1,18 +1,7 @@
 import mongoose, { Schema, Model } from "mongoose";
+import { DBUserType } from "../types/user.types";
 
-export interface IUser {
-    email: string;
-    username: string;
-    password: string;
-    profile_pic: string;
-    role: string;
-    joined_at: Date;
-    bio: string;
-    status: "online" | "offline";
-    deleted_account: boolean;
-}
-
-const userSchema = new Schema<IUser>({
+const userSchema = new Schema<DBUserType>({
     email: { type: String, required: true },
     username: { type: String, required: true },
     password: { type: String, required: true },
@@ -24,4 +13,4 @@ const userSchema = new Schema<IUser>({
     deleted_account: { type: Boolean, default: false }
 });
 
-export const User: Model<IUser> = mongoose.model<IUser>("User", userSchema);
+export const User: Model<DBUserType> = mongoose.model<DBUserType>("User", userSchema);

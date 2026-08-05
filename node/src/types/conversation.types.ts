@@ -13,3 +13,13 @@ export interface Conversation {
     created_at: Date,
     unread_messages_count?: Number
 };
+
+export interface DBConversationType {
+    type: "group" | "pv";
+    group_name: string | null;
+    group_avatar: string | null;
+    members: Types.ObjectId[];
+    last_message_id: Record<string, Types.ObjectId>;
+    deleted_for: Record<string, Date>;
+    created_at: Date;
+};
