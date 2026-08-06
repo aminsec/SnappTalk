@@ -43,7 +43,7 @@ export async function handleNewPvConversationEvent(socket: Socket, data: NewPvCo
             content: data.message_text,
             conversation_id: newPvConversationId,
             replied_to: null,
-            attachments: [],
+            attachment_key: "",
             type: "text",
             deleted_for: []
         };

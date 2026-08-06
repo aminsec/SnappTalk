@@ -214,3 +214,17 @@ export async function softDeleteMessage(messageId: Types.ObjectId, userId: Types
         return [null, err];
     }
 };
+
+export async function getMessageByAttachmentKey(attachment_key: string): Promise<[Message | null, ErrorResponse | null]> {
+    try {
+        const message: Message | null = await MessageModel.findOne({
+            attachment_key: attachment_key
+        }).lean();
+        
+        return [message, null];
+    } catch (error) {
+        console.log(error);
+        const err: ErrorResponse = {message: "A system error occurred", state: "failed", type: "system_error"};
+        return [null, err];
+    }
+};

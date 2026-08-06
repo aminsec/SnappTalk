@@ -18,7 +18,7 @@ export async function handleMessageSend(socket: Socket, data: MessageSendEVT) {
             content: message_text,
             conversation_id: new Types.ObjectId(conversation_id),
             replied_to: null,
-            attachments: [],
+            attachment_key: "",
             type: "text",
             deleted_for: []
         }
@@ -79,7 +79,7 @@ export async function handleMessageReply(socket: Socket, data: MessageReplyEVT) 
             content: message_text,
             conversation_id: new Types.ObjectId(conversation_id),
             replied_to: reply_to? new Types.ObjectId(reply_to) : null,
-            attachments: [],
+            attachment_key: "",
             type: "text",
             deleted_for: []
         };

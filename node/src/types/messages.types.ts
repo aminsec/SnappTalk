@@ -3,6 +3,7 @@ import { Types } from "mongoose";
 export type MessageTypes = "text" | "image" | "audio" | "video" | "document" | "location" | "sticker" | "gif"
 
 export interface Message {
+    _id: Types.ObjectId;
     sender: Types.ObjectId;
     type: MessageTypes;
     conversation_id: Types.ObjectId;
@@ -27,6 +28,7 @@ export interface InsertMessage {
 };
 
 export interface DBMessageType {
+    _id: Types.ObjectId;
     sender: Types.ObjectId;
     type: MessageTypes;
     conversation_id: Types.ObjectId;
