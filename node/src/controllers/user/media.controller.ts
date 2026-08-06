@@ -1,36 +1,23 @@
 import { Request, Response } from "express";
-import { s3Client, BUCKETS } from "../../config/s3.minio";
-import { PutObjectCommand } from "@aws-sdk/client-s3";
+import { BUCKETS } from "../../config/s3.minio";
 import { showError, sendResponse } from "../../utils/operations";
-import { randomUUID } from "crypto";
 import { ErrorResponse } from "../../types/response.types";
+import { uploadMediaToS3 } from "../../services/media.services";
 
-export async function handleMediaUpload(req: Request, res: Response){
+export async function handleMediaUpload(req: Request, resp: Response){
 
     if(!req.file) {
         const error: ErrorResponse = {message: "File is required", state: "Failed", type: "input_error"};
-        showError(error, res);
+        showError(error, resp);
         return;
     }
 
-    //Uploading the file to s3 
-    const key = `${randomUUID()}-${req.file.originalname}`;
-
-    try {
-        await s3Client.send(new PutObjectCommand({
-            Bucket: BUCKETS.MEDIA,
-            Key: key,
-            Body: req.file.buffer,
-            ContentType: "application/octet-stream", // We set to only binary data response for secure loading
-        }));
-
-        const responseData = {state: "success", message: "File uploaded successfully", fileKey: key};
-        sendResponse(responseData, {}, 200, res);
-
-    } catch (error) {
-        console.error("Error uploading file to S3:", error);
-        const err: ErrorResponse = {message: "Failed to upload file", state: "Failed", type: "system_error"};
-        showError(err, res);
+    const [fileKey, error] = await uploadMediaToS3(req.file, BUCKETS.MEDIA);
+    if(error){
+        showError(error, resp);
         return;
     }
+
+    const responseData = {state: "success", fileKey: fileKey};
+    sendResponse(responseData, {}, 200, resp);
 };
