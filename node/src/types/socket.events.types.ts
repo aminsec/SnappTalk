@@ -1,9 +1,12 @@
+import { MessageTypes } from "./messages.types";
 //Every type that ends with EVT means Event Type
 export interface NewPvConversationEVT {
     message_text: string,
     new_user_id: string,
     date?: Date,
-    track_id: string
+    track_id: string,
+    message_type: MessageTypes,
+    attachment_key?: string,
 };
 
 export interface pvConversationDeleteEVT {
@@ -14,7 +17,10 @@ export interface pvConversationDeleteEVT {
 export interface MessageSendEVT {
     message_text: string,
     conversation_id: string,
-    track_id: string
+    track_id: string,
+    message_type: MessageTypes,
+    attachment_key?: string,
+    replied_to?: string
 };
 
 export interface MessageReplyEVT {

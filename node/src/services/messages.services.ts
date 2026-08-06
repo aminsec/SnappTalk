@@ -1,5 +1,5 @@
 import { Types } from "mongoose";
-import { Message as MessageModel } from "../models/messages.model";
+import { MessageModel } from "../models/messages.model";
 import { ErrorResponse } from "../types/response.types";
 import { InsertMessage, Message } from "../types/messages.types";
 

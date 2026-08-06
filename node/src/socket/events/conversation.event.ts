@@ -12,8 +12,18 @@ export async function handleNewPvConversationEvent(socket: Socket, data: NewPvCo
     const requestedUserId = new Types.ObjectId(socket.userInfo.id);
     const contactUserId = new Types.ObjectId(data.new_user_id);
     const { userInfo } = socket;
-    const { track_id } = data;
+    const {  message_text, track_id, message_type, attachment_key } = data;
     
+    if( !message_text || !track_id || !message_type){
+        socket.emit("error", {message: "Invalid data"});
+        return;
+    }
+
+    if(message_text.length > 255){
+        socket.emit("error", {message: "Message is too long"});
+        return;
+    }
+
     //Checking if there is a conversation with requested user id
     const [conversationId, error] = await checkIsThereConversation(requestedUserId, contactUserId);
 
@@ -40,11 +50,11 @@ export async function handleNewPvConversationEvent(socket: Socket, data: NewPvCo
         //Inserting message
         const insertData: InsertMessage = {
             sender: new Types.ObjectId(userInfo.id),
-            content: data.message_text,
+            content: message_text,
             conversation_id: newPvConversationId,
             replied_to: null,
-            attachment_key: "",
-            type: "text",
+            attachment_key: attachment_key || "",
+            type: message_type,
             deleted_for: []
         };
 

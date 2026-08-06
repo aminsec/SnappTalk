@@ -1,11 +1,11 @@
 import mongoose, { Schema, Model } from "mongoose";
-import { DBMessageType } from "../types/messages.types";
+import { Message } from "../types/messages.types";
 
-const messageSchema = new Schema<DBMessageType>({
+const messageSchema = new Schema<Message>({
     sender: { type: Schema.Types.ObjectId, ref: "User", required: true },
     type: { type: String, required: true },
     conversation_id: { type: Schema.Types.ObjectId, ref: "Conversation", required: true },
-    attachment_url: { type: String, default: "" },
+    attachment_key: { type: String, default: "" },
     content: { type: String, required: true },
     seen_by: { type: Map, of: Date, default: {} },
     edited: { type: Boolean, default: false },
@@ -15,4 +15,4 @@ const messageSchema = new Schema<DBMessageType>({
     deleted_for: { type: [Schema.Types.ObjectId], default: [] }
 });
 
-export const Message: Model<DBMessageType> = mongoose.model<DBMessageType>("Message", messageSchema);
+export const MessageModel: Model<Message> = mongoose.model<Message>("Message", messageSchema);

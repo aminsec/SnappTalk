@@ -7,9 +7,19 @@ import { handlePvConversationDelete } from "./conversation.event";
 import { InsertMessage } from "../../types/messages.types";
 
 export async function handleMessageSend(socket: Socket, data: MessageSendEVT) {
-    const { conversation_id, message_text, track_id } = data;
+    const { conversation_id, message_text, track_id, message_type, attachment_key, replied_to} = data;
     const { userInfo } = socket;
 
+    if(!conversation_id || !message_text || !track_id || !message_type){
+        socket.emit("error", {message: "Invalid data"});
+        return;
+    }
+
+    if(message_text.length > 255){
+        socket.emit("error", {message: "Message is too long"});
+        return;
+    }
+    
     //Checking user has access the conversation
     if(socket.rooms.has(conversation_id)){
         //Inserting message
@@ -17,9 +27,9 @@ export async function handleMessageSend(socket: Socket, data: MessageSendEVT) {
             sender: new Types.ObjectId(userInfo.id),
             content: message_text,
             conversation_id: new Types.ObjectId(conversation_id),
-            replied_to: null,
-            attachment_key: "",
-            type: "text",
+            replied_to: replied_to? new Types.ObjectId(replied_to) : null,
+            attachment_key: attachment_key || "",
+            type: message_type,
             deleted_for: []
         }
 

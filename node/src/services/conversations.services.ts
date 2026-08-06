@@ -167,7 +167,8 @@ export async function updateConversationLastMessageId(conversationId: Types.Obje
                             }
                         }
                     }
-                ]
+                ],
+                {updatePipeline: true}
             );
 
         } else {
