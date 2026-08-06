@@ -81,7 +81,7 @@ export async function createNewMessage(data: InsertMessage): Promise<[Types.Obje
             sender: data.sender,
             type: data.type,
             content: data.content,
-            attachments: data.attachments,
+            attachment_key: data.attachment_key,
             seen_by: {[data.sender.toString()]: new Date()},
             edited: false,
             created_at: new Date(),

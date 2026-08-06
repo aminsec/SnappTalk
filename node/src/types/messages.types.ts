@@ -6,7 +6,7 @@ export interface Message {
     sender: Types.ObjectId;
     type: MessageTypes;
     conversation_id: Types.ObjectId;
-    attachment_url: string;
+    attachment_key: string;
     content: string;
     seen_by: Map<string, Date>;
     edited: boolean;
@@ -20,7 +20,7 @@ export interface InsertMessage {
     sender: Types.ObjectId,
     type: MessageTypes,
     conversation_id: Types.ObjectId,
-    attachments: string[],
+    attachment_key: string,
     content: string,
     replied_to: Types.ObjectId | null,
     deleted_for: Types.ObjectId[]
@@ -30,7 +30,7 @@ export interface DBMessageType {
     sender: Types.ObjectId;
     type: MessageTypes;
     conversation_id: Types.ObjectId;
-    attachment_url: string;
+    attachment_key: string;
     content: string;
     seen_by: Map<string, Date>;
     edited: boolean;
