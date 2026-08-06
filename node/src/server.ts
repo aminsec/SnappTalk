@@ -1,12 +1,15 @@
 import { connectToSnappTalkDB } from "./config/database";
+import { initSocket } from "./config/init.websocket";
+import { s3Client } from "./config/s3.minio";
 import http from "http";
 import app from "./app";
-import { initSocket } from "./socket/config/init";
 
 const PORT = Number(process.env.APP_PORT) || 2020;
 const server = http.createServer(app);
 
 try {
+  s3Client; // Initialize S3 client
+  
   // Connecting to database when starting app
   connectToSnappTalkDB();
 

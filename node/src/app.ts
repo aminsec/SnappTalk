@@ -6,6 +6,7 @@ import membersRoutes from "./routes/members/info.routes";
 import accountRoutes from "./routes/user/account.routes";
 import accountConversationsRoutes from "./routes/user/conversations.routes";
 import accountMessagesRoutes from "./routes/user/messages.routes";
+import mediaRoutes from "./routes/user/media.routes";
 import validateJWT from "./middlewares/jwt";
 import helmet from "helmet";
 import { rateLimit } from 'express-rate-limit'
@@ -37,5 +38,6 @@ app.use("/auth", authRoutes);
 app.use("/user/info", accountRoutes);
 app.use("/user/conversations", accountConversationsRoutes);
 app.use("/user/messages", accountMessagesRoutes);
+app.use("/user/media", mediaRoutes);
 
 export default app;

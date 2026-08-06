@@ -1,9 +1,9 @@
 import { Server } from 'socket.io';
-import { handleSocketConnection } from '../main';
+import { handleSocketConnection } from '../socket/socket.routes';
 import http from "http";
-import { authenticateSocket } from "../../middlewares/socket.middlewares";
-import { connectUserToRooms, sendUserStatusToRooms } from '../../services/socket.services';
-import { setUserStatus } from '../../services/account.services';
+import { authenticateSocket } from "../middlewares/socket.middlewares";
+import { connectUserToRooms, sendUserStatusToRooms } from '../services/socket.services';
+import { setUserStatus } from '../services/account.services';
 import { Types } from "mongoose";
 
 export function initSocket(server: http.Server){
