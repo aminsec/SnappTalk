@@ -4330,8 +4330,7 @@ function ChatsPage() {
                   const isDocument = resolvedMessageType === 'document'
                     || resolvedMessageType === 'file'
                     || (messageType === 'document');
-                  const isMediaOnly = isMedia && !messageContent && !replyPreview
-                    && (resolvedMessageType === 'sticker' || resolvedMessageType === 'gif');
+                  const isMediaOnly = isMedia && !messageContent.trim() && !replyPreview;
                   const isEmojiOnly = isEmojiOnlyMessage(messageContent);
                   const shouldUseEmojiOnlyStyle = isEmojiOnly && !replyPreview && !isMedia;
                   const replyPreviewText = truncateMessage(
