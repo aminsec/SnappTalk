@@ -13,7 +13,6 @@ export async function handleNewPvConversationEvent(socket: Socket, data: NewPvCo
     const contactUserId = new Types.ObjectId(data.new_user_id);
     const { userInfo } = socket;
     const {  message_text, track_id, message_type, attachment_key } = data;
-    console.log( message_text, track_id, message_type, attachment_key)
     
     if( !message_text || !track_id || !message_type){
         socket.emit("error", {message: "Invalid data"});
