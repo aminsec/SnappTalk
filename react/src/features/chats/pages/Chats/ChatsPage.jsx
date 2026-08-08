@@ -47,6 +47,7 @@ import origamiIcon from '@/shared/assets/images/mono/plant.svg';
 import planetIcon from '@/shared/assets/images/mono/strategy.svg';
 import { wallpapers, WALLPAPER_STORAGE_KEY } from '@/shared/utils/wallpapers';
 import NewConversationModal from '../../components/NewConversationModal/NewConversationModal';
+import { AudioPlayer, VideoPlayer } from '../../components/MediaContent';
 import styles from './Chat.module.css';
 
 // Constants
@@ -74,7 +75,7 @@ const stickerOptions = monoIcons.map((src, index) => ({
   url: src,
 }));
 
-const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
+const MAX_FILE_SIZE = 20 * 1024 * 1024; // 20MB
 const MESSAGES_LIMIT = 10; // Max number of messages per request
 const MAX_MESSAGE_LENGTH = 255;
 
@@ -859,6 +860,36 @@ function ChatsPage() {
   const handleReplyToMessage = useCallback((message) => {
     setReplyingToMessage(message);
     setMessageContextMenu(null);
+  }, []);
+
+  const handleDownloadMessage = useCallback(async (message) => {
+    if (!message) return;
+    setMessageContextMenu(null);
+    let url = getMessageMediaUrl(message);
+    if (!url && message?.attachment_key) {
+      url = await resolveAttachmentUrl(message.attachment_key);
+    }
+    if (!url) {
+      toast.error('File is not ready yet.');
+      return;
+    }
+    const fileName = getMessageFileName(message) || 'attachment';
+    try {
+      const response = await fetch(url);
+      if (!response.ok) throw new Error('Download failed');
+      const blob = await response.blob();
+      const objectUrl = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = objectUrl;
+      link.download = fileName;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(objectUrl);
+    } catch (error) {
+      console.error('Failed to download media:', error);
+      window.open(url, '_blank');
+    }
   }, []);
 
   const handleResendMessage = useCallback((message) => {
@@ -3532,7 +3563,7 @@ function ChatsPage() {
         || selectedChat?.contact_info?.id;
 
       if (file.size > MAX_FILE_SIZE) {
-        toast.error('File size must be less than 5MB.');
+        toast.error('File size must be less than 20MB.');
         return;
       }
 
@@ -4480,34 +4511,18 @@ function ChatsPage() {
                             </div>
                           )}
                           {isMedia && (resolvedMessageType === 'video') && (
-                            <video
-                              className={`${styles.messageMedia} ${styles.messageMediaVideo}`}
-                              controls
-                              preload="metadata"
-                              playsInline
-                              onLoadedMetadata={() => {
-                                if (isInitialLoadRef.current) {
-                                  scrollToBottom();
-                                }
-                              }}
-                            >
-                              <source src={mediaUrl} type={message?.mime_type || 'video/mp4'} />
-                            </video>
+                            <VideoPlayer
+                              src={mediaUrl}
+                              mimeType={message?.mime_type || 'video/mp4'}
+                            />
                           )}
                           {isMedia && (resolvedMessageType === 'voice' || resolvedMessageType === 'audio') && (
-                            <div className={styles.audioAttachment}>
-                              {getMessageFileName(message) && (
-                                <span className={styles.audioAttachmentName}>
-                                  {getMessageFileName(message)}
-                                </span>
-                              )}
-                              <audio
-                                className={`${styles.messageMedia} ${styles.messageMediaAudio}`}
-                                controls
-                                preload="metadata"
-                                src={mediaUrl}
-                              />
-                            </div>
+                            <AudioPlayer
+                              src={mediaUrl}
+                              fileName={getMessageFileName(message)}
+                              isVoice={resolvedMessageType === 'voice'}
+                              accent={isMyMessage ? 'rgba(255,255,255,0.35)' : 'var(--btn-color)'}
+                            />
                           )}
                           {isDocument && (
                             <a
@@ -4515,7 +4530,6 @@ function ChatsPage() {
                               href={mediaUrl}
                               target="_blank"
                               rel="noopener noreferrer"
-                              download={getMessageFileName(message) || 'attachment'}
                               onClick={(e) => {
                                 if (!mediaUrl) {
                                   e.preventDefault();
@@ -4535,9 +4549,6 @@ function ChatsPage() {
                                     {formatFileSize(message.file_size)}
                                   </span>
                                 ) : null}
-                              </span>
-                              <span className={styles.fileAttachmentDownload}>
-                                <FontAwesomeIcon icon={faDownload} />
                               </span>
                             </a>
                           )}
@@ -4917,6 +4928,21 @@ function ChatsPage() {
                   <FontAwesomeIcon icon={faReply} />
                   <span>Reply</span>
                 </button>
+                {(() => {
+                  const m = messageContextMenu.message;
+                  const hasMedia = Boolean(getMessageMediaUrl(m) || m?.attachment_key);
+                  if (!hasMedia) return null;
+                  return (
+                    <button
+                      type="button"
+                      className={styles.optionsMenuItem}
+                      onClick={() => handleDownloadMessage(m)}
+                    >
+                      <FontAwesomeIcon icon={faDownload} />
+                      <span>Download</span>
+                    </button>
+                  );
+                })()}
                 {messageContextMenu.isMyMessage && (
                   <button
                     type="button"

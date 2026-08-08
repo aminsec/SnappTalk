@@ -1,0 +1,320 @@
+/* ============================================
+   CUSTOM AUDIO PLAYER (Telegram-style)
+   ============================================ */
+.audioPlayer {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    width: 260px;
+    max-width: 100%;
+    padding: 8px 10px;
+    border-radius: 12px;
+    background: rgba(0, 0, 0, 0.18);
+    margin-bottom: 4px;
+    box-sizing: border-box;
+}
+
+.audioPlayerVoice {
+    width: 240px;
+}
+
+.audioPlayButton {
+    flex-shrink: 0;
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    border: none;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    color: #fff;
+    background: var(--player-accent, var(--btn-color));
+    font-size: 15px;
+    transition: transform 0.15s ease, filter 0.15s ease;
+}
+
+.audioPlayButton:hover {
+    filter: brightness(1.1);
+    transform: scale(1.04);
+}
+
+.audioPlayButton:active {
+    transform: scale(0.96);
+}
+
+.audioSpinner {
+    width: 16px;
+    height: 16px;
+    border: 2px solid rgba(255, 255, 255, 0.4);
+    border-top-color: #fff;
+    border-radius: 50%;
+    animation: mediaSpin 0.8s linear infinite;
+}
+
+@keyframes mediaSpin {
+    to { transform: rotate(360deg); }
+}
+
+.audioBody {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.audioFileName {
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--text-primary);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.audioSeek {
+    width: 100%;
+    cursor: pointer;
+    padding: 4px 0;
+    touch-action: none;
+}
+
+.audioSeekTrack {
+    width: 100%;
+    height: 4px;
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.25);
+    overflow: hidden;
+}
+
+.audioSeekFill {
+    height: 100%;
+    border-radius: 999px;
+    background: var(--player-accent, var(--btn-color));
+    transition: width 0.1s linear;
+}
+
+.audioMeta {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+}
+
+.audioTime {
+    font-size: 11px;
+    color: var(--text-muted);
+    font-variant-numeric: tabular-nums;
+}
+
+.audioDownload {
+    color: var(--text-muted);
+    font-size: 12px;
+    text-decoration: none;
+    display: inline-flex;
+    align-items: center;
+    transition: color 0.15s ease;
+}
+
+.audioDownload:hover {
+    color: var(--text-primary);
+}
+
+/* ============================================
+   CUSTOM VIDEO PLAYER (Telegram-style)
+   ============================================ */
+.videoPlayer {
+    position: relative;
+    width: 320px;
+    max-width: 100%;
+    max-height: 320px;
+    border-radius: 10px;
+    overflow: hidden;
+    background: #000;
+    margin-bottom: 4px;
+    cursor: pointer;
+    user-select: none;
+}
+
+.videoPlayerFullscreen {
+    width: 100vw;
+    max-width: 100vw;
+    max-height: 100vh;
+    border-radius: 0;
+}
+
+.videoPlayerVideo {
+    display: block;
+    width: 100%;
+    height: 100%;
+    max-height: 320px;
+    object-fit: cover;
+    background: #000;
+}
+
+.videoBigPlay {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 56px;
+    height: 56px;
+    border-radius: 50%;
+    border: none;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    color: #fff;
+    background: rgba(0, 0, 0, 0.55);
+    backdrop-filter: blur(4px);
+    font-size: 20px;
+    padding-left: 4px;
+    transition: transform 0.15s ease, background 0.15s ease;
+}
+
+.videoBigPlay:hover {
+    background: rgba(0, 0, 0, 0.7);
+    transform: translate(-50%, -50%) scale(1.06);
+}
+
+.videoSpinner {
+    width: 22px;
+    height: 22px;
+    border: 3px solid rgba(255, 255, 255, 0.4);
+    border-top-color: #fff;
+    border-radius: 50%;
+    animation: mediaSpin 0.8s linear infinite;
+}
+
+.videoError {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #fff;
+    font-size: 13px;
+    background: rgba(0, 0, 0, 0.6);
+    padding: 12px;
+    text-align: center;
+}
+
+.videoControls {
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    padding: 8px 10px;
+    background: linear-gradient(180deg, transparent, rgba(0, 0, 0, 0.75));
+    opacity: 0;
+    transition: opacity 0.2s ease;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.videoControlsVisible {
+    opacity: 1;
+}
+
+.videoSeek {
+    width: 100%;
+    cursor: pointer;
+    padding: 4px 0;
+    touch-action: none;
+}
+
+.videoSeekTrack {
+    width: 100%;
+    height: 4px;
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.3);
+    overflow: hidden;
+}
+
+.videoSeekFill {
+    height: 100%;
+    border-radius: 999px;
+    background: var(--btn-color);
+    transition: width 0.1s linear;
+}
+
+.videoControlsRow {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.videoControlButton {
+    flex-shrink: 0;
+    width: 30px;
+    height: 30px;
+    border: none;
+    background: transparent;
+    color: #fff;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 14px;
+    border-radius: 6px;
+    transition: background 0.15s ease;
+}
+
+.videoControlButton:hover {
+    background: rgba(255, 255, 255, 0.15);
+}
+
+.videoTime {
+    font-size: 11px;
+    color: rgba(255, 255, 255, 0.9);
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+}
+
+.videoSpacer {
+    flex: 1;
+}
+
+.videoVolume {
+    width: 60px;
+    cursor: pointer;
+    padding: 4px 0;
+    touch-action: none;
+}
+
+.videoVolumeTrack {
+    width: 100%;
+    height: 4px;
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.3);
+    overflow: hidden;
+}
+
+.videoVolumeFill {
+    height: 100%;
+    border-radius: 999px;
+    background: #fff;
+    transition: width 0.1s linear;
+}
+
+/* ============================================
+   RESPONSIVE
+   ============================================ */
+@media (max-width: 480px) {
+    .audioPlayer {
+        width: 220px;
+    }
+    .audioPlayerVoice {
+        width: 200px;
+    }
+    .videoPlayer {
+        width: 100%;
+        max-height: 250px;
+    }
+    .videoPlayerVideo {
+        max-height: 250px;
+    }
+}

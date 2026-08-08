@@ -870,35 +870,6 @@
     background: transparent;
 }
 
-.messageMediaVideo {
-    width: 320px;
-    max-width: 100%;
-    max-height: 320px;
-    object-fit: cover;
-}
-
-.messageMediaAudio {
-    width: 240px;
-    max-width: 100%;
-}
-
-.audioAttachment {
-    display: flex;
-    flex-direction: column;
-    gap: 6px;
-    max-width: 280px;
-}
-
-.audioAttachmentName {
-    font-size: 13px;
-    font-weight: 600;
-    color: var(--text-primary);
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    max-width: 240px;
-}
-
 /* ============================================
    FILE ATTACHMENT
    ============================================ */
@@ -2088,7 +2059,6 @@
     .messageWrapperGroup .message { max-width: calc(85% - 44px); }
     
     .messageMediaImage { max-width: 100%; height: auto; }
-    .messageMediaVideo { width: 100%; max-height: 250px; }
     
     /* Input bar mobile */
     .inputBar {
