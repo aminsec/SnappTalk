@@ -5,12 +5,18 @@ import { Types } from "mongoose";
 import { getConversationById, updateConversationLastMessageId } from "../../services/conversations.services";
 import { handlePvConversationDelete } from "./conversation.event";
 import { InsertMessage } from "../../types/messages.types";
+import { validMessageTypes } from "../../types/messages.types";
 
 export async function handleMessageSend(socket: Socket, data: MessageSendEVT) {
     const { conversation_id, message_text, track_id, message_type, attachment_key, replied_to} = data;
     const { userInfo } = socket;
 
-    if(!conversation_id || !message_text || !track_id || !message_type){
+    if(!validMessageTypes.includes(message_type)){
+        socket.emit("error", {message: "Invalid message type"});
+        return;
+    }
+
+    if(!conversation_id || !track_id || !message_type){
         socket.emit("error", {message: "Invalid data"});
         return;
     }
@@ -25,7 +31,7 @@ export async function handleMessageSend(socket: Socket, data: MessageSendEVT) {
         //Inserting message
         const insertData: InsertMessage = {
             sender: new Types.ObjectId(userInfo.id),
-            content: message_text,
+            content: message_text || " ",
             conversation_id: new Types.ObjectId(conversation_id),
             replied_to: replied_to? new Types.ObjectId(replied_to) : null,
             attachment_key: attachment_key || "",
@@ -50,6 +56,8 @@ export async function handleMessageSend(socket: Socket, data: MessageSendEVT) {
                 conversation_id,
                 message_id: insertedMessageId.toString(),
                 message_text,
+                message_type: message_type || "text",
+                attachment_key: attachment_key || "",
                 sender_info: socket.userInfo,
                 when: Date.now()
             });
@@ -67,7 +75,22 @@ export async function handleMessageSend(socket: Socket, data: MessageSendEVT) {
 
 export async function handleMessageReply(socket: Socket, data: MessageReplyEVT) {
     const { userInfo } = socket;
-    const { conversation_id, message_text, reply_to, track_id } = data;
+    const { conversation_id, message_text, reply_to, track_id, message_type, attachment_key } = data;
+
+    if(!validMessageTypes.includes(message_type)){
+        socket.emit("error", {message: "Invalid message type"});
+        return;
+    }
+
+    if(!conversation_id || !track_id || !message_type || !reply_to){
+        socket.emit("error", {message: "Invalid data"});
+        return;
+    }
+
+    if(message_text.length > 255){
+        socket.emit("error", {message: "Message is too long"});
+        return;
+    }
 
     //Checking user has access the conversation
     if(socket.rooms.has(conversation_id)){
@@ -86,11 +109,11 @@ export async function handleMessageReply(socket: Socket, data: MessageReplyEVT) 
         //Inserting message
         const insertData: InsertMessage = {
             sender: new Types.ObjectId(userInfo.id),
-            content: message_text,
+            content: message_text || " ",
             conversation_id: new Types.ObjectId(conversation_id),
             replied_to: reply_to? new Types.ObjectId(reply_to) : null,
-            attachment_key: "",
-            type: "text",
+            attachment_key: attachment_key || "",
+            type: message_type || "text",
             deleted_for: []
         };
 
@@ -113,6 +136,8 @@ export async function handleMessageReply(socket: Socket, data: MessageReplyEVT) 
             conversation_id,
             message_id: insertedMessageId,
             message_text,
+            message_type: message_type || "text",
+            attachment_key: attachment_key || "",
             replied_to: reply_to,
             when: new Date(),
             sender_info: socket.userInfo

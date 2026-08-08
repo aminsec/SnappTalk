@@ -28,6 +28,8 @@ export interface MessageReplyEVT {
     message_text: string
     reply_to: string
     track_id: string
+    message_type: MessageTypes
+    attachment_key?: string
 };
 
 export interface MessageSeenEVT {

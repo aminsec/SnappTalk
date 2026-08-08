@@ -33,7 +33,8 @@ export async function generatePreSignedURL(bucketName: string, fileKey: string):
         });
 
         const url = await getSignedUrl(s3Client, command, { expiresIn: 3600 }); // seconds
-        return [url, null];
+        const path = "/download" + new URL(url).pathname + new URL(url).search;
+        return [path, null];
 
     } catch (error) {
         console.error("Error generating pre-signed URL:", error);

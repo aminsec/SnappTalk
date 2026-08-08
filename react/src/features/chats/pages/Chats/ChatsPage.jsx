@@ -22,6 +22,7 @@ import {
   faStop,
   faArrowLeft,
   faBars,
+  faDownload,
 } from '@fortawesome/free-solid-svg-icons';
 import { faFaceSmile } from '@fortawesome/free-regular-svg-icons';
 import { Sidebar, MobileMenu, Input, Button, ProfileAvatar } from '@/shared/components';
@@ -129,6 +130,7 @@ const getMessagePreviewText = (message) => {
     case 'audio':
       return 'Audio';
     case 'file':
+    case 'document':
       return 'Attachment';
     default:
       return '';
@@ -214,35 +216,13 @@ const normalizeMessage = (message, chat, currentUserId) => {
   };
 };
 
-const fileToBase64 = (file) => new Promise((resolve, reject) => {
-  const reader = new FileReader();
-  reader.onload = () => {
-    const result = reader.result;
-    const base64 = typeof result === 'string' ? result.split(',').pop() : '';
-    if (!base64) {
-      reject(new Error('Unable to read file.'));
-      return;
-    }
-    resolve(base64);
-  };
-  reader.onerror = () => reject(reader.error || new Error('Unable to read file.'));
-  reader.readAsDataURL(file);
-});
-
 const uploadMediaFile = async (file) => {
-  const base64 = await fileToBase64(file);
-  const response = await fetch('/api/v1/chat/media', {
+  const formData = new FormData();
+  formData.append('file', file);
+  const response = await fetch('/api/v1/user/media/upload', {
     method: 'POST',
     credentials: 'include',
-    headers: {
-      'content-type': 'application/json',
-    },
-    body: JSON.stringify({
-      file: base64,
-      mime_type: file.type,
-      name: file.name,
-      size: file.size,
-    }),
+    body: formData,
   });
 
   if (!response.ok) {
@@ -250,7 +230,14 @@ const uploadMediaFile = async (file) => {
   }
 
   const data = await response.json();
-  return data?.url || data?.file_url || data?.media_url || data?.data?.url || '';
+  return data?.fileKey || data?.file_key || data?.data?.fileKey || '';
+};
+
+// Maps frontend media types to the backend's MessageTypes
+const getBackendMessageType = (type) => {
+  if (type === 'voice') return 'audio';
+  if (type === 'file') return 'document';
+  return type;
 };
 
 const getMediaTypeFromFile = (file) => {
@@ -266,6 +253,40 @@ const getMediaTypeFromMime = (mimeType) => {
   if (mimeType.startsWith('video/')) return 'video';
   if (mimeType.startsWith('audio/')) return 'voice';
   return null;
+};
+
+// Cache of attachment_key -> pre-signed download URL
+const mediaUrlCache = new Map();
+
+// Resolves a message's attachment_key to a downloadable pre-signed URL
+// using the backend media download endpoint.
+const resolveAttachmentUrl = async (attachmentKey) => {
+  if (!attachmentKey) return '';
+  if (mediaUrlCache.has(attachmentKey)) {
+    return mediaUrlCache.get(attachmentKey);
+  }
+  try {
+    const response = await fetch('/api/v1/user/media/download', {
+      method: 'POST',
+      credentials: 'include',
+      headers: {
+        'content-type': 'application/json',
+      },
+      body: JSON.stringify({ file_key: attachmentKey }),
+    });
+    if (!response.ok) {
+      return '';
+    }
+    const data = await response.json();
+    const url = data?.download_url || data?.data?.download_url || '';
+    if (url) {
+      mediaUrlCache.set(attachmentKey, url);
+    }
+    return url;
+  } catch (error) {
+    console.error('Failed to resolve media URL:', error);
+    return '';
+  }
 };
 
 function ChatsPage() {
@@ -569,6 +590,7 @@ function ChatsPage() {
             message_text: content,
             date: new Date().toISOString(),
             track_id: optimisticId,
+            message_type: 'text',
           },
           (ack) => {
             if (!ack?.ok) {
@@ -636,6 +658,7 @@ function ChatsPage() {
             message_text: content,
             reply_to: replyTo.messageId,
             track_id: optimisticId,
+            message_type: 'text',
           }
         );
       } else {
@@ -645,6 +668,7 @@ function ChatsPage() {
             conversation_id: conversationId,
             message_text: content,
             track_id: optimisticId,
+            message_type: 'text',
           }
         );
       }
@@ -822,7 +846,7 @@ function ChatsPage() {
   const handleResendMessage = useCallback((message) => {
     const conversationId = message?.conversation_id;
     const content = message?.content || message?.text;
-    if (!conversationId || !content) {
+    if (!conversationId) {
       toast.error('Unable to resend message.');
       return;
     }
@@ -838,6 +862,10 @@ function ChatsPage() {
       || message?.reply_to
       || message?.replyTo?.messageId
       || null;
+    const attachmentKey = message?.attachment_key;
+    const messageType = message?.type || 'text';
+    const isMedia = Boolean(attachmentKey);
+
     if (messageId) {
       setMessages((prev) =>
         prev.map((m) =>
@@ -884,12 +912,23 @@ function ChatsPage() {
         message_text: content,
         reply_to: replyToId,
         track_id: messageId,
+        message_type: 'text',
+      });
+    } else if (isMedia) {
+      socket.emit(SOCKET_EVENTS.MESSAGE_SEND, {
+        conversation_id: conversationId,
+        message_text: content || '',
+        track_id: messageId,
+        message_type: messageType,
+        attachment_key: attachmentKey,
+        replied_to: replyToId || null,
       });
     } else {
       socket.emit(SOCKET_EVENTS.MESSAGE_SEND, {
         conversation_id: conversationId,
         message_text: content,
         track_id: messageId,
+        message_type: 'text',
       });
     }
   }, [socket]);
@@ -1056,6 +1095,9 @@ function ChatsPage() {
   const [hasMoreMessages, setHasMoreMessages] = useState(true);
   const [messagesOffset, setMessagesOffset] = useState(0);
   const [messagesConversationId, setMessagesConversationId] = useState(null);
+  // Maps message id -> resolved pre-signed media URL (from attachment_key)
+  const [resolvedMediaUrls, setResolvedMediaUrls] = useState({});
+  const resolvedMediaUrlsRef = useRef({});
   const messagesContainerRef = useRef(null);
   const isLoadingMoreRef = useRef(false);
   const messagesOffsetRef = useRef(0);
@@ -1073,6 +1115,33 @@ function ChatsPage() {
 
   useEffect(() => {
     messagesRef.current = messages;
+  }, [messages]);
+
+  // Resolve pre-signed URLs for any message that has an attachment_key
+  // but no resolved URL yet (received/loaded media messages).
+  useEffect(() => {
+    const pending = [];
+    messages.forEach((message) => {
+      const id = getMessageId(message);
+      const key = message?.attachment_key;
+      if (!id || !key) return;
+      if (resolvedMediaUrlsRef.current[id]) return;
+      if (message?.local_preview) return; // optimistic message already has a preview
+      pending.push({ id, key });
+    });
+    if (pending.length === 0) return;
+
+    let cancelled = false;
+    pending.forEach(({ id, key }) => {
+      resolveAttachmentUrl(key).then((url) => {
+        if (cancelled || !url) return;
+        resolvedMediaUrlsRef.current[id] = url;
+        setResolvedMediaUrls((prev) => ({ ...prev, [id]: url }));
+      });
+    });
+    return () => {
+      cancelled = true;
+    };
   }, [messages]);
 
   useEffect(() => {
@@ -1260,8 +1329,12 @@ function ChatsPage() {
         id: resolvedMessageId,
         conversation_id: conversationId,
         sender: messageSender,
-        type: 'text',
+        type: payload?.message_type || payload?.type || 'text',
         content: messageText,
+        attachment_key: payload?.attachment_key || '',
+        file_name: payload?.file_name || '',
+        mime_type: payload?.mime_type || '',
+        file_size: payload?.file_size || 0,
         created_at: messageWhen,
         edited: false,
         sender_info: senderInfo || undefined,
@@ -1571,8 +1644,12 @@ function ChatsPage() {
         id: resolvedMessageId,
         conversation_id: conversationId,
         sender: messageSender,
-        type: 'text',
+        type: payload?.message_type || payload?.type || 'text',
         content: messageText,
+        attachment_key: payload?.attachment_key || '',
+        file_name: payload?.file_name || '',
+        mime_type: payload?.mime_type || '',
+        file_size: payload?.file_size || 0,
         created_at: messageWhen,
         edited: false,
         reply_to: replyPreview,
@@ -1688,6 +1765,7 @@ function ChatsPage() {
             conversation_id: resolvedConversationId,
             message_text: pendingPv.messageText,
             track_id: pendingTrackId,
+            message_type: 'text',
           });
         }
 
@@ -3459,12 +3537,14 @@ function ChatsPage() {
       setUploadProgress(10);
 
       const optimisticId = `optimistic-${Date.now()}`;
+      const backendType = getBackendMessageType(type);
       const optimisticMessage = {
         _id: optimisticId,
         id: optimisticId,
+        client_id: optimisticId,
         conversation_id: conversationId,
         sender: user?.id,
-        type,
+        type: backendType,
         content: caption || '',
         created_at: new Date().toISOString(),
         edited: false,
@@ -3472,6 +3552,9 @@ function ChatsPage() {
         local_preview: previewUrl,
         file_name: file.name,
         mime_type: file.type,
+        file_size: file.size,
+        status: 'pending',
+        seen: false,
       };
 
       animatedMessageIdsRef.current.add(optimisticId);
@@ -3481,48 +3564,40 @@ function ChatsPage() {
 
       try {
         setUploadProgress(35);
-        const uploadedUrl = await uploadMediaFile(file);
-        if (!uploadedUrl) {
-          throw new Error('Upload did not return a media url.');
+        const attachmentKey = await uploadMediaFile(file);
+        if (!attachmentKey) {
+          throw new Error('Upload did not return a file key.');
         }
         setUploadProgress(70);
 
-        const response = await fetch('/api/v1/chat/messages/media', {
-          method: 'POST',
-          credentials: 'include',
-          headers: {
-            'content-type': 'application/json',
-          },
-          body: JSON.stringify({
-            conversation_id: conversationId,
-            type,
-            message_text: caption || '',
-            media_url: uploadedUrl,
-            file_name: file.name,
-            mime_type: file.type,
-            file_size: file.size,
-            reply_to: replyTo?.messageId || null,
-          }),
-        });
-
-        if (!response.ok) {
-          throw new Error('Unable to send media.');
+        if (!socket || !socket.connected) {
+          throw new Error('Not connected.');
         }
 
-        const data = await response.json();
-        const serverMessage = data?.message;
-        const serverMessageId = getMessageId(serverMessage);
-        if (serverMessage && serverMessageId) {
+        // Register pending ack so the optimistic message gets its real id
+        pendingSendMapRef.current[optimisticId] = {
+          tempId: optimisticId,
+          conversationId: conversationId.toString(),
+        };
+        if (pendingAckTimersRef.current[optimisticId]) {
+          clearTimeout(pendingAckTimersRef.current[optimisticId]);
+        }
+        pendingAckTimersRef.current[optimisticId] = setTimeout(() => {
           setMessages((prev) =>
-            prev.map((m) => {
-              const mid = getMessageId(m);
-              if (mid === optimisticId) {
-                return serverMessage;
-              }
-              return m;
-            })
+            prev.map((m) =>
+              getMessageId(m) === optimisticId ? { ...m, status: 'error' } : m
+            )
           );
-        }
+        }, 60000);
+
+        socket.emit(SOCKET_EVENTS.MESSAGE_SEND, {
+          conversation_id: conversationId,
+          message_text: caption || '',
+          track_id: optimisticId,
+          message_type: backendType,
+          attachment_key: attachmentKey,
+          replied_to: replyTo?.messageId || null,
+        });
       } catch (error) {
         console.error('Failed to send media:', error);
         toast.error('Unable to send media right now.');
@@ -3532,7 +3607,7 @@ function ChatsPage() {
         setTimeout(resetFileUploadState, 300);
       }
     },
-    [replyingToMessage, resetFileUploadState, scrollToBottom, selectedChat, user?.id]
+    [replyingToMessage, resetFileUploadState, scrollToBottom, selectedChat, socket, user?.id]
   );
 
   // Handle file upload
@@ -4151,12 +4226,16 @@ function ChatsPage() {
                   const isPrivateChat = selectedChat?.type === 'pv';
                   const isGroupChat = selectedChat?.type === 'group';
                   const replyPreview = message.reply_to || message.replyTo || message.reply_to_message;
-                  const mediaUrl = getMessageMediaUrl(message);
+                  const resolvedMediaUrl = resolvedMediaUrls[messageId] || '';
+                  const mediaUrl = getMessageMediaUrl(message) || resolvedMediaUrl;
                   const messageType = message.type || (mediaUrl ? 'file' : 'text');
                   const resolvedMessageType = messageType === 'file'
                     ? (getMediaTypeFromMime(message?.mime_type) || 'file')
                     : messageType;
                   const isMedia = Boolean(mediaUrl);
+                  const isDocument = resolvedMessageType === 'document'
+                    || resolvedMessageType === 'file'
+                    || (messageType === 'document');
                   const isMediaOnly = isMedia && !messageContent && !replyPreview
                     && (resolvedMessageType === 'sticker' || resolvedMessageType === 'gif');
                   const isEmojiOnly = isEmojiOnlyMessage(messageContent);
@@ -4330,7 +4409,39 @@ function ChatsPage() {
                               src={mediaUrl}
                             />
                           )}
-                          {isMedia && !['video', 'voice', 'audio'].includes(resolvedMessageType) && (
+                          {isDocument && (
+                            <a
+                              className={styles.fileAttachment}
+                              href={mediaUrl}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              download={message?.file_name || 'attachment'}
+                              onClick={(e) => {
+                                if (!mediaUrl) {
+                                  e.preventDefault();
+                                  toast.error('File is not ready yet.');
+                                }
+                              }}
+                            >
+                              <span className={styles.fileAttachmentIcon}>
+                                <FontAwesomeIcon icon={faFileSolid} />
+                              </span>
+                              <span className={styles.fileAttachmentInfo}>
+                                <span className={styles.fileAttachmentName}>
+                                  {message?.file_name || 'Attachment'}
+                                </span>
+                                {message?.file_size ? (
+                                  <span className={styles.fileAttachmentSize}>
+                                    {formatFileSize(message.file_size)}
+                                  </span>
+                                ) : null}
+                              </span>
+                              <span className={styles.fileAttachmentDownload}>
+                                <FontAwesomeIcon icon={faDownload} />
+                              </span>
+                            </a>
+                          )}
+                          {isMedia && !isDocument && !['video', 'voice', 'audio'].includes(resolvedMessageType) && (
                             <img
                               src={mediaUrl}
                               alt={resolvedMessageType}
@@ -4434,7 +4545,6 @@ function ChatsPage() {
               type="file"
               style={{ display: 'none' }}
               onChange={handleFileChange}
-              accept="image/*,video/*,audio/*"
               title="Maximum file size is 5MB"
             />
             

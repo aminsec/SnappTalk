@@ -13,6 +13,7 @@ export async function handleNewPvConversationEvent(socket: Socket, data: NewPvCo
     const contactUserId = new Types.ObjectId(data.new_user_id);
     const { userInfo } = socket;
     const {  message_text, track_id, message_type, attachment_key } = data;
+    console.log( message_text, track_id, message_type, attachment_key)
     
     if( !message_text || !track_id || !message_type){
         socket.emit("error", {message: "Invalid data"});
@@ -50,7 +51,7 @@ export async function handleNewPvConversationEvent(socket: Socket, data: NewPvCo
         //Inserting message
         const insertData: InsertMessage = {
             sender: new Types.ObjectId(userInfo.id),
-            content: message_text,
+            content: message_text || " ",
             conversation_id: newPvConversationId,
             replied_to: null,
             attachment_key: attachment_key || "",
@@ -83,6 +84,8 @@ export async function handleNewPvConversationEvent(socket: Socket, data: NewPvCo
                     conversation_id: newPvConversationId.toString(),
                     message_id: newMessageId.toString(),
                     message_text: data.message_text,
+                    message_type: message_type || "text",
+                    attachment_key: attachment_key || "",
                     sender_info: socket.userInfo,
                     when: Date.now()
                 });
