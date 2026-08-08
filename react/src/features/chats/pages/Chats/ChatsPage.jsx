@@ -4574,7 +4574,7 @@ function ChatsPage() {
                             />
                           )}
                           {/* ADDED dir="auto" HERE FOR RTL SUPPORT */}
-                          {messageContent && <p dir="auto">{messageContent}</p>} 
+                          {messageContent.trim() && <p dir="auto">{messageContent}</p>} 
                           <div className={styles.messageFooter}>
                             {message?.edited && (
                               <span className={styles.editedBadge}>edited</span>
