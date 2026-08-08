@@ -699,6 +699,46 @@
     box-shadow: none !important;
 }
 
+/* ============================================
+   MEDIA UPLOAD PROGRESS OVERLAY (circular)
+   ============================================ */
+.mediaUploadOverlay {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(0, 0, 0, 0.35);
+    border-radius: 10px;
+    z-index: 5;
+    pointer-events: none;
+}
+
+.mediaUploadCircle {
+    width: 56px;
+    height: 56px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.mediaUploadCircleInner {
+    width: 44px;
+    height: 44px;
+    border-radius: 50%;
+    background: rgba(0, 0, 0, 0.75);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.mediaUploadPercent {
+    color: #fff;
+    font-size: 12px;
+    font-weight: 600;
+}
+
 .emojiOnly {
     background: transparent !important;
     box-shadow: none !important;
@@ -1639,101 +1679,6 @@
 }
 
 /* ============================================
-   UPLOAD PROGRESS
-   ============================================ */
-.uploadProgress {
-    padding: 10px 16px;
-    background-color: var(--bg-panel);
-    border-bottom: 1px solid var(--input-border);
-}
-
-.filePreviewContainer {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    margin-bottom: 10px;
-    position: relative;
-}
-
-.filePreview {
-    width: 50px;
-    height: 50px;
-    border-radius: 4px;
-    object-fit: cover;
-}
-
-.filePreviewVideo {
-    width: 50px;
-    height: 50px;
-    border-radius: 4px;
-    object-fit: cover;
-}
-
-.filePreviewFallback {
-    width: 50px;
-    height: 50px;
-    border-radius: 4px;
-    background: rgba(255, 255, 255, 0.08);
-    border: 1px solid rgba(255, 255, 255, 0.12);
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    color: var(--text-muted);
-    font-size: 18px;
-}
-
-.fileInfo {
-    display: flex;
-    flex-direction: column;
-    gap: 4px;
-}
-
-.selectedFileName {
-    font-size: 14px;
-    color: var(--text-main);
-    font-weight: 500;
-}
-
-.fileSize {
-    font-size: 12px;
-    color: var(--text-muted);
-}
-
-.progressBar {
-    width: 100%;
-    height: 4px;
-    background-color: var(--input-border);
-    border-radius: 2px;
-    overflow: hidden;
-}
-
-.progressFill {
-    height: 100%;
-    background-color: var(--btn-color);
-    border-radius: 2px;
-    animation: progressGlow 1.6s ease-in-out infinite;
-}
-
-.cancelUpload {
-    position: absolute;
-    right: 10px;
-    top: 10px;
-    width: 24px;
-    height: 24px;
-    background: transparent;
-    border: none;
-    color: var(--error-color);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    cursor: pointer;
-}
-
-.cancelUpload:hover {
-    background: var(--error-dark);
-}
-
-/* ============================================
    MEDIA PICKER
    ============================================ */
 .mediaPickerWrapper {
@@ -2237,13 +2182,6 @@
     
     .confirmBox { max-width: calc(100% - 32px); margin: 16px; }
     
-    .uploadProgress { padding: 8px 12px; }
-    
-    .filePreview, .filePreviewVideo, .filePreviewFallback {
-        width: 40px;
-        height: 40px;
-    }
-    
     /* Chat list overflow fix */
     .chatItem {
         padding: 10px !important;
@@ -2499,7 +2437,7 @@
    REDUCED MOTION
    ============================================ */
 @media (prefers-reduced-motion: reduce) {
-    .chatListSidebar, .chatMain, .chatHeader, .chatItem, .messagesContainer, .message, .newConversationButton, .actionButton, .noChatSelected, .emptyChatMessage, .filePreview, .progressFill, .mediaPicker, .emojiPicker, .confirmOverlay, .confirmBox, .sidebar, .replyBar {
+    .chatListSidebar, .chatMain, .chatHeader, .chatItem, .messagesContainer, .message, .newConversationButton, .actionButton, .noChatSelected, .emptyChatMessage, .mediaPicker, .emojiPicker, .confirmOverlay, .confirmBox, .sidebar, .replyBar {
         animation: none !important;
         transition: none !important;
     }

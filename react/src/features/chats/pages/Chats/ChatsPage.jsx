@@ -25,7 +25,7 @@ import {
   faDownload,
 } from '@fortawesome/free-solid-svg-icons';
 import { faFaceSmile } from '@fortawesome/free-regular-svg-icons';
-import { Sidebar, MobileMenu, Input, Button, ProfileAvatar } from '@/shared/components';
+import { Sidebar, MobileMenu, Input, ProfileAvatar } from '@/shared/components';
 import { useAuth } from '@/shared/state/useAuth';
 import toast from 'react-hot-toast';
 import { useSocket } from '@/shared/state/useSocket';
@@ -318,10 +318,8 @@ function ChatsPage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedChat, setSelectedChat] = useState(null);
   const [messageInput, setMessageInput] = useState('');
-  const [selectedFile, setSelectedFile] = useState(null);
-  const [uploadProgress, setUploadProgress] = useState(0);
-  const [isUploading, setIsUploading] = useState(false);
-  const [filePreview, setFilePreview] = useState(null);
+  // Per-message upload progress (optimisticId -> 0..100) for media messages
+  const [mediaUploadProgress, setMediaUploadProgress] = useState({});
   const [isNewConversationModalOpen, setIsNewConversationModalOpen] = useState(false);
   const [activeTab, setActiveTab] = useState('all');
   const [isOptionsMenuOpen, setIsOptionsMenuOpen] = useState(false);
@@ -2705,15 +2703,6 @@ function ChatsPage() {
     setRandomIcon(monoIcons[randomIndex]);
   }, []);
 
-  // Cleanup file preview URL
-  useEffect(() => {
-    return () => {
-      if (filePreview && filePreview.startsWith('blob:')) {
-        URL.revokeObjectURL(filePreview);
-      }
-    };
-  }, [filePreview]);
-
   useEffect(() => {
     return () => {
       if (recordingTimerRef.current) {
@@ -3300,14 +3289,6 @@ function ChatsPage() {
     return sortedChats;
   }, [activeTab, sortedChats]);
 
-  // Reset file upload state
-  const resetFileUploadState = useCallback(() => {
-    setSelectedFile(null);
-    setFilePreview(null);
-    setIsUploading(false);
-    setUploadProgress(0);
-  }, []);
-
   // Fetch sender info for group messages
   const fetchSenderInfo = useCallback(async (senderId) => {
     if (!senderId) return null;
@@ -3580,10 +3561,6 @@ function ChatsPage() {
         : null;
 
       setReplyingToMessage(null);
-      setFilePreview(previewUrl);
-      setSelectedFile(file);
-      setIsUploading(true);
-      setUploadProgress(10);
 
       const optimisticId = `optimistic-${Date.now()}`;
       const backendType = getBackendMessageType(type);
@@ -3605,6 +3582,9 @@ function ChatsPage() {
         status: 'pending',
         seen: false,
       };
+
+      // Track this message's upload progress (starts at 0)
+      setMediaUploadProgress((prev) => ({ ...prev, [optimisticId]: 0 }));
 
       animatedMessageIdsRef.current.add(optimisticId);
       setMessages((prev) => [...prev, optimisticMessage]);
@@ -3635,13 +3615,17 @@ function ChatsPage() {
         return next;
       });
 
+      const updateProgress = (value) => {
+        setMediaUploadProgress((prev) => ({ ...prev, [optimisticId]: value }));
+      };
+
       try {
-        setUploadProgress(35);
+        updateProgress(10);
         const attachmentKey = await uploadMediaFile(file);
         if (!attachmentKey) {
           throw new Error('Upload did not return a file key.');
         }
-        setUploadProgress(70);
+        updateProgress(70);
 
         if (!socket || !socket.connected) {
           throw new Error('Not connected.');
@@ -3753,23 +3737,39 @@ function ChatsPage() {
         console.error('Failed to send media:', error);
         toast.error('Unable to send media right now.');
         setMessages((prev) => prev.filter((m) => getMessageId(m) !== optimisticId));
+        setMediaUploadProgress((prev) => {
+          const next = { ...prev };
+          delete next[optimisticId];
+          return next;
+        });
       } finally {
-        setUploadProgress(100);
-        setTimeout(resetFileUploadState, 300);
+        updateProgress(100);
+        // Clear the progress entry shortly after completion
+        setTimeout(() => {
+          setMediaUploadProgress((prev) => {
+            const next = { ...prev };
+            delete next[optimisticId];
+            return next;
+          });
+        }, 800);
       }
     },
-    [replyingToMessage, refreshContacts, resetFileUploadState, scrollToBottom, selectedChat, setConversationAlias, socket, user?.id]
+    [replyingToMessage, refreshContacts, scrollToBottom, selectedChat, setConversationAlias, socket, user?.id]
   );
 
-  // Handle file upload
+  // Handle file upload (supports multiple files, uploaded one by one)
   const handleFileChange = useCallback(
     async (event) => {
-      const file = event.target.files?.[0];
-      if (!file) return;
+      const files = Array.from(event.target.files || []);
+      if (files.length === 0) return;
 
-      const previewUrl = URL.createObjectURL(file);
-      const type = getMediaTypeFromFile(file);
-      await sendMediaMessage({ file, type, previewUrl });
+      // Send all selected files to the chat immediately (each uploads independently)
+      files.forEach((file) => {
+        const previewUrl = URL.createObjectURL(file);
+        const type = getMediaTypeFromFile(file);
+        sendMediaMessage({ file, type, previewUrl });
+      });
+
       event.target.value = '';
     },
     [sendMediaMessage]
@@ -3975,8 +3975,6 @@ function ChatsPage() {
       return !isMine && !senderInfoCache[senderIdStr];
     });
   const shouldHoldGroupMessages = isActiveGroup && missingSenderInfo;
-  const isPreviewImage = selectedFile?.type?.startsWith('image/');
-  const isPreviewVideo = selectedFile?.type?.startsWith('video/');
   // Helper to format date like "28 July"
   const formatDateSeparator = (dateString) => {
     if (!dateString) return "";
@@ -4410,6 +4408,11 @@ function ChatsPage() {
                   const deliveryStatus = isMyMessage && isPrivateChat
                     ? (message?.status || 'sent')
                     : null;
+                  // Upload progress for this media message (0..100) while it's being uploaded
+                  const uploadProgressValue = mediaUploadProgress[messageId];
+                  const isUploadingMedia = isMyMessage
+                    && typeof uploadProgressValue === 'number'
+                    && uploadProgressValue < 100;
                   const messageRenderKey = message?.client_id || messageId;
                   const messageAnimKey = (message?.client_id || messageId)?.toString();
 
@@ -4576,6 +4579,22 @@ function ChatsPage() {
                               </button>
                             </div>
                           )}
+                          {isUploadingMedia && (
+                            <div className={styles.mediaUploadOverlay}>
+                              <div
+                                className={styles.mediaUploadCircle}
+                                style={{
+                                  background: `conic-gradient(var(--btn-color) ${uploadProgressValue * 3.6}deg, rgba(255,255,255,0.25) 0deg)`,
+                                }}
+                              >
+                                <div className={styles.mediaUploadCircleInner}>
+                                  <span className={styles.mediaUploadPercent}>
+                                    {Math.round(uploadProgressValue)}%
+                                  </span>
+                                </div>
+                              </div>
+                            </div>
+                          )}
                           {isMedia && (resolvedMessageType === 'video') && (
                             <VideoPlayer
                               src={mediaUrl}
@@ -4671,40 +4690,11 @@ function ChatsPage() {
               </div>
             </div>
   
-            {selectedFile && (
-              <div className={styles.uploadProgress}>
-                <div className={styles.filePreviewContainer}>
-                  {filePreview && isPreviewImage && (
-                    <img src={filePreview} alt="Preview" className={styles.filePreview} />
-                  )}
-                  {filePreview && isPreviewVideo && (
-                    <video className={styles.filePreviewVideo} src={filePreview} muted playsInline />
-                  )}
-                  {(!filePreview || (!isPreviewImage && !isPreviewVideo)) && (
-                    <div className={styles.filePreviewFallback}>
-                      <FontAwesomeIcon icon={faFileSolid} />
-                    </div>
-                  )}
-                  <div className={styles.fileInfo}>
-                    <span className={styles.selectedFileName}>{selectedFile.name}</span>
-                    <span className={styles.fileSize}>{formatFileSize(selectedFile.size)}</span>
-                  </div>
-                  <Button className={styles.cancelUpload} onClick={resetFileUploadState}>
-                    <FontAwesomeIcon icon={faTimes} />
-                  </Button>
-                </div>
-                {isUploading && (
-                  <div className={styles.progressBar}>
-                    <div className={styles.progressFill} style={{ width: `${uploadProgress}%` }} />
-                  </div>
-                )}
-              </div>
-            )}
-  
             <div className={styles.inputBar}>
             <input
               id="file-upload"
               type="file"
+              multiple
               style={{ display: 'none' }}
               onChange={handleFileChange}
               title="Maximum file size is 5MB"
