@@ -882,6 +882,23 @@
     max-width: 100%;
 }
 
+.audioAttachment {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    max-width: 280px;
+}
+
+.audioAttachmentName {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text-primary);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 240px;
+}
+
 /* ============================================
    FILE ATTACHMENT
    ============================================ */

@@ -128,10 +128,10 @@ const getMessagePreviewText = (message) => {
     case 'voice':
       return 'Voice message';
     case 'audio':
-      return 'Audio';
+      return getMessageFileName(message) || 'Audio';
     case 'file':
     case 'document':
-      return 'Attachment';
+      return getMessageFileName(message) || 'Attachment';
     default:
       return '';
   }
@@ -253,6 +253,24 @@ const getMediaTypeFromMime = (mimeType) => {
   if (mimeType.startsWith('video/')) return 'video';
   if (mimeType.startsWith('audio/')) return 'voice';
   return null;
+};
+
+// Extracts the original file name from an attachment_key.
+// Backend stores keys as: `<uuid>-<filename>.<ext>` (e.g. "abc-123-report.pdf").
+// We strip the leading UUID + dash to recover the real file name.
+const getFileNameFromAttachmentKey = (attachmentKey) => {
+  if (!attachmentKey) return '';
+  // Strip the leading UUID segment (anything up to and including the first dash).
+  const withoutUuid = attachmentKey.replace(/^[0-9a-fA-F-]{36}-/, '');
+  if (!withoutUuid || withoutUuid === attachmentKey) return attachmentKey;
+  return withoutUuid;
+};
+
+// Resolves the display file name for a message, preferring an explicit
+// file_name field, then falling back to parsing it from attachment_key.
+const getMessageFileName = (message) => {
+  if (message?.file_name) return message.file_name;
+  return getFileNameFromAttachmentKey(message?.attachment_key);
 };
 
 // Cache of attachment_key -> pre-signed download URL
@@ -4478,12 +4496,19 @@ function ChatsPage() {
                             </video>
                           )}
                           {isMedia && (resolvedMessageType === 'voice' || resolvedMessageType === 'audio') && (
-                            <audio
-                              className={`${styles.messageMedia} ${styles.messageMediaAudio}`}
-                              controls
-                              preload="metadata"
-                              src={mediaUrl}
-                            />
+                            <div className={styles.audioAttachment}>
+                              {getMessageFileName(message) && (
+                                <span className={styles.audioAttachmentName}>
+                                  {getMessageFileName(message)}
+                                </span>
+                              )}
+                              <audio
+                                className={`${styles.messageMedia} ${styles.messageMediaAudio}`}
+                                controls
+                                preload="metadata"
+                                src={mediaUrl}
+                              />
+                            </div>
                           )}
                           {isDocument && (
                             <a
@@ -4491,7 +4516,7 @@ function ChatsPage() {
                               href={mediaUrl}
                               target="_blank"
                               rel="noopener noreferrer"
-                              download={message?.file_name || 'attachment'}
+                              download={getMessageFileName(message) || 'attachment'}
                               onClick={(e) => {
                                 if (!mediaUrl) {
                                   e.preventDefault();
@@ -4504,7 +4529,7 @@ function ChatsPage() {
                               </span>
                               <span className={styles.fileAttachmentInfo}>
                                 <span className={styles.fileAttachmentName}>
-                                  {message?.file_name || 'Attachment'}
+                                  {getMessageFileName(message) || 'Attachment'}
                                 </span>
                                 {message?.file_size ? (
                                   <span className={styles.fileAttachmentSize}>
