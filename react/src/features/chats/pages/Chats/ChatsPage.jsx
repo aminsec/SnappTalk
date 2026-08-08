@@ -115,24 +115,24 @@ const formatDuration = (totalSeconds) => {
 
 const getMessagePreviewText = (message) => {
   if (!message) return '';
-  const content = message.content || message.text;
+  const content = (message.content || message.text || '').trim();
   if (content) return content;
   switch (message.type) {
     case 'image':
-      return 'Photo';
+      return 'Photo 📷';
     case 'video':
-      return 'Video';
+      return 'Video 🎥';
     case 'gif':
-      return 'GIF';
+      return 'GIF 🐾';
     case 'sticker':
-      return 'Sticker';
+      return 'Sticker ';
     case 'voice':
-      return 'Voice message';
+      return 'Voice 🎙️';
     case 'audio':
-      return getMessageFileName(message) || 'Audio';
+      return getMessageFileName(message) || 'Audio 🎵';
     case 'file':
     case 'document':
-      return getMessageFileName(message) || 'Attachment';
+      return getMessageFileName(message) || 'Attachment 📎';
     default:
       return '';
   }
@@ -1345,7 +1345,8 @@ function ChatsPage() {
     const handleMessageReceive = (payload) => {
       const conversationId = payload?.conversation_id || payload?.conversationId;
       const messageText = payload?.message_text || payload?.message || '';
-      if (!conversationId || !messageText) {
+      const messageType = payload?.message_type || payload?.type || 'text';
+      if (!conversationId) {
         return;
       }
       const conversationIdStr = conversationId?.toString();
@@ -1494,8 +1495,8 @@ function ChatsPage() {
         next[idx] = {
           ...chat,
           last_message: {
-            content: messageText,
-            type: 'text',
+            content: getMessagePreviewText(message),
+            type: messageType,
             sender: senderUsername,
             when: message.created_at,
             message_id: messageId,
@@ -1663,7 +1664,8 @@ function ChatsPage() {
       const conversationId = payload?.conversation_id || payload?.conversationId;
       const messageText = payload?.message_text || payload?.message || '';
       const replyToId = payload?.replied_to || payload?.reply_to;
-      if (!conversationId || !messageText) {
+      const messageType = payload?.message_type || payload?.type || 'text';
+      if (!conversationId) {
         return;
       }
       const conversationIdStr = conversationId?.toString();
@@ -1741,8 +1743,8 @@ function ChatsPage() {
         next[idx] = {
           ...chat,
           last_message: {
-            content: messageText,
-            type: 'text',
+            content: getMessagePreviewText(message),
+            type: messageType,
             sender: senderUsername,
             when: messageWhen,
             message_id: resolvedMessageId,
@@ -3608,6 +3610,30 @@ function ChatsPage() {
       setMessages((prev) => [...prev, optimisticMessage]);
       shouldAutoScrollRef.current = true;
       scrollToBottom();
+
+      const conversationIdStr = conversationId.toString();
+      setContacts((prev) => {
+        const next = [...prev];
+        const idx = next.findIndex(
+          (c) => getConversationId(c)?.toString() === conversationIdStr
+        );
+        if (idx === -1) return prev;
+        const chat = next[idx];
+        next[idx] = {
+          ...chat,
+          last_message: {
+            content: getMessagePreviewText(optimisticMessage),
+            type: backendType,
+            sender: user?.username || chat?.last_message?.sender || '',
+            when: optimisticMessage.created_at,
+            message_id: optimisticId,
+            sender_id: user?.id,
+          },
+        };
+        const [moved] = next.splice(idx, 1);
+        next.unshift(moved);
+        return next;
+      });
 
       try {
         setUploadProgress(35);
