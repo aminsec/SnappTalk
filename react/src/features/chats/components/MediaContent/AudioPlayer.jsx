@@ -17,7 +17,7 @@ const formatTime = (seconds) => {
  * Telegram-style audio player with a custom UI (no browser default controls).
  * Supports both voice messages (compact) and audio files (with file name).
  */
-function AudioPlayer({ src, fileName, isVoice = false, accent = 'var(--btn-color)' }) {
+function AudioPlayer({ src, fileName, isVoice = false, accent = 'var(--btn-color)', footer }) {
   const audioRef = useRef(null);
   const [isPlaying, setIsPlaying] = useState(false);
   const [progress, setProgress] = useState(0); // 0..1
@@ -163,6 +163,11 @@ function AudioPlayer({ src, fileName, isVoice = false, accent = 'var(--btn-color
           </span>
         </div>
       </div>
+      {footer && (
+        <div className={styles.audioFooterOverlay} onClick={(e) => e.stopPropagation()}>
+          {footer}
+        </div>
+      )}
     </div>
   );
 }

@@ -22,7 +22,7 @@ const formatTime = (seconds) => {
  * Shows a poster/thumbnail with a centered play button; on play, reveals a
  * custom control bar (play/pause, seek, time, volume, fullscreen).
  */
-function VideoPlayer({ src, mimeType = 'video/mp4', poster }) {
+function VideoPlayer({ src, mimeType = 'video/mp4', poster, footer }) {
   const videoRef = useRef(null);
   const containerRef = useRef(null);
   const [isPlaying, setIsPlaying] = useState(false);
@@ -168,6 +168,13 @@ function VideoPlayer({ src, mimeType = 'video/mp4', poster }) {
         playsInline
         onClick={togglePlay}
       />
+
+      {/* Sent/received time + seen overlay (Telegram-style) */}
+      {footer && (
+        <div className={styles.videoFooterOverlay} onClick={(e) => e.stopPropagation()}>
+          {footer}
+        </div>
+      )}
 
       {/* Big center play button (shown when paused) */}
       {!isPlaying && !isError && (

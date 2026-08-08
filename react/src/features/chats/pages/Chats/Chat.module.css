@@ -870,6 +870,56 @@
     background: transparent;
 }
 
+/* Media image wrapper + overlay footer (time + seen inside the media card) */
+.mediaImageWrap {
+    position: relative;
+    display: inline-block;
+    max-width: 100%;
+    line-height: 0;
+    margin-bottom: 4px;
+}
+
+.mediaImageWrap .messageMedia {
+    margin-bottom: 0;
+}
+
+.mediaImageFooter {
+    position: absolute;
+    right: 6px;
+    bottom: 6px;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    color: #fff;
+    line-height: 1;
+    pointer-events: auto;
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.6);
+}
+
+.mediaImageFooter .timestamp {
+    color: #fff;
+    font-size: 11px;
+    margin-left: 0;
+    align-self: auto;
+}
+
+.mediaImageFooter .seenIconImage {
+    opacity: 1;
+}
+
+.mediaImageFooter .deliveryClockFace {
+    border-color: rgba(255, 255, 255, 0.9);
+}
+
+.mediaImageFooter .deliveryClockHandShort,
+.mediaImageFooter .deliveryClockHandLong {
+    background: rgba(255, 255, 255, 0.95);
+}
+
+.mediaImageFooter .deliveryErrorButton {
+    color: #fff;
+}
+
 /* ============================================
    FILE ATTACHMENT
    ============================================ */
@@ -930,6 +980,37 @@
     flex-shrink: 0;
     color: var(--text-muted);
     font-size: 16px;
+}
+
+/* Document attachment wrapper + overlay footer (time + seen inside the card) */
+.mediaDocumentWrap {
+    position: relative;
+    display: inline-block;
+    max-width: 100%;
+    margin-bottom: 4px;
+}
+
+.mediaDocumentWrap .fileAttachment {
+    margin-bottom: 0;
+}
+
+.mediaDocumentFooter {
+    position: absolute;
+    right: 8px;
+    bottom: 8px;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    color: var(--text-muted);
+    line-height: 1;
+    pointer-events: auto;
+}
+
+.mediaDocumentFooter .timestamp {
+    color: var(--text-muted);
+    font-size: 11px;
+    margin-left: 0;
+    align-self: auto;
 }
 
 /* ============================================

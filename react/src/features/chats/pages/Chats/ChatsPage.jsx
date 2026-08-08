@@ -4386,6 +4386,46 @@ function ChatsPage() {
                     : null;
                   const messageRenderKey = message?.client_id || messageId;
                   const messageAnimKey = (message?.client_id || messageId)?.toString();
+
+                  // Reusable footer (time + seen) — rendered inside media cards for media messages.
+                  const messageFooterMarkup = (
+                    <>
+                      {message?.edited && (
+                        <span className={styles.editedBadge}>edited</span>
+                      )}
+                      <span className={styles.timestamp}>
+                        {convertISOtoLocal(messageTime)}
+                      </span>
+                      {isMyMessage && isPrivateChat && (
+                        <span className={styles.seenIcon}>
+                          {deliveryStatus === 'pending' && (
+                            <span className={styles.deliveryClock} title="Sending">
+                              <span className={styles.deliveryClockFace} />
+                              <span className={styles.deliveryClockHandShort} />
+                              <span className={styles.deliveryClockHandLong} />
+                            </span>
+                          )}
+                          {deliveryStatus === 'error' && (
+                            <button
+                              type="button"
+                              className={styles.deliveryErrorButton}
+                              onClick={() => handleResendMessage(message)}
+                              title="Message failed. Click to resend."
+                            >
+                              <FontAwesomeIcon icon={faCircleExclamation} />
+                            </button>
+                          )}
+                          {deliveryStatus === 'sent' && (
+                            <img
+                              src={message?.seen ? seenIcon : sentIcon}
+                              alt={message?.seen ? "Seen" : "Sent"}
+                              className={styles.seenIconImage}
+                            />
+                          )}
+                        </span>
+                      )}
+                    </>
+                  );
                   
                   // --- RETURN JSX ---
                   return (
@@ -4514,6 +4554,7 @@ function ChatsPage() {
                             <VideoPlayer
                               src={mediaUrl}
                               mimeType={message?.mime_type || 'video/mp4'}
+                              footer={isMediaOnly ? messageFooterMarkup : undefined}
                             />
                           )}
                           {isMedia && (resolvedMessageType === 'voice' || resolvedMessageType === 'audio') && (
@@ -4522,95 +4563,79 @@ function ChatsPage() {
                               fileName={getMessageFileName(message)}
                               isVoice={resolvedMessageType === 'voice'}
                               accent={isMyMessage ? 'rgba(255,255,255,0.35)' : 'var(--btn-color)'}
+                              footer={isMediaOnly ? messageFooterMarkup : undefined}
                             />
                           )}
                           {isDocument && (
-                            <a
-                              className={styles.fileAttachment}
-                              href={mediaUrl}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              onClick={(e) => {
-                                if (!mediaUrl) {
-                                  e.preventDefault();
-                                  toast.error('File is not ready yet.');
-                                }
-                              }}
-                            >
-                              <span className={styles.fileAttachmentIcon}>
-                                <FontAwesomeIcon icon={faFileSolid} />
-                              </span>
-                              <span className={styles.fileAttachmentInfo}>
-                                <span className={styles.fileAttachmentName}>
-                                  {getMessageFileName(message) || 'Attachment'}
+                            <div className={styles.mediaDocumentWrap}>
+                              <a
+                                className={styles.fileAttachment}
+                                href={mediaUrl}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                onClick={(e) => {
+                                  if (!mediaUrl) {
+                                    e.preventDefault();
+                                    toast.error('File is not ready yet.');
+                                  }
+                                }}
+                              >
+                                <span className={styles.fileAttachmentIcon}>
+                                  <FontAwesomeIcon icon={faFileSolid} />
                                 </span>
-                                {message?.file_size ? (
-                                  <span className={styles.fileAttachmentSize}>
-                                    {formatFileSize(message.file_size)}
+                                <span className={styles.fileAttachmentInfo}>
+                                  <span className={styles.fileAttachmentName}>
+                                    {getMessageFileName(message) || 'Attachment'}
                                   </span>
-                                ) : null}
-                              </span>
-                            </a>
+                                  {message?.file_size ? (
+                                    <span className={styles.fileAttachmentSize}>
+                                      {formatFileSize(message.file_size)}
+                                    </span>
+                                  ) : null}
+                                </span>
+                              </a>
+                              {isMediaOnly && (
+                                <div className={styles.mediaDocumentFooter}>
+                                  {messageFooterMarkup}
+                                </div>
+                              )}
+                            </div>
                           )}
                           {isMedia && !isDocument && !['video', 'voice', 'audio'].includes(resolvedMessageType) && (
-                            <img
-                              src={mediaUrl}
-                              alt={resolvedMessageType}
-                              className={`${styles.messageMedia} ${
-                                resolvedMessageType === 'sticker'
-                                  ? styles.messageMediaSticker
-                                  : resolvedMessageType === 'gif'
-                                    ? styles.messageMediaGif
-                                    : styles.messageMediaImage
-                              }`}
-                              onLoad={() => {
-                                if (isInitialLoadRef.current) {
-                                  scrollToBottom();
-                                }
-                              }}
-                              onError={(e) => {
-                                e.target.style.display = 'none';
-                              }}
-                            />
+                            <div className={styles.mediaImageWrap}>
+                              <img
+                                src={mediaUrl}
+                                alt={resolvedMessageType}
+                                className={`${styles.messageMedia} ${
+                                  resolvedMessageType === 'sticker'
+                                    ? styles.messageMediaSticker
+                                    : resolvedMessageType === 'gif'
+                                      ? styles.messageMediaGif
+                                      : styles.messageMediaImage
+                                }`}
+                                onLoad={() => {
+                                  if (isInitialLoadRef.current) {
+                                    scrollToBottom();
+                                  }
+                                }}
+                                onError={(e) => {
+                                  e.target.style.display = 'none';
+                                }}
+                              />
+                              {isMediaOnly && (
+                                <div className={styles.mediaImageFooter}>
+                                  {messageFooterMarkup}
+                                </div>
+                              )}
+                            </div>
                           )}
                           {/* ADDED dir="auto" HERE FOR RTL SUPPORT */}
                           {messageContent.trim() && <p dir="auto">{messageContent}</p>} 
-                          <div className={styles.messageFooter}>
-                            {message?.edited && (
-                              <span className={styles.editedBadge}>edited</span>
-                            )}
-                            <span className={styles.timestamp}>
-                              {convertISOtoLocal(messageTime)}
-                            </span>
-                            {isMyMessage && isPrivateChat && (
-                              <span className={styles.seenIcon}>
-                                {deliveryStatus === 'pending' && (
-                                  <span className={styles.deliveryClock} title="Sending">
-                                    <span className={styles.deliveryClockFace} />
-                                    <span className={styles.deliveryClockHandShort} />
-                                    <span className={styles.deliveryClockHandLong} />
-                                  </span>
-                                )}
-                                {deliveryStatus === 'error' && (
-                                  <button
-                                    type="button"
-                                    className={styles.deliveryErrorButton}
-                                    onClick={() => handleResendMessage(message)}
-                                    title="Message failed. Click to resend."
-                                  >
-                                    <FontAwesomeIcon icon={faCircleExclamation} />
-                                  </button>
-                                )}
-                                {deliveryStatus === 'sent' && (
-                                  <img
-                                    src={message?.seen ? seenIcon : sentIcon}
-                                    alt={message?.seen ? "Seen" : "Sent"}
-                                    className={styles.seenIconImage}
-                                  />
-                                )}
-                              </span>
-                            )}
-                          </div>
+                          {!isMediaOnly && (
+                            <div className={styles.messageFooter}>
+                              {messageFooterMarkup}
+                            </div>
+                          )}
                         </div>
                       </div>
                     </React.Fragment>
