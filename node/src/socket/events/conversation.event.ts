@@ -6,16 +6,21 @@ import { createNewMessage } from "../../services/messages.services";
 import { checkUserHasAccessToConversation } from "../../utils/validate";
 import { ErrorResponse } from "../../types/response.types";
 import { Conversation } from "../../types/conversation.types";
-import { InsertMessage } from "../../types/messages.types";
+import { InsertMessage, validMessageTypes } from "../../types/messages.types";
 
 export async function handleNewPvConversationEvent(socket: Socket, data: NewPvConversationEVT, onlineUsers: Map<string, string>, io: Server) {
     const requestedUserId = new Types.ObjectId(socket.userInfo.id);
     const contactUserId = new Types.ObjectId(data.new_user_id);
     const { userInfo } = socket;
-    const {  message_text, track_id, message_type, attachment_key } = data;
+    const { message_text, track_id, message_type, attachment_key } = data;
     
-    if( !message_text || !track_id || !message_type){
+    if( !track_id || !message_type){
         socket.emit("error", {message: "Invalid data"});
+        return;
+    }
+
+    if(!validMessageTypes.includes(message_type)){
+        socket.emit("error", {message: "Invalid message type"});
         return;
     }
 

@@ -3510,10 +3510,8 @@ function ChatsPage() {
 
       const isPendingPv = selectedChat?.type === 'pv'
         && conversationId.toString().startsWith('temp-');
-      if (isPendingPv) {
-        toast.error('Send a text message first to start the conversation.');
-        return;
-      }
+      const contactUserId = selectedChat?.contact_info?._id
+        || selectedChat?.contact_info?.id;
 
       if (file.size > MAX_FILE_SIZE) {
         toast.error('File size must be less than 5MB.');
@@ -3590,6 +3588,84 @@ function ChatsPage() {
           );
         }, 60000);
 
+        if (isPendingPv) {
+          if (!contactUserId) {
+            throw new Error('Unable to start this conversation.');
+          }
+          pendingPvRef.current = {
+            tempId: conversationId,
+            contactUserId,
+            trackId: optimisticId,
+            messageText: caption || '',
+          };
+          socket.emit(
+            SOCKET_EVENTS.NEW_PV_CONVERSATION,
+            {
+              new_user_id: contactUserId,
+              message_text: caption || '',
+              date: new Date().toISOString(),
+              track_id: optimisticId,
+              message_type: backendType,
+              attachment_key: attachmentKey,
+            },
+            (ack) => {
+              if (!ack?.ok) {
+                toast.error(ack?.error || 'Unable to send message.');
+                return;
+              }
+
+              const newConversationId = ack?.conversationId || ack?.conversation?._id || ack?.conversation?.id;
+              if (newConversationId) {
+                setConversationAlias(conversationId, newConversationId);
+                setContacts((prev) =>
+                  prev.map((chat) =>
+                    getConversationId(chat) === conversationId
+                      ? {
+                          ...chat,
+                          _id: newConversationId,
+                          id: newConversationId,
+                          client_id: chat.client_id || getConversationId(chat),
+                        }
+                      : chat
+                  )
+                );
+                setSelectedChat((prev) =>
+                  prev && getConversationId(prev) === conversationId
+                    ? { ...prev, _id: newConversationId, id: newConversationId }
+                    : prev
+                );
+                setMessages((prev) =>
+                  prev.map((m) =>
+                    m.conversation_id === conversationId
+                      ? { ...m, conversation_id: newConversationId }
+                      : m
+                  )
+                );
+                setMessagesConversationId(newConversationId);
+              } else {
+                refreshContacts();
+              }
+
+              const serverMessage = ack?.message;
+              const serverMessageId = getMessageId(serverMessage);
+              if (!serverMessage || !serverMessageId) {
+                return;
+              }
+
+              setMessages((prev) =>
+                prev.map((m) => {
+                  const mid = getMessageId(m);
+                  if (mid === optimisticId) {
+                    return { ...serverMessage, client_id: m.client_id || optimisticId };
+                  }
+                  return m;
+                })
+              );
+            }
+          );
+          return;
+        }
+
         socket.emit(SOCKET_EVENTS.MESSAGE_SEND, {
           conversation_id: conversationId,
           message_text: caption || '',
@@ -3607,7 +3683,7 @@ function ChatsPage() {
         setTimeout(resetFileUploadState, 300);
       }
     },
-    [replyingToMessage, resetFileUploadState, scrollToBottom, selectedChat, socket, user?.id]
+    [replyingToMessage, refreshContacts, resetFileUploadState, scrollToBottom, selectedChat, setConversationAlias, socket, user?.id]
   );
 
   // Handle file upload
