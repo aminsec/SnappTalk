@@ -19,8 +19,9 @@ function AppearanceSection() {
   return (
     <div className={styles.appearanceContainer}>
       <div className={styles.sectionHeader}>
-        <h2>Appearance</h2>
-        <p>Choose a wallpaper for your chat background.</p>
+        <span className={styles.eyebrow}>Chat personalization</span>
+        <h2>Choose your atmosphere</h2>
+        <p>Pick a subtle background designed to keep every message easy to read.</p>
       </div>
 
       <div className={styles.wallpaperGrid}>
@@ -40,11 +41,25 @@ function AppearanceSection() {
                 }`}
                 style={wallpaper.src ? { backgroundImage: `url(${wallpaper.src})` } : undefined}
               >
-                {!wallpaper.src && <span>None</span>}
+                <div className={`${styles.previewBubble} ${styles.previewBubbleIncoming}`}>Hey, how is it going?</div>
+                <div
+                  className={`${styles.previewBubble} ${styles.previewBubbleOutgoing}`}
+                  style={{ '--wallpaper-accent': wallpaper.accent }}
+                >
+                  Looking good ✨
+                </div>
+                {isSelected && <span className={styles.previewCheck}>✓</span>}
               </div>
               <div className={styles.wallpaperLabel}>
-                <span>{wallpaper.label}</span>
-                {isSelected && <span className={styles.selectedBadge}>Selected</span>}
+                <span className={styles.wallpaperMeta}>
+                  <strong>{wallpaper.label}</strong>
+                  <small>{wallpaper.description}</small>
+                </span>
+                <span
+                  className={styles.accentDot}
+                  style={{ backgroundColor: wallpaper.accent }}
+                  aria-hidden="true"
+                />
               </div>
             </button>
           );

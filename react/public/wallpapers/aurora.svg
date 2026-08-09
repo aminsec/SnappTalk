@@ -1,94 +1,27 @@
-<svg width="1920" height="1080" viewBox="0 0 1920 1080" fill="none" xmlns="http://www.w3.org/2000/svg">
+<svg xmlns="http://www.w3.org/2000/svg" width="1440" height="1000" viewBox="0 0 1440 1000" fill="none">
   <defs>
-    <linearGradient id="nightSky" x1="0" y1="0" x2="0" y2="1080" gradientUnits="userSpaceOnUse">
-      <stop offset="0" stop-color="#02040A"/>
-      <stop offset="0.4" stop-color="#071226"/>
-      <stop offset="0.75" stop-color="#0A1E2E"/>
-      <stop offset="1" stop-color="#061014"/>
+    <linearGradient id="base" x1="80" y1="40" x2="1360" y2="960" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#08151D"/><stop offset="0.52" stop-color="#0B2028"/><stop offset="1" stop-color="#071218"/>
     </linearGradient>
-    <radialGradient id="moonGlow" cx="0" cy="0" r="1" gradientUnits="userSpaceOnUse" gradientTransform="translate(1560 200) scale(420 420)">
-      <stop stop-color="#EAF6FF" stop-opacity="0.5"/>
-      <stop offset="0.4" stop-color="#BFE3FF" stop-opacity="0.18"/>
-      <stop offset="1" stop-color="#BFE3FF" stop-opacity="0"/>
+    <radialGradient id="cyan" cx="0" cy="0" r="1" gradientTransform="translate(310 170) rotate(42) scale(650 440)" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#27D6B2" stop-opacity=".28"/><stop offset="1" stop-color="#27D6B2" stop-opacity="0"/>
     </radialGradient>
-    <linearGradient id="auroraGreen" x1="0" y1="0" x2="1920" y2="0" gradientUnits="userSpaceOnUse">
-      <stop offset="0" stop-color="#00E5A0" stop-opacity="0"/>
-      <stop offset="0.25" stop-color="#00E5A0" stop-opacity="0.55"/>
-      <stop offset="0.5" stop-color="#34F5C5" stop-opacity="0.75"/>
-      <stop offset="0.75" stop-color="#00C2FF" stop-opacity="0.45"/>
-      <stop offset="1" stop-color="#00C2FF" stop-opacity="0"/>
-    </linearGradient>
-    <linearGradient id="auroraPurple" x1="0" y1="0" x2="1920" y2="0" gradientUnits="userSpaceOnUse">
-      <stop offset="0" stop-color="#7B2FFF" stop-opacity="0"/>
-      <stop offset="0.35" stop-color="#A855F7" stop-opacity="0.5"/>
-      <stop offset="0.6" stop-color="#EC4899" stop-opacity="0.4"/>
-      <stop offset="1" stop-color="#EC4899" stop-opacity="0"/>
-    </linearGradient>
-    <linearGradient id="mountainFar" x1="0" y1="0" x2="0" y2="1080" gradientUnits="userSpaceOnUse">
-      <stop offset="0" stop-color="#0E2A3A"/>
-      <stop offset="1" stop-color="#07141C"/>
-    </linearGradient>
-    <linearGradient id="mountainNear" x1="0" y1="0" x2="0" y2="1080" gradientUnits="userSpaceOnUse">
-      <stop offset="0" stop-color="#06141C"/>
-      <stop offset="1" stop-color="#02080C"/>
-    </linearGradient>
-    <filter id="softBlur" x="-50%" y="-50%" width="200%" height="200%">
-      <feGaussianBlur stdDeviation="40"/>
-    </filter>
-    <filter id="bandBlur" x="-50%" y="-50%" width="200%" height="200%">
-      <feGaussianBlur stdDeviation="18"/>
-    </filter>
+    <radialGradient id="blue" cx="0" cy="0" r="1" gradientTransform="translate(1180 760) rotate(-145) scale(690 480)" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#318DCE" stop-opacity=".25"/><stop offset="1" stop-color="#318DCE" stop-opacity="0"/>
+    </radialGradient>
+    <pattern id="pattern" width="180" height="180" patternUnits="userSpaceOnUse">
+      <g stroke="#B9FFF0" stroke-opacity=".055" stroke-width="1.4" fill="none">
+        <path d="M20 42c18-18 42-18 60 0s42 18 60 0"/><path d="M34 125c20-22 44-22 64 0"/>
+        <circle cx="145" cy="126" r="13"/><path d="m141 122 8 8m0-8-8 8"/>
+        <path d="M92 62c0 13-9 24-20 24s-20-11-20-24"/>
+      </g>
+    </pattern>
+    <filter id="blur"><feGaussianBlur stdDeviation="45"/></filter>
   </defs>
-
-  <!-- Night sky -->
-  <rect width="1920" height="1080" fill="url(#nightSky)"/>
-
-  <!-- Moon glow -->
-  <rect width="1920" height="1080" fill="url(#moonGlow)"/>
-
-  <!-- Stars -->
-  <g fill="#FFFFFF">
-    <circle cx="120" cy="90" r="1.6" opacity="0.9"/>
-    <circle cx="260" cy="180" r="1.1" opacity="0.6"/>
-    <circle cx="410" cy="70" r="1.4" opacity="0.8"/>
-    <circle cx="560" cy="150" r="1" opacity="0.5"/>
-    <circle cx="700" cy="60" r="1.7" opacity="0.85"/>
-    <circle cx="850" cy="200" r="1.2" opacity="0.6"/>
-    <circle cx="990" cy="90" r="1.5" opacity="0.8"/>
-    <circle cx="1130" cy="170" r="1" opacity="0.5"/>
-    <circle cx="1280" cy="80" r="1.3" opacity="0.7"/>
-    <circle cx="1420" cy="140" r="1.1" opacity="0.55"/>
-    <circle cx="1700" cy="100" r="1.4" opacity="0.75"/>
-    <circle cx="1820" cy="200" r="1" opacity="0.5"/>
-    <circle cx="340" cy="300" r="1" opacity="0.4"/>
-    <circle cx="620" cy="330" r="1.2" opacity="0.5"/>
-    <circle cx="900" cy="280" r="0.9" opacity="0.4"/>
-    <circle cx="1180" cy="320" r="1.1" opacity="0.45"/>
-    <circle cx="1500" cy="290" r="0.9" opacity="0.4"/>
-    <circle cx="1750" cy="330" r="1.2" opacity="0.5"/>
-    <circle cx="80" cy="420" r="1" opacity="0.35"/>
-    <circle cx="480" cy="400" r="0.9" opacity="0.35"/>
-    <circle cx="1040" cy="380" r="1" opacity="0.4"/>
-    <circle cx="1880" cy="410" r="0.9" opacity="0.35"/>
-  </g>
-
-  <!-- Aurora ribbons (blurred glow layers) -->
-  <g filter="url(#softBlur)">
-    <path d="M-100 420C220 300 520 520 820 460C1120 400 1420 520 2020 380V560C1720 640 1420 560 1120 600C820 640 520 560 220 620C-20 660 -100 560 -100 560Z" fill="url(#auroraGreen)" opacity="0.5"/>
-    <path d="M-100 520C260 400 560 620 880 540C1200 460 1500 600 2020 460V640C1700 720 1400 620 1120 680C840 740 520 640 220 700C-20 740 -100 640 -100 640Z" fill="url(#auroraPurple)" opacity="0.45"/>
-  </g>
-
-  <!-- Crisp aurora bands -->
-  <g filter="url(#bandBlur)">
-    <path d="M-100 380C240 260 540 480 840 420C1140 360 1440 480 2020 340" stroke="url(#auroraGreen)" stroke-width="26" fill="none" opacity="0.7"/>
-    <path d="M-100 470C280 360 580 560 900 490C1220 420 1500 540 2020 420" stroke="url(#auroraPurple)" stroke-width="20" fill="none" opacity="0.6"/>
-    <path d="M-100 300C300 200 600 400 900 340C1200 280 1500 400 2020 280" stroke="#00E5A0" stroke-width="10" fill="none" opacity="0.35"/>
-  </g>
-
-  <!-- Distant mountains -->
-  <path d="M0 720L180 560L340 700L520 540L700 720L880 580L1060 730L1240 600L1420 740L1600 610L1780 730L1920 640V1080H0V720Z" fill="url(#mountainFar)" opacity="0.9"/>
-  <path d="M0 780L160 660L360 800L560 640L760 810L960 680L1160 820L1360 690L1560 830L1760 700L1920 800V1080H0V780Z" fill="url(#mountainNear)"/>
-
-  <!-- Ground reflection glow -->
-  <rect x="0" y="900" width="1920" height="180" fill="url(#auroraGreen)" opacity="0.06"/>
+  <rect width="1440" height="1000" fill="url(#base)"/>
+  <rect width="1440" height="1000" fill="url(#cyan)" filter="url(#blur)"/>
+  <rect width="1440" height="1000" fill="url(#blue)" filter="url(#blur)"/>
+  <path d="M-80 610C260 390 430 690 740 510s520-90 790-260" stroke="#55F2D1" stroke-opacity=".08" stroke-width="90" filter="url(#blur)"/>
+  <rect width="1440" height="1000" fill="url(#pattern)"/>
+  <rect width="1440" height="1000" fill="#02070A" fill-opacity=".08"/>
 </svg>

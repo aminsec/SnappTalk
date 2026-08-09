@@ -13,6 +13,8 @@ const formatTime = (seconds) => {
   return `${mins}:${secs.toString().padStart(2, '0')}`;
 };
 
+const WAVEFORM_BARS = [8, 14, 20, 11, 24, 17, 28, 13, 22, 31, 18, 10, 25, 16, 29, 21, 12, 26, 18, 32, 15, 23, 11, 27, 19, 30, 14, 22, 9, 17];
+
 /**
  * Telegram-style audio player with a custom UI (no browser default controls).
  * Supports both voice messages (compact) and audio files (with file name).
@@ -98,7 +100,10 @@ function AudioPlayer({ src, fileName, isVoice = false, accent = 'var(--btn-color
   const progressPercent = (progress * 100).toFixed(2);
 
   return (
-    <div className={`${styles.audioPlayer} ${isVoice ? styles.audioPlayerVoice : ''}`}>
+    <div
+      className={`${styles.audioPlayer} ${isVoice ? styles.audioPlayerVoice : ''} ${footer ? styles.audioPlayerWithFooter : ''}`}
+      style={{ '--player-accent': accent }}
+    >
       <audio
         ref={audioRef}
         src={src}
@@ -111,7 +116,6 @@ function AudioPlayer({ src, fileName, isVoice = false, accent = 'var(--btn-color
         className={styles.audioPlayButton}
         onClick={togglePlay}
         aria-label={isPlaying ? 'Pause' : 'Play'}
-        style={{ '--player-accent': accent }}
       >
         {isLoading && !isPlaying ? (
           <span className={styles.audioSpinner} />
@@ -150,16 +154,20 @@ function AudioPlayer({ src, fileName, isVoice = false, accent = 'var(--btn-color
             }
           }}
         >
-          <div className={styles.audioSeekTrack}>
-            <div
-              className={styles.audioSeekFill}
-              style={{ width: `${progressPercent}%` }}
-            />
+          <div className={styles.audioWaveform} aria-hidden="true">
+            {WAVEFORM_BARS.map((height, index) => (
+              <span
+                key={`${height}-${index}`}
+                className={index / (WAVEFORM_BARS.length - 1) <= progress ? styles.audioWaveformPlayed : ''}
+                style={{ height: `${height}px` }}
+              />
+            ))}
           </div>
         </div>
         <div className={styles.audioMeta}>
+          <span className={styles.audioKind}>{isVoice ? 'Voice message' : 'Audio'}</span>
           <span className={styles.audioTime}>
-            {isError ? 'Error' : formatTime(isPlaying || currentTime > 0 ? currentTime : duration)}
+            {isError ? 'Unavailable' : formatTime(isPlaying || currentTime > 0 ? currentTime : duration)}
           </span>
         </div>
       </div>

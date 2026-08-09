@@ -22,7 +22,7 @@ const formatTime = (seconds) => {
  * Shows a poster/thumbnail with a centered play button; on play, reveals a
  * custom control bar (play/pause, seek, time, volume, fullscreen).
  */
-function VideoPlayer({ src, mimeType = 'video/mp4', poster, footer }) {
+function VideoPlayer({ src, mimeType = 'video/mp4', poster, footer, fullscreenOnDoubleClick = true }) {
   const videoRef = useRef(null);
   const containerRef = useRef(null);
   const [isPlaying, setIsPlaying] = useState(false);
@@ -79,9 +79,15 @@ function VideoPlayer({ src, mimeType = 'video/mp4', poster, footer }) {
 
   const toggleFullscreen = useCallback(() => {
     const container = containerRef.current;
-    if (!container) return;
+    const video = videoRef.current;
+    if (!container || !video) return;
+
     if (!document.fullscreenElement) {
-      container.requestFullscreen?.().catch(() => {});
+      if (container.requestFullscreen) {
+        container.requestFullscreen().catch(() => {});
+      } else if (video.webkitEnterFullscreen) {
+        video.webkitEnterFullscreen();
+      }
     } else {
       document.exitFullscreen?.().catch(() => {});
     }
@@ -167,6 +173,7 @@ function VideoPlayer({ src, mimeType = 'video/mp4', poster, footer }) {
         preload="metadata"
         playsInline
         onClick={togglePlay}
+        onDoubleClick={fullscreenOnDoubleClick ? toggleFullscreen : undefined}
       />
 
       {/* Sent/received time + seen overlay (Telegram-style) */}

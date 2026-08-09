@@ -23,6 +23,12 @@ import {
   faArrowLeft,
   faBars,
   faDownload,
+  faPaperclip,
+  faImage,
+  faVideo,
+  faMusic,
+  faFileLines,
+  faPaperPlane,
 } from '@fortawesome/free-solid-svg-icons';
 import { faFaceSmile } from '@fortawesome/free-regular-svg-icons';
 import { Sidebar, MobileMenu, Input, ProfileAvatar } from '@/shared/components';
@@ -46,6 +52,12 @@ import newsIcon from '@/shared/assets/images/mono/planet.svg';
 import origamiIcon from '@/shared/assets/images/mono/plant.svg';
 import planetIcon from '@/shared/assets/images/mono/strategy.svg';
 import { wallpapers, WALLPAPER_STORAGE_KEY } from '@/shared/utils/wallpapers';
+import {
+  getAutoDownloadMedia,
+  getFullscreenMedia,
+  MEDIA_AUTO_DOWNLOAD_KEY,
+  MEDIA_FULLSCREEN_KEY,
+} from '@/shared/utils/mediaPreferences';
 import NewConversationModal from '../../components/NewConversationModal/NewConversationModal';
 import { AudioPlayer, VideoPlayer } from '../../components/MediaContent';
 import styles from './Chat.module.css';
@@ -69,13 +81,8 @@ const monoIcons = [
 const GIPHY_API_KEY = '4vT03C5NJwyvvo3NF8iWEXBN1Y6FwV3G';
 const GIPHY_LIMIT = 18;
 
-const stickerOptions = monoIcons.map((src, index) => ({
-  id: `sticker-${index + 1}`,
-  name: `sticker-${index + 1}`,
-  url: src,
-}));
-
 const MAX_FILE_SIZE = 20 * 1024 * 1024; // 20MB
+const MAX_MEDIA_BATCH = 10;
 const MESSAGES_LIMIT = 10; // Max number of messages per request
 const MAX_MESSAGE_LENGTH = 255;
 
@@ -274,6 +281,12 @@ const getMessageFileName = (message) => {
   return getFileNameFromAttachmentKey(message?.attachment_key);
 };
 
+const getFileExtension = (fileName) => {
+  const extension = fileName?.split('.').pop();
+  if (!extension || extension === fileName || extension.length > 5) return 'FILE';
+  return extension.toUpperCase();
+};
+
 // Cache of attachment_key -> pre-signed download URL
 const mediaUrlCache = new Map();
 
@@ -320,6 +333,14 @@ function ChatsPage() {
   const [messageInput, setMessageInput] = useState('');
   // Per-message upload progress (optimisticId -> 0..100) for media messages
   const [mediaUploadProgress, setMediaUploadProgress] = useState({});
+  const [pendingMediaItems, setPendingMediaItems] = useState([]);
+  const [selectedPendingMediaId, setSelectedPendingMediaId] = useState(null);
+  const [pendingMediaCaption, setPendingMediaCaption] = useState('');
+  const [isSendingPendingMedia, setIsSendingPendingMedia] = useState(false);
+  const [mediaViewer, setMediaViewer] = useState(null);
+  const [autoDownloadMedia, setAutoDownloadMedia] = useState(getAutoDownloadMedia);
+  const [fullscreenMedia, setFullscreenMedia] = useState(getFullscreenMedia);
+  const [manualMediaLoading, setManualMediaLoading] = useState({});
   const [isNewConversationModalOpen, setIsNewConversationModalOpen] = useState(false);
   const [activeTab, setActiveTab] = useState('all');
   const [isOptionsMenuOpen, setIsOptionsMenuOpen] = useState(false);
@@ -359,6 +380,26 @@ function ChatsPage() {
     () => getConversationId(selectedChat)?.toString() || null,
     [selectedChat]
   );
+
+  useEffect(() => {
+    const syncMediaPreferences = (event) => {
+      const changedKey = event?.detail?.key || event?.key;
+      if (!changedKey || changedKey === MEDIA_AUTO_DOWNLOAD_KEY) {
+        setAutoDownloadMedia(getAutoDownloadMedia());
+      }
+      if (!changedKey || changedKey === MEDIA_FULLSCREEN_KEY) {
+        setFullscreenMedia(getFullscreenMedia());
+      }
+    };
+
+    window.addEventListener('storage', syncMediaPreferences);
+    window.addEventListener('media-preferences-change', syncMediaPreferences);
+    return () => {
+      window.removeEventListener('storage', syncMediaPreferences);
+      window.removeEventListener('media-preferences-change', syncMediaPreferences);
+    };
+  }, []);
+
   const optionsMenuRef = useRef(null);
   const chatMenuRef = useRef(null);
   const mediaPickerRef = useRef(null);
@@ -1145,16 +1186,37 @@ function ChatsPage() {
   // Maps message id -> resolved pre-signed media URL (from attachment_key)
   const [resolvedMediaUrls, setResolvedMediaUrls] = useState({});
   const resolvedMediaUrlsRef = useRef({});
+
+  const loadMediaMessage = useCallback(async (message) => {
+    const messageId = getMessageId(message);
+    const attachmentKey = message?.attachment_key;
+    if (!messageId || !attachmentKey || manualMediaLoading[messageId]) return;
+
+    setManualMediaLoading((current) => ({ ...current, [messageId]: true }));
+    try {
+      const url = await resolveAttachmentUrl(attachmentKey);
+      if (!url) throw new Error('Media is not available right now.');
+      resolvedMediaUrlsRef.current[messageId] = url;
+      setResolvedMediaUrls((current) => ({ ...current, [messageId]: url }));
+    } catch (error) {
+      toast.error(error?.message || 'Unable to load media.');
+    } finally {
+      setManualMediaLoading((current) => {
+        const next = { ...current };
+        delete next[messageId];
+        return next;
+      });
+    }
+  }, [manualMediaLoading]);
   const messagesContainerRef = useRef(null);
   const isLoadingMoreRef = useRef(false);
   const messagesOffsetRef = useRef(0);
   const hasMoreMessagesRef = useRef(true);
   const isInitialLoadRef = useRef(true);
-  const lastScrollTimeRef = useRef(0);
-  const previousTopRef = useRef(0);
   const previousScrollTopRef = useRef(0);
   const pendingPrependRef = useRef(false);
-  const nearTopTimeoutRef = useRef(null);
+  const loadMoreSentinelRef = useRef(null);
+  const scrollFrameRef = useRef(null);
 
   useEffect(() => {
     messagesOffsetRef.current = messagesOffset;
@@ -1167,6 +1229,7 @@ function ChatsPage() {
   // Resolve pre-signed URLs for any message that has an attachment_key
   // but no resolved URL yet (received/loaded media messages).
   useEffect(() => {
+    if (!autoDownloadMedia) return undefined;
     const pending = [];
     messages.forEach((message) => {
       const id = getMessageId(message);
@@ -1189,7 +1252,7 @@ function ChatsPage() {
     return () => {
       cancelled = true;
     };
-  }, [messages]);
+  }, [autoDownloadMedia, messages]);
 
   useEffect(() => {
     hasMoreMessagesRef.current = hasMoreMessages;
@@ -3025,25 +3088,37 @@ function ChatsPage() {
   }, []);
 
   const loadOlderMessages = useCallback(() => {
-    if (!selectedChat) {
-      return;
-    }
-
-    if (isLoadingMoreRef.current || isLoadingMessages) {
-      return;
-    }
-
-    if (!hasMoreMessagesRef.current) {
-      return;
-    }
+    if (!selectedChat || isLoadingMoreRef.current || !hasMoreMessagesRef.current) return;
 
     const conversationId = selectedChat?._id || selectedChat?.id;
-    if (!conversationId) {
-      return;
-    }
+    if (!conversationId) return;
 
     fetchMessages(conversationId, messagesOffsetRef.current, true);
-  }, [fetchMessages, isLoadingMessages, selectedChat]);
+  }, [fetchMessages, selectedChat]);
+
+  useEffect(() => {
+    const root = messagesContainerRef.current;
+    const target = loadMoreSentinelRef.current;
+    if (!root || !target || !selectedChatIdStr || messages.length === 0 || isInitialLoadRef.current) {
+      return undefined;
+    }
+
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (entry.isIntersecting && hasMoreMessagesRef.current && !isLoadingMoreRef.current) {
+          loadOlderMessages();
+        }
+      },
+      {
+        root,
+        rootMargin: '180px 0px 0px',
+        threshold: 0,
+      }
+    );
+
+    observer.observe(target);
+    return () => observer.disconnect();
+  }, [loadOlderMessages, messages.length, selectedChatIdStr]);
 
   // Fetch messages when selectedChat changes
   useEffect(() => {
@@ -3142,55 +3217,19 @@ function ChatsPage() {
     });
   }, [messages, selectedChat, senderInfoCache, user?.id]);
 
-  // Handle scroll for lazy loading older messages
-  const handleScroll = useCallback((e) => {
-    const container = e.currentTarget;
+  // Keep only lightweight position tracking in the scroll event. Older-page loading
+  // is driven by the sentinel observer above, avoiding timer churn during momentum scroll.
+  const handleScroll = useCallback((event) => {
+    const container = event.currentTarget;
+    if (scrollFrameRef.current) return;
 
-    // Track whether user is near the bottom so we can auto-scroll on new messages
-    // without pulling them down while reading older history.
-    const distanceFromBottom = container.scrollHeight - container.scrollTop - container.clientHeight;
-    isNearBottomRef.current = distanceFromBottom < 120;
-    isAtBottomRef.current = distanceFromBottom < 6;
-
-    // if at absolute top, trigger immediately (no throttle) to avoid missing the final event
-    const atAbsoluteTop = container.scrollTop <= 2;
-    if (atAbsoluteTop) {
-      loadOlderMessages();
-      previousTopRef.current = container.scrollTop;
-      return;
-    }
-
-    // throttle for other scroll events
-    const now = Date.now();
-    if (now - lastScrollTimeRef.current < 120) {
-      // schedule a trailing near-top check to catch the final inertial stop
-      clearTimeout(nearTopTimeoutRef.current);
-      nearTopTimeoutRef.current = setTimeout(() => {
-        if (!messagesContainerRef.current) return;
-        if (isLoadingMoreRef.current || isLoadingMessages) return;
-        if (!hasMoreMessagesRef.current) return;
-        if (messagesContainerRef.current.scrollTop <= 10) {
-          loadOlderMessages();
-        }
-      }, 80);
-      return;
-    }
-    lastScrollTimeRef.current = now;
-
-    // gate concurrent loads
-    if (isLoadingMoreRef.current || isLoadingMessages) {
-      previousTopRef.current = container.scrollTop;
-      return;
-    }
-
-    const nearTop = container.scrollTop <= 10;
-
-    if (nearTop) {
-      loadOlderMessages();
-    }
-
-    previousTopRef.current = container.scrollTop;
-  }, [isLoadingMessages, loadOlderMessages]);
+    scrollFrameRef.current = requestAnimationFrame(() => {
+      const distanceFromBottom = container.scrollHeight - container.scrollTop - container.clientHeight;
+      isNearBottomRef.current = distanceFromBottom < 120;
+      isAtBottomRef.current = distanceFromBottom < 6;
+      scrollFrameRef.current = null;
+    });
+  }, []);
 
   // Handle scroll position after messages update
   useLayoutEffect(() => {
@@ -3494,14 +3533,18 @@ function ChatsPage() {
     setIsOptionsMenuOpen((prev) => !prev);
   }, []);
 
-  // Handle upload file option click
-  const handleUploadFileClick = useCallback(() => {
-    const fileInput = document.getElementById('file-upload');
-    if (fileInput) {
-      fileInput.click();
-      setIsOptionsMenuOpen(false);
-    }
+  const openAttachmentPicker = useCallback((inputId) => {
+    document.getElementById(inputId)?.click();
+    setIsOptionsMenuOpen(false);
   }, []);
+
+  const handleUploadMediaClick = useCallback(() => {
+    openAttachmentPicker('media-upload');
+  }, [openAttachmentPicker]);
+
+  const handleUploadFileClick = useCallback(() => {
+    openAttachmentPicker('file-upload');
+  }, [openAttachmentPicker]);
 
   // Handle send location option click
   const handleSendLocationClick = useCallback(() => {
@@ -3757,23 +3800,94 @@ function ChatsPage() {
     [replyingToMessage, refreshContacts, scrollToBottom, selectedChat, setConversationAlias, socket, user?.id]
   );
 
-  // Handle file upload (supports multiple files, uploaded one by one)
-  const handleFileChange = useCallback(
-    async (event) => {
-      const files = Array.from(event.target.files || []);
-      if (files.length === 0) return;
+  const handleFileChange = useCallback((event) => {
+    const files = Array.from(event.target.files || []);
+    event.target.value = '';
+    if (files.length === 0) return;
 
-      // Send all selected files to the chat immediately (each uploads independently)
-      files.forEach((file) => {
-        const previewUrl = URL.createObjectURL(file);
-        const type = getMediaTypeFromFile(file);
-        sendMediaMessage({ file, type, previewUrl });
-      });
+    const validFiles = files.filter((file) => file.size <= MAX_FILE_SIZE);
+    const rejectedCount = files.length - validFiles.length;
+    if (rejectedCount > 0) {
+      toast.error(`${rejectedCount} ${rejectedCount === 1 ? 'file is' : 'files are'} larger than 20 MB.`);
+    }
 
-      event.target.value = '';
-    },
-    [sendMediaMessage]
-  );
+    const availableSlots = Math.max(0, MAX_MEDIA_BATCH - pendingMediaItems.length);
+    const acceptedFiles = validFiles.slice(0, availableSlots);
+    if (validFiles.length > availableSlots) {
+      toast.error(`You can send up to ${MAX_MEDIA_BATCH} files at once.`);
+    }
+
+    const nextItems = acceptedFiles.map((file, index) => ({
+      id: `${Date.now()}-${index}-${file.name}`,
+      file,
+      type: getMediaTypeFromFile(file),
+      previewUrl: URL.createObjectURL(file),
+    }));
+
+    if (nextItems.length > 0) {
+      setPendingMediaItems((currentItems) => [...currentItems, ...nextItems]);
+      setSelectedPendingMediaId((currentId) => currentId || nextItems[0].id);
+    }
+  }, [pendingMediaItems.length]);
+
+  const removePendingMedia = useCallback((itemId) => {
+    const removedItem = pendingMediaItems.find((item) => item.id === itemId);
+    if (removedItem?.previewUrl) {
+      URL.revokeObjectURL(removedItem.previewUrl);
+    }
+    const nextItems = pendingMediaItems.filter((item) => item.id !== itemId);
+    setPendingMediaItems(nextItems);
+    if (selectedPendingMediaId === itemId) {
+      setSelectedPendingMediaId(nextItems[0]?.id || null);
+    }
+    if (nextItems.length === 0) {
+      setPendingMediaCaption('');
+    }
+  }, [pendingMediaItems, selectedPendingMediaId]);
+
+  const closePendingMedia = useCallback(() => {
+    if (isSendingPendingMedia) return;
+    pendingMediaItems.forEach((item) => URL.revokeObjectURL(item.previewUrl));
+    setPendingMediaItems([]);
+    setSelectedPendingMediaId(null);
+    setPendingMediaCaption('');
+  }, [isSendingPendingMedia, pendingMediaItems]);
+
+  const handleSendPendingMedia = useCallback(async () => {
+    if (pendingMediaItems.length === 0 || isSendingPendingMedia) return;
+
+    setIsSendingPendingMedia(true);
+    const itemsToSend = [...pendingMediaItems];
+    const caption = pendingMediaCaption.trim();
+
+    try {
+      for (let index = 0; index < itemsToSend.length; index += 1) {
+        const item = itemsToSend[index];
+        await sendMediaMessage({
+          file: item.file,
+          type: item.type,
+          previewUrl: item.previewUrl,
+          caption: index === 0 ? caption : '',
+        });
+      }
+      setPendingMediaItems([]);
+      setSelectedPendingMediaId(null);
+      setPendingMediaCaption('');
+    } finally {
+      setIsSendingPendingMedia(false);
+    }
+  }, [isSendingPendingMedia, pendingMediaCaption, pendingMediaItems, sendMediaMessage]);
+
+  useEffect(() => {
+    if (pendingMediaItems.length === 0) return undefined;
+    const handleKeyDown = (event) => {
+      if (event.key === 'Escape') {
+        closePendingMedia();
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [closePendingMedia, pendingMediaItems.length]);
 
   const handleSendMedia = useCallback(
     async (media) => {
@@ -3798,8 +3912,7 @@ function ChatsPage() {
           type: blob.type || 'image/gif',
         });
         const previewUrl = mediaUrl;
-        const type = mediaTab === 'stickers' ? 'sticker' : 'gif';
-        await sendMediaMessage({ file, type, previewUrl });
+        await sendMediaMessage({ file, type: 'gif', previewUrl });
       } catch (error) {
         console.error('Failed to send media:', error);
         toast.error('Unable to send media right now.');
@@ -3807,7 +3920,7 @@ function ChatsPage() {
         setIsMediaPickerOpen(false);
       }
     },
-    [mediaTab, selectedChat, sendMediaMessage]
+    [selectedChat, sendMediaMessage]
   );
 
   const getRecorderMimeType = useCallback(() => {
@@ -3928,21 +4041,45 @@ function ChatsPage() {
     };
   }, [messages.length, selectedChat, scrollToBottom]);
 
-  // Cleanup trailing near-top timeout on chat change/unmount
   useEffect(() => {
     return () => {
-      if (nearTopTimeoutRef.current) {
-        clearTimeout(nearTopTimeoutRef.current);
+      if (scrollFrameRef.current) {
+        cancelAnimationFrame(scrollFrameRef.current);
+        scrollFrameRef.current = null;
       }
     };
-  }, [selectedChat]);
+  }, []);
 
-  const activeMediaItems = mediaTab === 'stickers' ? stickerOptions : giphyGifs;
+  const activeMediaItems = giphyGifs;
+  const selectedPendingMedia = pendingMediaItems.find(
+    (item) => item.id === selectedPendingMediaId
+  ) || pendingMediaItems[0] || null;
+
+  useEffect(() => {
+    if (!mediaViewer) return undefined;
+    const handleViewerKeyDown = (event) => {
+      if (event.key === 'Escape') setMediaViewer(null);
+    };
+    window.addEventListener('keydown', handleViewerKeyDown);
+    return () => window.removeEventListener('keydown', handleViewerKeyDown);
+  }, [mediaViewer]);
+
   const resolvedWallpaper = useMemo(() => {
     return wallpapers.find((wallpaper) => wallpaper.id === wallpaperId)
       || wallpapers.find((wallpaper) => wallpaper.id === 'aurora');
   }, [wallpaperId]);
   const hasWallpaper = resolvedWallpaper?.src && wallpaperId !== 'none';
+  const chatThemeStyle = {
+    '--chat-accent': resolvedWallpaper?.accent || '#3390ec',
+    '--chat-accent-hover': resolvedWallpaper?.accentHover || '#2678c7',
+    '--chat-bubble-start': resolvedWallpaper?.bubbleStart || '#3390ec',
+    '--chat-bubble-end': resolvedWallpaper?.bubbleEnd || '#2476c5',
+    '--btn-color': resolvedWallpaper?.accent || '#3390ec',
+    '--btn-hover': resolvedWallpaper?.accentHover || '#2678c7',
+    '--notification-badge': resolvedWallpaper?.accent || '#3390ec',
+    '--icon-active-bg': resolvedWallpaper?.accent || '#3390ec',
+    '--text-link': resolvedWallpaper?.accent || '#3390ec',
+  };
   const wallpaperStyle = hasWallpaper
     ? { backgroundImage: `url(${resolvedWallpaper.src})` }
     : undefined;
@@ -3983,8 +4120,10 @@ function ChatsPage() {
   };
 
   return (
-    <div className={`${styles.chatsPageContainer} ${isMobileChatOpen ? styles.mobileChatOpen : ''}`}>  
-  
+    <div
+      className={`${styles.chatsPageContainer} ${isMobileChatOpen ? styles.mobileChatOpen : ''}`}
+      style={chatThemeStyle}
+    >
       <Sidebar className={styles.sidebar} />
 
       <MobileMenu open={isMobileMenuOpen} onClose={() => setIsMobileMenuOpen(false)} />
@@ -4329,18 +4468,16 @@ function ChatsPage() {
                   </div>
                 </div>
               )}
+              <div ref={loadMoreSentinelRef} className={styles.loadMoreSentinel} aria-hidden="true" />
               {!isLoadingMessages && visibleMessages.length === 0 && (
                 <div className={styles.emptyMessages}>
                   <p>No messages yet. Start the conversation!</p>
                 </div>
               )}
               {isLoadingMessages && visibleMessages.length > 0 && (
-                <div className={styles.loadingMore}>
-                  <div className={styles.loadingDots}>
-                    <span />
-                    <span />
-                    <span />
-                  </div>
+                <div className={styles.loadingMore} role="status">
+                  <span className={styles.lazyLoadSpinner} />
+                  <span>Loading older messages</span>
                 </div>
               )}
               <div className={styles.messagesWrapper}>
@@ -4381,7 +4518,23 @@ function ChatsPage() {
                   const resolvedMessageType = messageType === 'file'
                     ? (getMediaTypeFromMime(message?.mime_type) || 'file')
                     : messageType;
-                  const isMedia = Boolean(mediaUrl);
+                  const isMediaReady = Boolean(mediaUrl);
+                  const isMedia = Boolean(mediaUrl || message?.attachment_key);
+                  const isManualMediaLoading = Boolean(manualMediaLoading[messageId]);
+                  const isVisualMedia = ['image', 'gif', 'sticker', 'video'].includes(resolvedMessageType);
+                  const showMediaDownloadPreview = Boolean(
+                    message?.attachment_key
+                    && !mediaUrl
+                    && !['document', 'file'].includes(resolvedMessageType)
+                    && (!autoDownloadMedia || isVisualMedia)
+                  );
+                  const isMediaResolving = Boolean(
+                    message?.attachment_key
+                    && !mediaUrl
+                    && !showMediaDownloadPreview
+                    && !['document', 'file'].includes(resolvedMessageType)
+                  );
+                  const hasMediaCaption = isMedia && Boolean(messageContent.trim());
                   const isDocument = resolvedMessageType === 'document'
                     || resolvedMessageType === 'file'
                     || (messageType === 'document');
@@ -4524,7 +4677,7 @@ function ChatsPage() {
                         <div
                           className={`${styles.message} ${isMyMessage ? styles.sent : styles.received} ${
                             shouldUseEmojiOnlyStyle ? styles.emojiOnly : ''
-                          } ${isMediaOnly ? styles.mediaOnly : ''}`}
+                          } ${isMediaOnly ? styles.mediaOnly : ''} ${hasMediaCaption ? styles.mediaWithCaption : ''}`}
                           data-message-type={isMyMessage ? 'sent' : 'received'}
                         >
                           {replyPreview && (
@@ -4595,50 +4748,100 @@ function ChatsPage() {
                               </div>
                             </div>
                           )}
-                          {isMedia && (resolvedMessageType === 'video') && (
+                          {showMediaDownloadPreview && !isDocument && (
+                            <button
+                              type="button"
+                              className={`${styles.mediaManualPreview} ${
+                                isManualMediaLoading || autoDownloadMedia ? styles.mediaManualPreviewLoading : ''
+                              }`}
+                              onClick={() => loadMediaMessage(message)}
+                              disabled={isManualMediaLoading || autoDownloadMedia}
+                              aria-label={isManualMediaLoading || autoDownloadMedia
+                                ? `Downloading ${resolvedMessageType} media`
+                                : `Download ${resolvedMessageType} media`}
+                            >
+                              <span className={styles.mediaManualBlur} aria-hidden="true" />
+                              <span className={styles.mediaManualAction}>
+                                <span className={styles.mediaManualIcon}>
+                                  {isManualMediaLoading || autoDownloadMedia ? (
+                                    <span className={styles.mediaManualSpinner} />
+                                  ) : (
+                                    <FontAwesomeIcon
+                                      icon={resolvedMessageType === 'video'
+                                        ? faVideo
+                                        : (['voice', 'audio'].includes(resolvedMessageType) ? faMusic : faImage)}
+                                    />
+                                  )}
+                                </span>
+                                <strong>
+                                  {isManualMediaLoading || autoDownloadMedia
+                                    ? `Downloading ${resolvedMessageType === 'video' ? 'video' : 'media'}…`
+                                    : `Download ${resolvedMessageType === 'video' ? 'video' : 'media'}`}
+                                </strong>
+                                <small>{isManualMediaLoading || autoDownloadMedia ? 'Preparing preview' : 'Tap to load'}</small>
+                              </span>
+                              {isMediaOnly && (
+                                <span className={styles.mediaManualFooter}>
+                                  {messageFooterMarkup}
+                                </span>
+                              )}
+                            </button>
+                          )}
+                          {isMediaResolving && !isDocument && (
+                            <div className={styles.mediaResolvingCard} role="status" aria-label="Loading media">
+                              <span className={styles.mediaResolvingSpinner} />
+                              <span>Loading media</span>
+                            </div>
+                          )}
+                          {isMediaReady && (resolvedMessageType === 'video') && (
                             <VideoPlayer
                               src={mediaUrl}
                               mimeType={message?.mime_type || 'video/mp4'}
                               footer={isMediaOnly ? messageFooterMarkup : undefined}
+                              fullscreenOnDoubleClick={fullscreenMedia}
                             />
                           )}
-                          {isMedia && (resolvedMessageType === 'voice' || resolvedMessageType === 'audio') && (
+                          {isMediaReady && (resolvedMessageType === 'voice' || resolvedMessageType === 'audio') && (
                             <AudioPlayer
                               src={mediaUrl}
                               fileName={getMessageFileName(message)}
                               isVoice={resolvedMessageType === 'voice'}
-                              accent={isMyMessage ? 'rgba(255,255,255,0.35)' : 'var(--btn-color)'}
+                              accent={isMyMessage ? 'rgba(255,255,255,0.82)' : 'var(--chat-accent)'}
                               footer={isMediaOnly ? messageFooterMarkup : undefined}
                             />
                           )}
                           {isDocument && (
                             <div className={styles.mediaDocumentWrap}>
-                              <a
+                              <button
+                                type="button"
                                 className={styles.fileAttachment}
-                                href={mediaUrl}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                onClick={(e) => {
-                                  if (!mediaUrl) {
-                                    e.preventDefault();
-                                    toast.error('File is not ready yet.');
-                                  }
-                                }}
+                                onClick={() => (mediaUrl
+                                  ? handleDownloadMessage(message)
+                                  : loadMediaMessage(message))}
+                                disabled={isManualMediaLoading || (autoDownloadMedia && !mediaUrl)}
+                                aria-label={`Download ${getMessageFileName(message) || 'attachment'}`}
                               >
                                 <span className={styles.fileAttachmentIcon}>
+                                  <span>{getFileExtension(getMessageFileName(message))}</span>
                                   <FontAwesomeIcon icon={faFileSolid} />
                                 </span>
                                 <span className={styles.fileAttachmentInfo}>
                                   <span className={styles.fileAttachmentName}>
                                     {getMessageFileName(message) || 'Attachment'}
                                   </span>
-                                  {message?.file_size ? (
-                                    <span className={styles.fileAttachmentSize}>
-                                      {formatFileSize(message.file_size)}
-                                    </span>
-                                  ) : null}
+                                  <span className={styles.fileAttachmentSize}>
+                                    {message?.file_size ? formatFileSize(message.file_size) : 'Document'}
+                                    {!mediaUrl
+                                      ? (isManualMediaLoading || autoDownloadMedia ? ' · preparing' : ' · tap to download')
+                                      : ''}
+                                  </span>
                                 </span>
-                              </a>
+                                <span className={styles.fileAttachmentDownload}>
+                                  {isManualMediaLoading || (autoDownloadMedia && !mediaUrl)
+                                    ? <span className={styles.filePreparingSpinner} />
+                                    : <FontAwesomeIcon icon={faDownload} />}
+                                </span>
+                              </button>
                               {isMediaOnly && (
                                 <div className={styles.mediaDocumentFooter}>
                                   {messageFooterMarkup}
@@ -4646,12 +4849,28 @@ function ChatsPage() {
                               )}
                             </div>
                           )}
-                          {isMedia && !isDocument && !['video', 'voice', 'audio'].includes(resolvedMessageType) && (
+                          {isMediaReady && !isDocument && !['video', 'voice', 'audio'].includes(resolvedMessageType) && (
                             <div className={styles.mediaImageWrap}>
-                              <img
-                                src={mediaUrl}
-                                alt={resolvedMessageType}
-                                className={`${styles.messageMedia} ${
+                              <button
+                                type="button"
+                                className={styles.mediaImageButton}
+                                onClick={() => {
+                                  if (fullscreenMedia) {
+                                    setMediaViewer({
+                                      url: mediaUrl,
+                                      message,
+                                      type: resolvedMessageType,
+                                    });
+                                  } else {
+                                    window.open(mediaUrl, '_blank', 'noopener,noreferrer');
+                                  }
+                                }}
+                                aria-label={fullscreenMedia ? 'Open fullscreen media viewer' : 'Open media in new tab'}
+                              >
+                                <img
+                                  src={mediaUrl}
+                                  alt={getMessageFileName(message) || resolvedMessageType}
+                                  className={`${styles.messageMedia} ${
                                   resolvedMessageType === 'sticker'
                                     ? styles.messageMediaSticker
                                     : resolvedMessageType === 'gif'
@@ -4663,10 +4882,24 @@ function ChatsPage() {
                                     scrollToBottom();
                                   }
                                 }}
-                                onError={(e) => {
-                                  e.target.style.display = 'none';
-                                }}
-                              />
+                                  onError={(e) => {
+                                    e.target.style.display = 'none';
+                                  }}
+                                />
+                              </button>
+                              {resolvedMessageType !== 'sticker' && (
+                                <button
+                                  type="button"
+                                  className={styles.mediaQuickDownload}
+                                  onClick={(event) => {
+                                    event.stopPropagation();
+                                    handleDownloadMessage(message);
+                                  }}
+                                  aria-label="Download media"
+                                >
+                                  <FontAwesomeIcon icon={faDownload} />
+                                </button>
+                              )}
                               {isMediaOnly && (
                                 <div className={styles.mediaImageFooter}>
                                   {messageFooterMarkup}
@@ -4674,9 +4907,17 @@ function ChatsPage() {
                               )}
                             </div>
                           )}
-                          {/* ADDED dir="auto" HERE FOR RTL SUPPORT */}
-                          {messageContent.trim() && <p dir="auto">{messageContent}</p>} 
-                          {!isMediaOnly && (
+                          {hasMediaCaption ? (
+                            <div className={styles.mediaCaptionBlock}>
+                              <p dir="auto" className={styles.mediaCaptionText}>{messageContent}</p>
+                              <div className={`${styles.messageFooter} ${styles.mediaCaptionFooter}`}>
+                                {messageFooterMarkup}
+                              </div>
+                            </div>
+                          ) : (
+                            messageContent.trim() && <p dir="auto">{messageContent}</p>
+                          )}
+                          {!isMediaOnly && !hasMediaCaption && (
                             <div className={styles.messageFooter}>
                               {messageFooterMarkup}
                             </div>
@@ -4690,14 +4931,180 @@ function ChatsPage() {
               </div>
             </div>
   
+            {mediaViewer && (
+              <div
+                className={styles.mediaViewerBackdrop}
+                role="dialog"
+                aria-modal="true"
+                aria-label="Media viewer"
+                onMouseDown={(event) => {
+                  if (event.target === event.currentTarget) setMediaViewer(null);
+                }}
+              >
+                <div className={styles.mediaViewerToolbar}>
+                  <span>{getMessageFileName(mediaViewer.message) || (mediaViewer.type === 'gif' ? 'GIF' : 'Photo')}</span>
+                  <div>
+                    <button
+                      type="button"
+                      onClick={() => handleDownloadMessage(mediaViewer.message)}
+                      aria-label="Download media"
+                    >
+                      <FontAwesomeIcon icon={faDownload} />
+                    </button>
+                    <button type="button" onClick={() => setMediaViewer(null)} aria-label="Close media viewer">
+                      <FontAwesomeIcon icon={faXmark} />
+                    </button>
+                  </div>
+                </div>
+                <img src={mediaViewer.url} alt={getMessageFileName(mediaViewer.message) || 'Shared media'} />
+              </div>
+            )}
+
+            {pendingMediaItems.length > 0 && selectedPendingMedia && (
+              <div
+                className={styles.mediaUploadBackdrop}
+                role="dialog"
+                aria-modal="true"
+                aria-labelledby="media-upload-title"
+                onMouseDown={(event) => {
+                  if (event.target === event.currentTarget) closePendingMedia();
+                }}
+              >
+                <section className={styles.mediaUploadDialog}>
+                  <header className={styles.mediaUploadHeader}>
+                    <div>
+                      <h2 id="media-upload-title">Send media</h2>
+                      <p>{pendingMediaItems.length} of {MAX_MEDIA_BATCH} selected · 20 MB maximum each</p>
+                    </div>
+                    <button
+                      type="button"
+                      className={styles.mediaUploadClose}
+                      onClick={closePendingMedia}
+                      disabled={isSendingPendingMedia}
+                      aria-label="Close media preview"
+                    >
+                      <FontAwesomeIcon icon={faXmark} />
+                    </button>
+                  </header>
+
+                  <div className={styles.mediaUploadPreview}>
+                    {selectedPendingMedia.type === 'image' && (
+                      <img src={selectedPendingMedia.previewUrl} alt={selectedPendingMedia.file.name} />
+                    )}
+                    {selectedPendingMedia.type === 'video' && (
+                      <video src={selectedPendingMedia.previewUrl} controls preload="metadata" />
+                    )}
+                    {(selectedPendingMedia.type === 'voice' || selectedPendingMedia.type === 'file') && (
+                      <div className={styles.mediaFilePreview}>
+                        <span className={styles.mediaFilePreviewIcon}>
+                          <FontAwesomeIcon
+                            icon={selectedPendingMedia.type === 'voice' ? faMusic : faFileLines}
+                          />
+                        </span>
+                        <strong>{selectedPendingMedia.file.name}</strong>
+                        <span>{formatFileSize(selectedPendingMedia.file.size)}</span>
+                      </div>
+                    )}
+                    <button
+                      type="button"
+                      className={styles.mediaPreviewRemove}
+                      onClick={() => removePendingMedia(selectedPendingMedia.id)}
+                      disabled={isSendingPendingMedia}
+                      aria-label={`Remove ${selectedPendingMedia.file.name}`}
+                    >
+                      <FontAwesomeIcon icon={faTrash} />
+                    </button>
+                  </div>
+
+                  <div className={styles.mediaThumbnailRail} aria-label="Selected files">
+                    {pendingMediaItems.map((item) => (
+                      <button
+                        key={item.id}
+                        type="button"
+                        className={`${styles.mediaThumbnail} ${
+                          item.id === selectedPendingMedia.id ? styles.mediaThumbnailActive : ''
+                        }`}
+                        onClick={() => setSelectedPendingMediaId(item.id)}
+                        aria-label={`Preview ${item.file.name}`}
+                      >
+                        {item.type === 'image' && <img src={item.previewUrl} alt="" />}
+                        {item.type === 'video' && (
+                          <>
+                            <video src={item.previewUrl} muted preload="metadata" />
+                            <FontAwesomeIcon icon={faVideo} />
+                          </>
+                        )}
+                        {(item.type === 'voice' || item.type === 'file') && (
+                          <FontAwesomeIcon icon={item.type === 'voice' ? faMusic : faFileLines} />
+                        )}
+                      </button>
+                    ))}
+                    {pendingMediaItems.length < MAX_MEDIA_BATCH && (
+                      <button
+                        type="button"
+                        className={`${styles.mediaThumbnail} ${styles.mediaThumbnailAdd}`}
+                        onClick={() => openAttachmentPicker('file-upload')}
+                        disabled={isSendingPendingMedia}
+                        aria-label="Add more files"
+                      >
+                        <FontAwesomeIcon icon={faPlus} />
+                      </button>
+                    )}
+                  </div>
+
+                  <div className={styles.mediaUploadComposer}>
+                    <div className={styles.mediaCaptionField}>
+                      <textarea
+                        value={pendingMediaCaption}
+                        onChange={(event) => setPendingMediaCaption(event.target.value.slice(0, MAX_MESSAGE_LENGTH))}
+                        onKeyDown={(event) => {
+                          if (event.key === 'Enter' && !event.shiftKey) {
+                            event.preventDefault();
+                            handleSendPendingMedia();
+                          }
+                        }}
+                        rows={1}
+                        placeholder="Add a caption..."
+                        aria-label="Media caption"
+                        disabled={isSendingPendingMedia}
+                      />
+                      <span>{pendingMediaCaption.length}/{MAX_MESSAGE_LENGTH}</span>
+                    </div>
+                    <button
+                      type="button"
+                      className={styles.mediaSendButton}
+                      onClick={handleSendPendingMedia}
+                      disabled={isSendingPendingMedia}
+                      aria-label={`Send ${pendingMediaItems.length} selected ${pendingMediaItems.length === 1 ? 'file' : 'files'}`}
+                    >
+                      {isSendingPendingMedia ? (
+                        <span className={styles.mediaSendSpinner} />
+                      ) : (
+                        <FontAwesomeIcon icon={faPaperPlane} />
+                      )}
+                    </button>
+                  </div>
+                </section>
+              </div>
+            )}
+
             <div className={styles.inputBar}>
+            <input
+              id="media-upload"
+              type="file"
+              multiple
+              accept="image/*,video/*"
+              hidden
+              onChange={handleFileChange}
+              title="Maximum file size is 20 MB"
+            />
             <input
               id="file-upload"
               type="file"
               multiple
-              style={{ display: 'none' }}
+              hidden
               onChange={handleFileChange}
-              title="Maximum file size is 5MB"
+              title="Maximum file size is 20 MB"
             />
             
             {/* Left Actions */}
@@ -4705,29 +5112,53 @@ function ChatsPage() {
               <div className={styles.optionsMenuContainer} ref={optionsMenuRef}>
                 <button
                   type="button"
-                  className={styles.actionButton}
+                  className={`${styles.actionButton} ${isOptionsMenuOpen ? styles.attachmentButtonActive : ''}`}
                   onClick={handleOptionsMenuToggle}
-                  aria-label="More options"
+                  aria-label="Attach media or file"
+                  aria-expanded={isOptionsMenuOpen}
                 >
-                  <FontAwesomeIcon icon={faPlus} />
+                  <FontAwesomeIcon icon={faPaperclip} />
                 </button>
                 {isOptionsMenuOpen && (
                   <div className={styles.optionsMenu}>
                     <button
                       type="button"
-                      className={styles.optionsMenuItem}
-                      onClick={handleSendLocationClick}
+                      className={`${styles.optionsMenuItem} ${styles.attachmentMenuItem}`}
+                      onClick={handleUploadMediaClick}
                     >
-                      <FontAwesomeIcon icon={faLocationDot} />
-                      <span>Send Location</span>
+                      <span className={`${styles.attachmentMenuIcon} ${styles.attachmentMenuIconMedia}`}>
+                        <FontAwesomeIcon icon={faImage} />
+                      </span>
+                      <span>
+                        <strong>Photo or video</strong>
+                        <small>Share from your library</small>
+                      </span>
                     </button>
                     <button
                       type="button"
-                      className={styles.optionsMenuItem}
+                      className={`${styles.optionsMenuItem} ${styles.attachmentMenuItem}`}
                       onClick={handleUploadFileClick}
                     >
-                      <FontAwesomeIcon icon={faFileSolid} />
-                      <span>Upload File</span>
+                      <span className={`${styles.attachmentMenuIcon} ${styles.attachmentMenuIconFile}`}>
+                        <FontAwesomeIcon icon={faFileSolid} />
+                      </span>
+                      <span>
+                        <strong>File</strong>
+                        <small>Send any file up to 20 MB</small>
+                      </span>
+                    </button>
+                    <button
+                      type="button"
+                      className={`${styles.optionsMenuItem} ${styles.attachmentMenuItem}`}
+                      onClick={handleSendLocationClick}
+                    >
+                      <span className={`${styles.attachmentMenuIcon} ${styles.attachmentMenuIconLocation}`}>
+                        <FontAwesomeIcon icon={faLocationDot} />
+                      </span>
+                      <span>
+                        <strong>Location</strong>
+                        <small>Share your current position</small>
+                      </span>
                     </button>
                   </div>
                 )}
@@ -4820,7 +5251,7 @@ function ChatsPage() {
                   type="button"
                   className={styles.actionButton}
                   onClick={() => setIsMediaPickerOpen((prev) => !prev)}
-                  aria-label="Open emojis, GIFs, and stickers"
+                  aria-label="Open emojis and GIFs"
                 >
                   <FontAwesomeIcon icon={faFaceSmile} />
                 </button>
@@ -4841,13 +5272,7 @@ function ChatsPage() {
                       >
                         GIFs
                       </button>
-                      <button
-                        type="button"
-                        className={`${styles.mediaTab} ${mediaTab === 'stickers' ? styles.mediaTabActive : ''}`}
-                        onClick={() => setMediaTab('stickers')}
-                      >
-                        Stickers
-                      </button>
+
                     </div>
                     {mediaTab === 'emoji' && (
                       <div className={styles.emojiPane}>
