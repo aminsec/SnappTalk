@@ -41,7 +41,7 @@ export async function handleMediaDownload(req: Request, resp: Response){
     }
 
     //Checking user if has access to file, by matching conversation_id of message with user conversations
-    const [userHasAccess, err] = await checkUserHasAccessToConversation(fileMessage.conversation_id, userInfo.id);
+    const [userHasAccess, err] = await checkUserHasAccessToConversation(fileMessage.conversation_id, userInfo._id.toString());
     if(err){
         showError(err, resp);
         return;

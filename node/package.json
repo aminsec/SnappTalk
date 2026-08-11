@@ -12,6 +12,7 @@
   "dependencies": {
     "@aws-sdk/client-s3": "^3.1103.0",
     "@aws-sdk/s3-request-presigner": "^3.1103.0",
+    "@types/cookie": "^1.0.0",
     "bcrypt": "^5.1.1",
     "cookie-parser": "^1.4.7",
     "dotenv": "^16.5.0",
@@ -24,6 +25,7 @@
     "mongoose": "^9.9.1",
     "multer": "^2.2.0",
     "sequelize": "^6.37.6",
+    "socket.io": "4.8.3",
     "validate.js": "^0.13.1",
     "ws": "^8.18.1"
   },

@@ -2,6 +2,11 @@ import { Types } from "mongoose";
 export type MessageTypes = "text" | "image" | "audio" | "video" | "document" | "location" | "sticker" | "gif";
 export const validMessageTypes: MessageTypes[] = ["text", "image", "audio", "video", "document", "location", "sticker", "gif"];
 
+export interface UnreadCount {
+  conversation_id: Types.ObjectId;
+  unreadMessagesCount: number;
+}
+
 export interface Message {
     _id: Types.ObjectId;
     sender: Types.ObjectId;

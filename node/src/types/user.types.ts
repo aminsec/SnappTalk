@@ -1,7 +1,7 @@
 import { Types } from "mongoose";
 
 export interface ProtectedUserInfo {
-    id: string,
+    _id: Types.ObjectId,
     email: string,
     username: string,
     profile_pic: string,

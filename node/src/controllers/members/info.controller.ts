@@ -7,7 +7,7 @@ import { Types } from "mongoose";
 
 export async function showMemberInfo(req: Request, resp: Response) {
     const { userid } = req.params;
-    const [memberInfo, error] = await getUserInfoById(new Types.ObjectId(userid));
+    const [memberInfo, error] = await getUserInfoById([new Types.ObjectId(userid)]);
     if(error){
         showError(error, resp);
         return;

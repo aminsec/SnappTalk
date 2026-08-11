@@ -1,4 +1,5 @@
 import { Types } from "mongoose";
+import { Message } from "./messages.types"
 
 export interface Conversation {
     _id: Types.ObjectId,
@@ -8,7 +9,7 @@ export interface Conversation {
     members: Types.ObjectId[],
     contact_info?: any,
     last_message_id: Record<string, Types.ObjectId>,
-    last_message?: Object,
+    last_message?:  Message | null,
     deleted_for: Record<string, Date>,
     created_at: Date,
     unread_messages_count?: Number

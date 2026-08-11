@@ -5,7 +5,7 @@ import { ErrorResponse } from "../types/response.types";
 
 export async function connectUserToRooms(socket: Socket): Promise<[true | false | null, ErrorResponse | null]> {
     try {
-        const userConversations = await ConversationModel.find({members: {$in: [new Types.ObjectId(socket.userInfo.id)]}}).lean();
+        const userConversations = await ConversationModel.find({members: {$in: [socket.userInfo._id]}}).lean();
         if(userConversations){
             for(let conversation of userConversations){
                 socket.join(conversation._id.toString());
@@ -25,7 +25,7 @@ export async function connectUserToRooms(socket: Socket): Promise<[true | false 
 
 export async function sendUserStatusToRooms(socket: Socket, status: string): Promise<void> {
     for(let rooms of socket.rooms){
-        socket.to(rooms).emit(`status:${status}`, {user_id: socket.userInfo.id});
+        socket.to(rooms).emit(`status:${status}`, {user_id: socket.userInfo._id});
     }
 
     return;
