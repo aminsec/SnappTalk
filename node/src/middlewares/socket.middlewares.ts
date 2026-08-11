@@ -6,7 +6,7 @@ import * as cookie from "cookie";
 export async function  authenticateSocket(socket: Socket, next: Function) {
   // Getting cookies from headers
   const rawCookies = socket.handshake.headers.cookie || "";
-  const cookies = cookie.parse(rawCookies);
+  const cookies = cookie.parseCookie(rawCookies);
 
   if(!cookies.token){
     const socketErrorMessage = {error: "auth_error", message: "Invalid auth token"};
