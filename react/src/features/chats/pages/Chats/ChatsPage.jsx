@@ -4492,20 +4492,19 @@ function ChatsPage() {
                   const showDateSeparator = !prevDateObj || currentDateObj !== prevDateObj;
 
                   // --- EXISTING VARIABLE LOGIC (Keep exactly as you have it) ---
-                  const userId = user?.id;
                   const username = user?.username;
-                  const messageSenderId = message.sender?.toString() || message.sender;
+                  // The backend user object uses `_id` (MongoDB ObjectId), not `id`.
+                  // Reading `user?.id` here yielded `undefined`, which combined with
+                  // absent optional fields (e.g. message.sender_id) caused
+                  // `undefined === undefined` to be true for EVERY message,
+                  // so every bubble rendered as "sent". Use `_id` with an `id` fallback.
+                  const userId = user?._id || user?.id;
+                  const messageSenderId = getSenderId(message)?.toString();
+                  // Only compare when we have a real sender id, to avoid the
+                  // `undefined === undefined` false-positive.
                   const currentUserId = userId?.toString() || userId;
-                  const isMyMessage = messageSenderId === currentUserId ||
-                    message.sender === currentUserId ||
-                    message.sender_id?.toString() === currentUserId ||
-                    message.sender_id === currentUserId ||
-                    message.user_id?.toString() === currentUserId ||
-                    message.user_id === currentUserId ||
-                    message.from_user_id?.toString() === currentUserId ||
-                    message.from_user_id === currentUserId ||
-                    message.sender === username ||
-                    message.sender_name === username;
+                  const isMyMessage = Boolean(messageSenderId && currentUserId) &&
+                    messageSenderId === currentUserId;
                   const messageId = message._id || message.id || `msg-${index}`;
                   const messageContent = message.content || message.text || '';
                   const messageTime = message.when || message.timestamp || message.created_at;
