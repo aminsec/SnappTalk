@@ -542,7 +542,7 @@ function ChatsPage() {
       id: optimisticId,
       client_id: optimisticId,
       conversation_id: conversationId,
-      sender: user?.id,
+      sender: user?._id || user?.id,
       type: 'text',
       content,
       created_at: new Date().toISOString(),
@@ -608,7 +608,7 @@ function ChatsPage() {
           sender: user?.username || chat?.last_message?.sender || '',
           when: optimisticMessage.created_at,
           message_id: optimisticId,
-          sender_id: user?.id,
+          sender_id: user?._id || user?.id,
         },
       };
 
@@ -3612,7 +3612,7 @@ function ChatsPage() {
         id: optimisticId,
         client_id: optimisticId,
         conversation_id: conversationId,
-        sender: user?.id,
+        sender: user?._id || user?.id,
         type: backendType,
         content: caption || '',
         created_at: new Date().toISOString(),
@@ -3650,7 +3650,7 @@ function ChatsPage() {
             sender: user?.username || chat?.last_message?.sender || '',
             when: optimisticMessage.created_at,
             message_id: optimisticId,
-            sender_id: user?.id,
+            sender_id: user?._id || user?.id,
           },
         };
         const [moved] = next.splice(idx, 1);
