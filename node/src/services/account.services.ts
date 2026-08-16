@@ -4,6 +4,7 @@ import { User } from "../models/users.model";
 import { ProtectedUserInfo, RawUserInfo } from "../types/user.types";
 import { ErrorResponse } from "../types/response.types";
 import { makeBcryptHash, whiteListUserInfo } from "../utils/operations";
+import { PROTECTED_USER_INFO_FIELDS_TO_SELECT } from "../constants/user";
 
 export async function getRawUserInfo(userid: Types.ObjectId): Promise<[RawUserInfo | null, ErrorResponse | null]> {
     try {
@@ -25,7 +26,7 @@ export async function getRawUserInfo(userid: Types.ObjectId): Promise<[RawUserIn
 
 export async function getUserInfoById(id: Types.ObjectId[]): Promise<[ProtectedUserInfo[] | null, ErrorResponse | null]> {
     try {
-        const user: ProtectedUserInfo[] | null = await User.find({_id: {$in: id}}).select("_id username email role profile_pic joined_at bio status").lean();
+        const user: ProtectedUserInfo[] | null = await User.find({_id: {$in: id}}).select(PROTECTED_USER_INFO_FIELDS_TO_SELECT).lean();
         return [user, null];
 
     } catch (error) {

@@ -5588,7 +5588,6 @@ function ChatsPage() {
         isOpen={isNewConversationModalOpen}
         onClose={handleCloseModal}
         onSelectUser={handleSelectUser}
-        existingContacts={contacts}
       />
     </div>
   );

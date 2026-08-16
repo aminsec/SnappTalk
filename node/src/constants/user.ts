@@ -1,0 +1,1 @@
+export const PROTECTED_USER_INFO_FIELDS_TO_SELECT = "_id username email role profile_pic joined_at bio status";
