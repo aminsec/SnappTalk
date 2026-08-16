@@ -4697,7 +4697,8 @@ function ChatsPage() {
                                   <span className={styles.replyPreviewLabel}>
                                     {(() => {
                                       const replySenderId = getSenderId(replyPreview)?.toString();
-                                      if (replySenderId && replySenderId === user?.id?.toString()) return 'You';
+                                      const currentUserId = (user?._id || user?.id)?.toString();
+                                      if (replySenderId && currentUserId && replySenderId === currentUserId) return 'You';
                                       if (selectedChat?.type === 'pv') {
                                         return selectedChat?.contact_info?.username || 'User';
                                       }
@@ -5174,7 +5175,8 @@ function ChatsPage() {
                       <span className={styles.replyBarLabel}>
                         {(() => {
                           const senderId = getSenderId(replyingToMessage)?.toString();
-                          if (senderId && senderId === user?.id?.toString()) return 'You';
+                          const currentUserId = (user?._id || user?.id)?.toString();
+                          if (senderId && currentUserId && senderId === currentUserId) return 'You';
                           if (selectedChat?.type === 'pv') {
                             return selectedChat?.contact_info?.username || 'User';
                           }
