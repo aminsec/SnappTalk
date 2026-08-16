@@ -5,15 +5,18 @@ import { faCog, faComment } from '@fortawesome/free-solid-svg-icons';
 import Logo from '@/shared/assets/images/MiniLogo.png';
 import { ProfileAvatar } from '@/shared/components';
 import { useAuth } from '@/shared/state/useAuth';
+import { AUTH_STATUS } from '@/shared/state/userStateContext';
 
 import SidebarItem from './SidebarItem';
 import styles from './Sidebar.module.css';
 
 function Sidebar({ className }) {
   const navigate = useNavigate();
-  const { user, refreshUser } = useAuth();
+  const { user, status, refreshUser } = useAuth();
   const [isLoggingOut, setIsLoggingOut] = useState(false);
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
+
+  const isAuthenticated = status === AUTH_STATUS.AUTHENTICATED;
 
   const handleLogout = useCallback(async () => {
     if (isLoggingOut) {
@@ -67,22 +70,28 @@ function Sidebar({ className }) {
       </nav>
 
       {/* Bottom Section */}
-      <div className={styles.bottomSection}>
-        <ProfileAvatar
-          src={user?.profile_pic}
-          size={50}
-          borderColor="var(--primary-color)"
-        />
-        <SidebarItem to="/settings" icon={faCog} label="Settings" />
-        <button
-          type="button"
-          className={styles.logoutButton}
-          onClick={handleOpenConfirm}
-          disabled={isLoggingOut}
-        >
-          {isLoggingOut ? 'Logging out…' : 'Logout'}
-        </button>
-      </div>
+      {isAuthenticated ? (
+        <div className={styles.bottomSection}>
+          <ProfileAvatar
+            src={user?.profile_pic}
+            size={50}
+            borderColor="var(--primary-color)"
+          />
+          <SidebarItem to="/settings" icon={faCog} label="Settings" />
+          <button
+            type="button"
+            className={styles.logoutButton}
+            onClick={handleOpenConfirm}
+            disabled={isLoggingOut}
+          >
+            {isLoggingOut ? 'Logging out…' : 'Logout'}
+          </button>
+        </div>
+      ) : (
+        <div className={styles.bottomSection}>
+          <SidebarItem to="/login" icon={faComment} label="Log in" />
+        </div>
+      )}
 
       {showLogoutConfirm && (
         <div className={styles.confirmOverlay} role="dialog" aria-modal="true">

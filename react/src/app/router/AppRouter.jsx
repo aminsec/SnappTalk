@@ -16,7 +16,6 @@ const AppRouter = () => (
     <Routes>
       <Route element={<RequireAuth />}>
         <Route path="/chats" element={<ChatsPage />} />
-        <Route path="/members/:userId" element={<ProfilePage />} />
         <Route path="/settings/*" element={<SettingsPage />}>
           <Route path="profile" element={<ProfileSection />} />
           <Route path="general" element={<GeneralSection />} />
@@ -24,6 +23,9 @@ const AppRouter = () => (
           <Route path="account" element={<AccountSection />} />
         </Route>
       </Route>
+
+      {/* Public profile - accessible to unauthenticated users too */}
+      <Route path="/members/:userId" element={<ProfilePage />} />
 
       <Route element={<RequireGuest />}>
         <Route path="/login" element={<LoginPage />} />

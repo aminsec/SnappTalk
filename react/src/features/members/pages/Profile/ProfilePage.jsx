@@ -7,6 +7,7 @@ import { faArrowLeft } from '@fortawesome/free-solid-svg-icons';
 
 import { Sidebar, Button, ProfileAvatar } from '@/shared/components';
 import { useAuth } from '@/shared/state/useAuth';
+import { AUTH_STATUS } from '@/shared/state/userStateContext';
 import { useSocket } from '@/shared/state/useSocket';
 
 import styles from './ProfilePage.module.css';
@@ -14,7 +15,7 @@ import styles from './ProfilePage.module.css';
 function ProfilePage() {
   const { userId } = useParams();
   const navigate = useNavigate();
-  const { user } = useAuth();
+  const { user, status } = useAuth();
   const { socket } = useSocket();
   const [profile, setProfile] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -119,7 +120,8 @@ function ProfilePage() {
   }, [socket, userId]);
 
   const profileId = profile?._id || profile?.id;
-  const isMe = user?.id && profileId && user.id.toString() === profileId.toString();
+  const currentUserId = (user?._id || user?.id)?.toString();
+  const isMe = currentUserId && profileId && currentUserId === profileId.toString();
   const memberSince = useMemo(() => {
     const raw = profile?.joined_at;
     if (!raw) return '—';
@@ -130,6 +132,13 @@ function ProfilePage() {
 
   const handleSendMessage = () => {
     if (!profileId) return;
+
+    // Unauthenticated users must log in before starting a conversation
+    if (status !== AUTH_STATUS.AUTHENTICATED) {
+      navigate('/login', { replace: true });
+      return;
+    }
+
     const params = new URLSearchParams();
     params.set('startUser', profileId);
     navigate(`/chats?${params.toString()}`);
@@ -137,7 +146,7 @@ function ProfilePage() {
 
   return (
     <div className={styles.profilePage}>
-      <Sidebar className={styles.sidebar} />
+      {status === AUTH_STATUS.AUTHENTICATED && <Sidebar className={styles.sidebar} />}
       <main className={styles.profileContent}>
         <div className={styles.profileCard}>
           {isLoading ? (
@@ -167,8 +176,15 @@ function ProfilePage() {
                     </span>
                   </div>
                 </div>
-                {!isMe && (
-                  <Button size="md" onClick={handleSendMessage} className={styles.messageButton}>
+                {status === AUTH_STATUS.AUTHENTICATED ? (
+                  !isMe && (
+                    <Button size="md" onClick={handleSendMessage} className={styles.messageButton}>
+                      <FontAwesomeIcon icon={faPaperPlane} />
+                      <span>Send message</span>
+                    </Button>
+                  )
+                ) : (
+                  <Button size="md" className={styles.messageButton} onClick={() => navigate('/login')}>
                     <FontAwesomeIcon icon={faPaperPlane} />
                     <span>Send message</span>
                   </Button>
@@ -194,13 +210,24 @@ function ProfilePage() {
                   </span>
                 </div>
               </div>
+
+              {status !== AUTH_STATUS.AUTHENTICATED && (
+                <div className={styles.signupLink}>
+                  <a href="/login">Create account to start chatting</a>
+                </div>
+              )}
             </>
           ) : (
             <div className={styles.emptyState}>
               <h2>Profile not found</h2>
               <p>We couldn’t load this user.</p>
-              <Button size="md" onClick={() => navigate('/chats')}>
-                Back to chats
+              <Button
+                size="md"
+                onClick={() =>
+                  navigate(status === AUTH_STATUS.AUTHENTICATED ? '/chats' : '/')
+                }
+              >
+                {status === AUTH_STATUS.AUTHENTICATED ? 'Back to chats' : 'Go home'}
               </Button>
             </div>
           )}
