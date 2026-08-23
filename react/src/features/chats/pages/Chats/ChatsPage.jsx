@@ -88,6 +88,13 @@ const MAX_MEDIA_BATCH = 10;
 const MESSAGES_LIMIT = 10; // Max number of messages per request
 const MAX_MESSAGE_LENGTH = 255;
 
+const createOptimisticId = () => {
+  if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
+    return `optimistic-${crypto.randomUUID()}`;
+  }
+  return `optimistic-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+};
+
 // Helper functions
 const convertISOtoLocal = (isoDate) => {
   try {
@@ -226,22 +233,46 @@ const normalizeMessage = (message, chat, currentUserId) => {
   };
 };
 
-const uploadMediaFile = async (file) => {
+const uploadMediaFile = (file, { onProgress, onRequest } = {}) => new Promise((resolve, reject) => {
   const formData = new FormData();
   formData.append('file', file);
-  const response = await fetch('/api/v1/user/media/upload', {
-    method: 'POST',
-    credentials: 'include',
-    body: formData,
+
+  const request = new XMLHttpRequest();
+  request.open('POST', '/api/v1/user/media/upload');
+  request.withCredentials = true;
+
+  request.upload.addEventListener('progress', (event) => {
+    if (!event.lengthComputable) return;
+    onProgress?.(Math.round((event.loaded / event.total) * 100));
   });
 
-  if (!response.ok) {
-    throw new Error('Unable to upload media right now.');
-  }
+  request.addEventListener('load', () => {
+    if (request.status < 200 || request.status >= 300) {
+      reject(new Error('Unable to upload media right now.'));
+      return;
+    }
 
-  const data = await response.json();
-  return data?.fileKey || data?.file_key || data?.data?.fileKey || '';
-};
+    try {
+      const data = JSON.parse(request.responseText || '{}');
+      resolve(data?.fileKey || data?.file_key || data?.data?.fileKey || '');
+    } catch {
+      reject(new Error('Upload returned an invalid response.'));
+    }
+  });
+
+  request.addEventListener('error', () => {
+    reject(new Error('Unable to upload media right now.'));
+  });
+
+  request.addEventListener('abort', () => {
+    const error = new Error('Upload canceled.');
+    error.name = 'AbortError';
+    reject(error);
+  });
+
+  onRequest?.(request);
+  request.send(formData);
+});
 
 // Maps frontend media types to the backend's MessageTypes
 const getBackendMessageType = (type) => {
@@ -337,7 +368,6 @@ function ChatsPage() {
   const [mediaUploadProgress, setMediaUploadProgress] = useState({});
   const [pendingMediaItems, setPendingMediaItems] = useState([]);
   const [selectedPendingMediaId, setSelectedPendingMediaId] = useState(null);
-  const [isSendingPendingMedia, setIsSendingPendingMedia] = useState(false);
   const [mediaViewer, setMediaViewer] = useState(null);
   const [autoDownloadMedia, setAutoDownloadMedia] = useState(getAutoDownloadMedia);
   const [fullscreenMedia, setFullscreenMedia] = useState(getFullscreenMedia);
@@ -411,10 +441,15 @@ function ChatsPage() {
     const isNearBottomRef = useRef(true);
   const animatedMessageIdsRef = useRef(new Set());
   const pendingPvRef = useRef(null);
+  const pendingPvMediaCreationsRef = useRef(new Map());
+  const pendingPvMediaCreationQueueRef = useRef(Promise.resolve());
   const pendingMessagesRef = useRef({});
   const pendingSendMapRef = useRef({});
   const pendingReplyMapRef = useRef({});
   const pendingAckTimersRef = useRef({});
+  const mediaUploadRequestsRef = useRef(new Map());
+  const mediaUploadTasksRef = useRef(new Map());
+  const isDispatchingPendingMediaRef = useRef(false);
   const recentReceiveRef = useRef({});
   const seenSentRef = useRef({});
   const messageAnimationTimeoutRef = useRef(null);
@@ -529,6 +564,54 @@ function ChatsPage() {
     conversationAliasRef.current.set(tempStr, realStr);
     conversationAliasRef.current.set(realStr, realStr);
   }, []);
+
+  const promotePendingConversation = useCallback((tempId, realId) => {
+    if (!tempId || !realId) return;
+
+    const tempIdStr = tempId.toString();
+    const realIdStr = realId.toString();
+    setConversationAlias(tempIdStr, realIdStr);
+
+    setContacts((currentContacts) => currentContacts.map((chat) => (
+      getConversationId(chat)?.toString() === tempIdStr
+        ? {
+            ...chat,
+            _id: realIdStr,
+            id: realIdStr,
+            client_id: chat.client_id || getConversationId(chat),
+          }
+        : chat
+    )));
+    setSelectedChat((currentChat) => (
+      currentChat && getConversationId(currentChat)?.toString() === tempIdStr
+        ? { ...currentChat, _id: realIdStr, id: realIdStr }
+        : currentChat
+    ));
+    setMessages((currentMessages) => currentMessages.map((message) => (
+      message.conversation_id?.toString() === tempIdStr
+        ? { ...message, conversation_id: realIdStr }
+        : message
+    )));
+    setMessagesConversationId((currentId) => (
+      currentId?.toString() === tempIdStr ? realIdStr : currentId
+    ));
+
+    Object.values(pendingSendMapRef.current).forEach((pendingMessage) => {
+      if (pendingMessage?.conversationId?.toString() === tempIdStr) {
+        pendingMessage.conversationId = realIdStr;
+      }
+    });
+    Object.values(pendingReplyMapRef.current).forEach((pendingMessage) => {
+      if (pendingMessage?.conversationId?.toString() === tempIdStr) {
+        pendingMessage.conversationId = realIdStr;
+      }
+    });
+    mediaUploadTasksRef.current.forEach((task) => {
+      if (task?.conversationId?.toString() === tempIdStr) {
+        task.conversationId = realIdStr;
+      }
+    });
+  }, [setConversationAlias]);
 
   const handleSendMessage = useCallback(() => {
     const content = messageInput.trim();
@@ -666,6 +749,56 @@ function ChatsPage() {
       }
 
       if (isPendingPv && contactUserId) {
+        const pendingMediaCreation = pendingPvMediaCreationsRef.current.get(
+          conversationId.toString()
+        );
+        if (pendingMediaCreation) {
+          void pendingMediaCreation.conversationPromise
+            .then((resolvedConversationId) => {
+              if (!socket || !socket.connected) {
+                throw new Error('Not connected.');
+              }
+              if (pendingSendMapRef.current[optimisticId]) {
+                pendingSendMapRef.current[optimisticId].conversationId = resolvedConversationId;
+              }
+              if (pendingReplyMapRef.current[optimisticId]) {
+                pendingReplyMapRef.current[optimisticId].conversationId = resolvedConversationId;
+              }
+              if (replyTo) {
+                socket.emit(SOCKET_EVENTS.MESSAGE_SEND_REPLY, {
+                  conversation_id: resolvedConversationId,
+                  message_text: content,
+                  reply_to: replyTo.messageId,
+                  track_id: optimisticId,
+                  message_type: 'text',
+                });
+                return;
+              }
+              socket.emit(SOCKET_EVENTS.MESSAGE_SEND, {
+                conversation_id: resolvedConversationId,
+                message_text: content,
+                track_id: optimisticId,
+                message_type: 'text',
+              });
+            })
+            .catch((error) => {
+              console.error('Failed to send message after creating conversation:', error);
+              delete pendingSendMapRef.current[optimisticId];
+              delete pendingReplyMapRef.current[optimisticId];
+              if (pendingAckTimersRef.current[optimisticId]) {
+                clearTimeout(pendingAckTimersRef.current[optimisticId]);
+                delete pendingAckTimersRef.current[optimisticId];
+              }
+              setMessages((currentMessages) => currentMessages.map((message) => (
+                getMessageId(message) === optimisticId
+                  ? { ...message, status: 'error' }
+                  : message
+              )));
+              toast.error('Unable to send message right now.');
+            });
+          return;
+        }
+
         pendingPvRef.current = {
           tempId: conversationId,
           contactUserId,
@@ -1892,36 +2025,20 @@ function ChatsPage() {
       const isAlreadyExistsError = typeof errorMessage === 'string'
         && errorMessage.toLowerCase().includes('already have conversation');
 
-      if (isAlreadyExistsError && pendingPv?.trackId && pendingPv?.messageText) {
+      if (isAlreadyExistsError && pendingPv?.trackId) {
         const pendingTrackId = pendingPv.trackId;
         const resolvedConversationId = errorConversationId?.toString();
 
         const tempId = pendingPv.tempId?.toString();
         if (resolvedConversationId && tempId) {
-          setConversationAlias(tempId, resolvedConversationId);
-          setContacts((prev) =>
-            prev.map((chat) =>
-              getConversationId(chat)?.toString() === tempId
-                ? { ...chat, _id: resolvedConversationId, id: resolvedConversationId }
-                : chat
-            )
-          );
-          setSelectedChat((prev) =>
-            prev && getConversationId(prev)?.toString() === tempId
-              ? { ...prev, _id: resolvedConversationId, id: resolvedConversationId }
-              : prev
-          );
-          setMessages((prev) =>
-            prev.map((m) =>
-              m.conversation_id?.toString() === tempId
-                ? { ...m, conversation_id: resolvedConversationId }
-                : m
-            )
-          );
-          setMessagesConversationId(resolvedConversationId);
-          if (pendingSendMapRef.current[pendingTrackId]) {
-            pendingSendMapRef.current[pendingTrackId].conversationId = resolvedConversationId;
-          }
+          promotePendingConversation(tempId, resolvedConversationId);
+        }
+
+        if (pendingPv.mediaCreation && resolvedConversationId) {
+          pendingPv.mediaCreation.creatorMessageHandled = false;
+          pendingPv.mediaCreation.resolveConversation(resolvedConversationId);
+          pendingPvRef.current = null;
+          return;
         }
 
         if (socket && socket.connected && resolvedConversationId) {
@@ -1929,11 +2046,43 @@ function ChatsPage() {
             conversation_id: resolvedConversationId,
             message_text: pendingPv.messageText,
             track_id: pendingTrackId,
-            message_type: 'text',
+            message_type: pendingPv.messageType || 'text',
+            attachment_key: pendingPv.attachmentKey || '',
+            replied_to: pendingPv.repliedTo || null,
           });
         }
 
         pendingPvRef.current = null;
+        return;
+      }
+
+      if (pendingPv?.mediaCreation && !trackId) {
+        pendingPv.mediaCreation.rejectConversation(
+          new Error(errorMessage || 'Unable to create conversation.')
+        );
+        pendingPvRef.current = null;
+        return;
+      }
+
+      if (pendingPv?.trackId && !trackId) {
+        const pendingTrackId = pendingPv.trackId;
+        const pending = pendingSendMapRef.current[pendingTrackId]
+          || pendingReplyMapRef.current[pendingTrackId];
+        delete pendingSendMapRef.current[pendingTrackId];
+        delete pendingReplyMapRef.current[pendingTrackId];
+        if (pendingAckTimersRef.current[pendingTrackId]) {
+          clearTimeout(pendingAckTimersRef.current[pendingTrackId]);
+          delete pendingAckTimersRef.current[pendingTrackId];
+        }
+        if (pending?.tempId) {
+          setMessages((currentMessages) => currentMessages.map((message) => (
+            getMessageId(message) === pending.tempId
+              ? { ...message, status: 'error' }
+              : message
+          )));
+        }
+        pendingPvRef.current = null;
+        toast.error(errorMessage || 'Unable to create conversation.');
         return;
       }
 
@@ -2441,32 +2590,11 @@ function ChatsPage() {
       }
 
       const tempId = pending.tempId;
-      setConversationAlias(tempId, newConversationId);
-      setContacts((prev) =>
-        prev.map((chat) =>
-          getConversationId(chat) === tempId
-            ? {
-                ...chat,
-                _id: newConversationId,
-                id: newConversationId,
-                client_id: chat.client_id || getConversationId(chat),
-              }
-            : chat
-        )
-      );
-      setSelectedChat((prev) =>
-        prev && getConversationId(prev) === tempId
-          ? { ...prev, _id: newConversationId, id: newConversationId }
-          : prev
-      );
-      setMessages((prev) =>
-        prev.map((m) =>
-          m.conversation_id === tempId
-            ? { ...m, conversation_id: newConversationId }
-            : m
-        )
-      );
-      setMessagesConversationId(newConversationId);
+      promotePendingConversation(tempId, newConversationId);
+      if (pending.mediaCreation) {
+        pending.mediaCreation.creatorMessageHandled = true;
+        pending.mediaCreation.resolveConversation(newConversationId.toString());
+      }
       pendingPvRef.current = null;
     };
 
@@ -2566,6 +2694,7 @@ function ChatsPage() {
     };
   }, [
     emitSeenForMessage,
+    promotePendingConversation,
     refreshContacts,
     setConversationAlias,
     setUnreadCount,
@@ -2829,6 +2958,21 @@ function ChatsPage() {
       if (recordingStreamRef.current) {
         recordingStreamRef.current.getTracks().forEach((track) => track.stop());
       }
+      mediaUploadRequestsRef.current.forEach((request) => request.abort());
+      mediaUploadRequestsRef.current.clear();
+      mediaUploadTasksRef.current.forEach((task) => {
+        if (task?.previewUrl?.startsWith('blob:')) {
+          URL.revokeObjectURL(task.previewUrl);
+        }
+      });
+      mediaUploadTasksRef.current.clear();
+      const cancellationError = new Error('Upload canceled.');
+      cancellationError.name = 'AbortError';
+      pendingPvMediaCreationsRef.current.forEach((creation) => {
+        creation.canceled = true;
+        creation.rejectConversation(cancellationError);
+      });
+      pendingPvMediaCreationsRef.current.clear();
     };
   }, []);
 
@@ -3664,6 +3808,43 @@ function ChatsPage() {
     }
   }, []);
 
+  const handleCancelMediaUpload = useCallback((optimisticId) => {
+    if (!optimisticId) return;
+
+    const request = mediaUploadRequestsRef.current.get(optimisticId);
+    const task = mediaUploadTasksRef.current.get(optimisticId);
+    request?.abort();
+
+    mediaUploadRequestsRef.current.delete(optimisticId);
+    mediaUploadTasksRef.current.delete(optimisticId);
+    delete pendingSendMapRef.current[optimisticId];
+    delete pendingReplyMapRef.current[optimisticId];
+
+    if (pendingAckTimersRef.current[optimisticId]) {
+      clearTimeout(pendingAckTimersRef.current[optimisticId]);
+      delete pendingAckTimersRef.current[optimisticId];
+    }
+
+    if (pendingPvRef.current?.trackId === optimisticId) {
+      pendingPvRef.current = null;
+    }
+
+    setMessages((currentMessages) => currentMessages.filter(
+      (message) => getMessageId(message)?.toString() !== optimisticId.toString()
+    ));
+    setMediaUploadProgress((currentProgress) => {
+      const nextProgress = { ...currentProgress };
+      delete nextProgress[optimisticId];
+      return nextProgress;
+    });
+
+    if (task?.previewUrl?.startsWith('blob:')) {
+      URL.revokeObjectURL(task.previewUrl);
+    }
+
+    refreshContacts();
+  }, [refreshContacts]);
+
   const sendMediaMessage = useCallback(
     async ({ file, type, previewUrl, caption }) => {
       if (!file) return;
@@ -3701,7 +3882,7 @@ function ChatsPage() {
 
       setReplyingToMessage(null);
 
-      const optimisticId = `optimistic-${Date.now()}`;
+      const optimisticId = createOptimisticId();
       const backendType = getBackendMessageType(type);
       const optimisticMessage = {
         _id: optimisticId,
@@ -3724,6 +3905,10 @@ function ChatsPage() {
 
       // Track this message's upload progress (starts at 0)
       setMediaUploadProgress((prev) => ({ ...prev, [optimisticId]: 0 }));
+      mediaUploadTasksRef.current.set(optimisticId, {
+        conversationId: conversationId.toString(),
+        previewUrl,
+      });
 
       animatedMessageIdsRef.current.add(optimisticId);
       setMessages((prev) => [...prev, optimisticMessage]);
@@ -3758,13 +3943,20 @@ function ChatsPage() {
         setMediaUploadProgress((prev) => ({ ...prev, [optimisticId]: value }));
       };
 
+      let uploadCompleted = false;
       try {
-        updateProgress(10);
-        const attachmentKey = await uploadMediaFile(file);
+        const attachmentKey = await uploadMediaFile(file, {
+          onProgress: (value) => updateProgress(Math.min(value, 99)),
+          onRequest: (request) => {
+            mediaUploadRequestsRef.current.set(optimisticId, request);
+          },
+        });
+        mediaUploadRequestsRef.current.delete(optimisticId);
         if (!attachmentKey) {
           throw new Error('Upload did not return a file key.');
         }
-        updateProgress(70);
+        uploadCompleted = true;
+        updateProgress(100);
 
         if (!socket || !socket.connected) {
           throw new Error('Not connected.');
@@ -3790,77 +3982,129 @@ function ChatsPage() {
           if (!contactUserId) {
             throw new Error('Unable to start this conversation.');
           }
-          pendingPvRef.current = {
-            tempId: conversationId,
-            contactUserId,
-            trackId: optimisticId,
-            messageText: caption || '',
-          };
-          socket.emit(
-            SOCKET_EVENTS.NEW_PV_CONVERSATION,
-            {
-              new_user_id: contactUserId,
+
+          const tempConversationId = conversationId.toString();
+          let resolvedConversationId = conversationAliasRef.current.get(tempConversationId);
+          let mediaCreation = null;
+
+          if (!resolvedConversationId || resolvedConversationId === tempConversationId) {
+            mediaCreation = pendingPvMediaCreationsRef.current.get(tempConversationId);
+
+            if (!mediaCreation) {
+              let resolveConversation;
+              let rejectConversation;
+              const conversationPromise = new Promise((resolve, reject) => {
+                resolveConversation = resolve;
+                rejectConversation = reject;
+              });
+              const waitForPreviousCreation = pendingPvMediaCreationQueueRef.current
+                .catch(() => undefined);
+              let releaseCreationTurn;
+              const creationTurn = new Promise((resolve) => {
+                releaseCreationTurn = resolve;
+              });
+              pendingPvMediaCreationQueueRef.current = waitForPreviousCreation
+                .then(() => creationTurn);
+
+                mediaCreation = {
+                tempId: tempConversationId,
+                contactUserId,
+                creatorTrackId: optimisticId,
+                creatorMessageHandled: false,
+                canceled: false,
+                conversationPromise,
+                resolveConversation,
+                rejectConversation,
+                releaseCreationTurn,
+              };
+              pendingPvMediaCreationsRef.current.set(tempConversationId, mediaCreation);
+
+              const queuedCreation = mediaCreation;
+              const waitForConversationSlot = () => new Promise((resolve, reject) => {
+                const timeoutAt = Date.now() + 60000;
+                const checkSlot = () => {
+                  const aliasedConversationId = conversationAliasRef.current.get(tempConversationId);
+                  if (aliasedConversationId && aliasedConversationId !== tempConversationId) {
+                    resolve(aliasedConversationId);
+                    return;
+                  }
+                  if (!pendingPvRef.current) {
+                    resolve(null);
+                    return;
+                  }
+                  if (Date.now() >= timeoutAt) {
+                    reject(new Error('Timed out while creating conversation.'));
+                    return;
+                  }
+                  setTimeout(checkSlot, 50);
+                };
+                checkSlot();
+              });
+              void waitForPreviousCreation.then(waitForConversationSlot).then((existingConversationId) => {
+                if (queuedCreation.canceled) {
+                  return;
+                }
+                if (existingConversationId) {
+                  queuedCreation.resolveConversation(existingConversationId);
+                  return;
+                }
+                const aliasedConversationId = conversationAliasRef.current.get(tempConversationId);
+                if (aliasedConversationId && aliasedConversationId !== tempConversationId) {
+                  queuedCreation.resolveConversation(aliasedConversationId);
+                  return;
+                }
+                if (!socket || !socket.connected) {
+                  queuedCreation.rejectConversation(new Error('Not connected.'));
+                  return;
+                }
+
+                pendingPvRef.current = {
+                  tempId: tempConversationId,
+                  contactUserId,
+                  trackId: optimisticId,
+                  messageText: caption || '',
+                  messageType: backendType,
+                  attachmentKey,
+                  repliedTo: replyTo?.messageId || null,
+                  mediaCreation: queuedCreation,
+                };
+                socket.emit(SOCKET_EVENTS.NEW_PV_CONVERSATION, {
+                  new_user_id: contactUserId,
+                  message_text: caption || '',
+                  date: new Date().toISOString(),
+                  track_id: optimisticId,
+                  message_type: backendType,
+                  attachment_key: attachmentKey,
+                });
+              }).catch(queuedCreation.rejectConversation);
+
+              void conversationPromise.finally(() => {
+                if (pendingPvMediaCreationsRef.current.get(tempConversationId) === queuedCreation) {
+                  pendingPvMediaCreationsRef.current.delete(tempConversationId);
+                }
+                if (pendingPvRef.current?.mediaCreation === queuedCreation) {
+                  pendingPvRef.current = null;
+                }
+                queuedCreation.releaseCreationTurn();
+              }).catch(() => undefined);
+            }
+
+            resolvedConversationId = await mediaCreation.conversationPromise;
+          }
+
+          const creatorMessageWasSent = mediaCreation
+            && mediaCreation.creatorTrackId === optimisticId
+            && mediaCreation.creatorMessageHandled;
+          if (!creatorMessageWasSent) {
+            socket.emit(SOCKET_EVENTS.MESSAGE_SEND, {
+              conversation_id: resolvedConversationId,
               message_text: caption || '',
-              date: new Date().toISOString(),
               track_id: optimisticId,
               message_type: backendType,
               attachment_key: attachmentKey,
-            },
-            (ack) => {
-              if (!ack?.ok) {
-                toast.error(ack?.error || 'Unable to send message.');
-                return;
-              }
-
-              const newConversationId = ack?.conversationId || ack?.conversation?._id || ack?.conversation?.id;
-              if (newConversationId) {
-                setConversationAlias(conversationId, newConversationId);
-                setContacts((prev) =>
-                  prev.map((chat) =>
-                    getConversationId(chat) === conversationId
-                      ? {
-                          ...chat,
-                          _id: newConversationId,
-                          id: newConversationId,
-                          client_id: chat.client_id || getConversationId(chat),
-                        }
-                      : chat
-                  )
-                );
-                setSelectedChat((prev) =>
-                  prev && getConversationId(prev) === conversationId
-                    ? { ...prev, _id: newConversationId, id: newConversationId }
-                    : prev
-                );
-                setMessages((prev) =>
-                  prev.map((m) =>
-                    m.conversation_id === conversationId
-                      ? { ...m, conversation_id: newConversationId }
-                      : m
-                  )
-                );
-                setMessagesConversationId(newConversationId);
-              } else {
-                refreshContacts();
-              }
-
-              const serverMessage = ack?.message;
-              const serverMessageId = getMessageId(serverMessage);
-              if (!serverMessage || !serverMessageId) {
-                return;
-              }
-
-              setMessages((prev) =>
-                prev.map((m) => {
-                  const mid = getMessageId(m);
-                  if (mid === optimisticId) {
-                    return { ...serverMessage, client_id: m.client_id || optimisticId };
-                  }
-                  return m;
-                })
-              );
-            }
-          );
+              replied_to: replyTo?.messageId || null,
+            });
+          }
           return;
         }
 
@@ -3873,27 +4117,38 @@ function ChatsPage() {
           replied_to: replyTo?.messageId || null,
         });
       } catch (error) {
-        console.error('Failed to send media:', error);
-        toast.error('Unable to send media right now.');
+        const uploadWasCanceled = error?.name === 'AbortError';
+        if (!uploadWasCanceled) {
+          console.error('Failed to send media:', error);
+          if (!error.mediaUploadToastShown) {
+            error.mediaUploadToastShown = true;
+            toast.error('Unable to send media right now.');
+          }
+        }
         setMessages((prev) => prev.filter((m) => getMessageId(m) !== optimisticId));
         setMediaUploadProgress((prev) => {
           const next = { ...prev };
           delete next[optimisticId];
           return next;
         });
+        if (!uploadWasCanceled) {
+          refreshContacts();
+        }
       } finally {
-        updateProgress(100);
-        // Clear the progress entry shortly after completion
-        setTimeout(() => {
-          setMediaUploadProgress((prev) => {
-            const next = { ...prev };
-            delete next[optimisticId];
-            return next;
-          });
-        }, 800);
+        mediaUploadRequestsRef.current.delete(optimisticId);
+        mediaUploadTasksRef.current.delete(optimisticId);
+        if (uploadCompleted) {
+          setTimeout(() => {
+            setMediaUploadProgress((prev) => {
+              const next = { ...prev };
+              delete next[optimisticId];
+              return next;
+            });
+          }, 450);
+        }
       }
     },
-    [replyingToMessage, refreshContacts, scrollToBottom, selectedChat, setConversationAlias, socket, user?.id]
+    [replyingToMessage, refreshContacts, scrollToBottom, selectedChat, socket, user?.id]
   );
 
   const handleFileChange = useCallback((event) => {
@@ -3946,33 +4201,32 @@ function ChatsPage() {
   }, [pendingMediaItems, selectedPendingMediaId]);
 
   const closePendingMedia = useCallback(() => {
-    if (isSendingPendingMedia) return;
     pendingMediaItems.forEach((item) => URL.revokeObjectURL(item.previewUrl));
     setPendingMediaItems([]);
     setSelectedPendingMediaId(null);
-  }, [isSendingPendingMedia, pendingMediaItems]);
+  }, [pendingMediaItems]);
 
-  const handleSendPendingMedia = useCallback(async () => {
-    if (pendingMediaItems.length === 0 || isSendingPendingMedia) return;
+  const handleSendPendingMedia = useCallback(() => {
+    if (pendingMediaItems.length === 0 || isDispatchingPendingMediaRef.current) return;
 
-    setIsSendingPendingMedia(true);
+    isDispatchingPendingMediaRef.current = true;
     const itemsToSend = [...pendingMediaItems];
+    setPendingMediaItems([]);
+    setSelectedPendingMediaId(null);
 
-    try {
-      for (const item of itemsToSend) {
-        await sendMediaMessage({
-          file: item.file,
-          type: item.type,
-          previewUrl: item.previewUrl,
-          caption: item.caption.trim(),
-        });
-      }
-      setPendingMediaItems([]);
-      setSelectedPendingMediaId(null);
-    } finally {
-      setIsSendingPendingMedia(false);
-    }
-  }, [isSendingPendingMedia, pendingMediaItems, sendMediaMessage]);
+    itemsToSend.forEach((item) => {
+      void sendMediaMessage({
+        file: item.file,
+        type: item.type,
+        previewUrl: item.previewUrl,
+        caption: item.caption.trim(),
+      });
+    });
+
+    queueMicrotask(() => {
+      isDispatchingPendingMediaRef.current = false;
+    });
+  }, [pendingMediaItems, sendMediaMessage]);
 
   useEffect(() => {
     if (pendingMediaItems.length === 0) return undefined;
@@ -4830,18 +5084,26 @@ function ChatsPage() {
                           )}
                           {isUploadingMedia && (
                             <div className={styles.mediaUploadOverlay}>
-                              <div
+                              <button
+                                type="button"
                                 className={styles.mediaUploadCircle}
+                                onClick={(event) => {
+                                  event.stopPropagation();
+                                  handleCancelMediaUpload(messageId);
+                                }}
+                                aria-label={`Cancel upload of ${getMessageFileName(message) || 'media'}`}
+                                title="Cancel upload"
                                 style={{
                                   background: `conic-gradient(var(--btn-color) ${uploadProgressValue * 3.6}deg, rgba(255,255,255,0.25) 0deg)`,
                                 }}
                               >
                                 <div className={styles.mediaUploadCircleInner}>
+                                  <FontAwesomeIcon icon={faXmark} className={styles.mediaUploadCancelIcon} />
                                   <span className={styles.mediaUploadPercent}>
                                     {Math.round(uploadProgressValue)}%
                                   </span>
                                 </div>
-                              </div>
+                              </button>
                             </div>
                           )}
                           {showMediaDownloadPreview && !isDocument && (
@@ -5089,7 +5351,6 @@ function ChatsPage() {
                       type="button"
                       className={styles.mediaUploadClose}
                       onClick={closePendingMedia}
-                      disabled={isSendingPendingMedia}
                       aria-label="Close media preview"
                     >
                       <FontAwesomeIcon icon={faXmark} />
@@ -5118,7 +5379,6 @@ function ChatsPage() {
                       type="button"
                       className={styles.mediaPreviewRemove}
                       onClick={() => removePendingMedia(selectedPendingMedia.id)}
-                      disabled={isSendingPendingMedia}
                       aria-label={`Remove ${selectedPendingMedia.file.name}`}
                     >
                       <FontAwesomeIcon icon={faTrash} />
@@ -5156,7 +5416,6 @@ function ChatsPage() {
                         type="button"
                         className={`${styles.mediaThumbnail} ${styles.mediaThumbnailAdd}`}
                         onClick={() => openAttachmentPicker('file-upload')}
-                        disabled={isSendingPendingMedia}
                         aria-label="Add more files"
                       >
                         <FontAwesomeIcon icon={faPlus} />
@@ -5185,7 +5444,6 @@ function ChatsPage() {
                             : 'Add a caption...'
                         }
                         aria-label={`Caption for ${getMessageFileName(selectedPendingMedia.file) || 'selected media'}`}
-                        disabled={isSendingPendingMedia}
                       />
                       <span>{(selectedPendingMedia.caption || '').length}/{MAX_MESSAGE_LENGTH}</span>
                     </div>
@@ -5193,14 +5451,9 @@ function ChatsPage() {
                       type="button"
                       className={styles.mediaSendButton}
                       onClick={handleSendPendingMedia}
-                      disabled={isSendingPendingMedia}
                       aria-label={`Send ${pendingMediaItems.length} selected ${pendingMediaItems.length === 1 ? 'file' : 'files'}`}
                     >
-                      {isSendingPendingMedia ? (
-                        <span className={styles.mediaSendSpinner} />
-                      ) : (
-                        <FontAwesomeIcon icon={faPaperPlane} />
-                      )}
+                      <FontAwesomeIcon icon={faPaperPlane} />
                     </button>
                   </div>
                 </section>

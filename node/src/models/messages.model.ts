@@ -5,7 +5,7 @@ const messageSchema = new Schema<Message>({
     sender: { type: Schema.Types.ObjectId, ref: "User", required: true },
     type: { type: String, required: true },
     conversation_id: { type: Schema.Types.ObjectId, ref: "Conversation", required: true },
-    attachment_key: { type: String, default: "" },
+    attachment_key: { type: String, default: "", unique: true },
     content: { type: String, required: true },
     seen_by: { type: Map, of: Date, default: {} },
     edited: { type: Boolean, default: false },

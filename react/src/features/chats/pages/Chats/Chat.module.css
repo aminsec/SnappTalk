@@ -872,16 +872,31 @@
     background: rgba(0, 0, 0, 0.35);
     border-radius: 10px;
     z-index: 5;
-    pointer-events: none;
+    pointer-events: auto;
 }
 
 .mediaUploadCircle {
     width: 56px;
     height: 56px;
+    padding: 0;
+    border: 0;
     border-radius: 50%;
     display: flex;
     align-items: center;
     justify-content: center;
+    color: #fff;
+    cursor: pointer;
+    appearance: none;
+    transition: transform 150ms ease, filter 150ms ease;
+}
+
+.mediaUploadCircle:hover {
+    filter: brightness(1.1);
+    transform: scale(1.05);
+}
+
+.mediaUploadCircle:active {
+    transform: scale(0.94);
 }
 
 .mediaUploadCircleInner {
@@ -890,13 +905,19 @@
     border-radius: 50%;
     background: rgba(0, 0, 0, 0.75);
     display: flex;
+    flex-direction: column;
     align-items: center;
     justify-content: center;
+    gap: 1px;
+}
+
+.mediaUploadCancelIcon {
+    font-size: 12px;
 }
 
 .mediaUploadPercent {
     color: #fff;
-    font-size: 12px;
+    font-size: 9px;
     font-weight: 600;
 }
 
@@ -2448,15 +2469,6 @@
 .mediaPreviewRemove:disabled,
 .mediaThumbnail:disabled { cursor: not-allowed; opacity: 0.55; }
 
-.mediaSendSpinner {
-    width: 18px;
-    height: 18px;
-    border: 2px solid rgba(255, 255, 255, 0.35);
-    border-top-color: #fff;
-    border-radius: 50%;
-    animation: mediaSpinner 700ms linear infinite;
-}
-
 @keyframes mediaBackdropIn { from { opacity: 0; } to { opacity: 1; } }
 @keyframes mediaDialogIn { from { opacity: 0; transform: translateY(16px) scale(0.97); } to { opacity: 1; transform: translateY(0) scale(1); } }
 @keyframes mediaSpinner { to { transform: rotate(360deg); } }
@@ -3319,7 +3331,7 @@
    REDUCED MOTION
    ============================================ */
 @media (prefers-reduced-motion: reduce) {
-    .chatListSidebar, .chatMain, .chatHeader, .chatItem, .messagesContainer, .message, .newConversationButton, .actionButton, .noChatSelected, .emptyChatMessage, .mediaPicker, .emojiPicker, .confirmOverlay, .confirmBox, .sidebar, .replyBar, .mediaUploadBackdrop, .mediaUploadDialog, .mediaSendSpinner {
+    .chatListSidebar, .chatMain, .chatHeader, .chatItem, .messagesContainer, .message, .newConversationButton, .actionButton, .noChatSelected, .emptyChatMessage, .mediaPicker, .emojiPicker, .confirmOverlay, .confirmBox, .sidebar, .replyBar, .mediaUploadBackdrop, .mediaUploadDialog {
         animation: none !important;
         transition: none !important;
     }

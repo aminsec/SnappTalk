@@ -3,7 +3,7 @@ import { DBConversationType } from "../types/conversation.types";
 
 const conversationSchema = new Schema<DBConversationType>({
     type: { type: String, enum: ["group", "pv"], required: true },
-    group_name: { type: String, default: null },
+    group_name: { type: String, default: null, unique: true },
     group_avatar: { type: String, default: null },
     members: [{ type: Schema.Types.ObjectId, ref: "User" }],
     last_message_id: { type: Schema.Types.Mixed, default: {} },
