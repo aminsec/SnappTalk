@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef, useLayoutEffect } from 'react';
 import { useCallback, useMemo } from 'react';
+import { createPortal } from 'react-dom';
 import { useLocation, useNavigate } from 'react-router-dom';
 import EmojiPicker from 'emoji-picker-react';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
@@ -4931,7 +4932,7 @@ function ChatsPage() {
               </div>
             </div>
   
-            {mediaViewer && (
+            {mediaViewer && createPortal(
               <div
                 className={styles.mediaViewerBackdrop}
                 role="dialog"
@@ -4957,7 +4958,8 @@ function ChatsPage() {
                   </div>
                 </div>
                 <img src={mediaViewer.url} alt={getMessageFileName(mediaViewer.message) || 'Shared media'} />
-              </div>
+              </div>,
+              document.body
             )}
 
             {pendingMediaItems.length > 0 && selectedPendingMedia && (
