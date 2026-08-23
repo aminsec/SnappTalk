@@ -3148,7 +3148,7 @@ function ChatsPage() {
       )
     );
     isInitialLoadRef.current = true;
-    fetchMessages(conversationId, 0, false);
+    fetchMessages(conversationIdStr, 0, false);
   }, [isChatViewVisible, fetchMessages, setUnreadCount]);
 
   const loadOlderMessages = useCallback(() => {
