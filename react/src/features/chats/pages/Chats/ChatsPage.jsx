@@ -336,7 +336,6 @@ function ChatsPage() {
   const [mediaUploadProgress, setMediaUploadProgress] = useState({});
   const [pendingMediaItems, setPendingMediaItems] = useState([]);
   const [selectedPendingMediaId, setSelectedPendingMediaId] = useState(null);
-  const [pendingMediaCaption, setPendingMediaCaption] = useState('');
   const [isSendingPendingMedia, setIsSendingPendingMedia] = useState(false);
   const [mediaViewer, setMediaViewer] = useState(null);
   const [autoDownloadMedia, setAutoDownloadMedia] = useState(getAutoDownloadMedia);
@@ -3823,6 +3822,7 @@ function ChatsPage() {
       file,
       type: getMediaTypeFromFile(file),
       previewUrl: URL.createObjectURL(file),
+      caption: '',
     }));
 
     if (nextItems.length > 0) {
@@ -3830,6 +3830,12 @@ function ChatsPage() {
       setSelectedPendingMediaId((currentId) => currentId || nextItems[0].id);
     }
   }, [pendingMediaItems.length]);
+
+  const updatePendingMediaCaption = useCallback((itemId, caption) => {
+    setPendingMediaItems((currentItems) => currentItems.map((item) => (
+      item.id === itemId ? { ...item, caption } : item
+    )));
+  }, []);
 
   const removePendingMedia = useCallback((itemId) => {
     const removedItem = pendingMediaItems.find((item) => item.id === itemId);
@@ -3841,9 +3847,6 @@ function ChatsPage() {
     if (selectedPendingMediaId === itemId) {
       setSelectedPendingMediaId(nextItems[0]?.id || null);
     }
-    if (nextItems.length === 0) {
-      setPendingMediaCaption('');
-    }
   }, [pendingMediaItems, selectedPendingMediaId]);
 
   const closePendingMedia = useCallback(() => {
@@ -3851,7 +3854,6 @@ function ChatsPage() {
     pendingMediaItems.forEach((item) => URL.revokeObjectURL(item.previewUrl));
     setPendingMediaItems([]);
     setSelectedPendingMediaId(null);
-    setPendingMediaCaption('');
   }, [isSendingPendingMedia, pendingMediaItems]);
 
   const handleSendPendingMedia = useCallback(async () => {
@@ -3859,25 +3861,22 @@ function ChatsPage() {
 
     setIsSendingPendingMedia(true);
     const itemsToSend = [...pendingMediaItems];
-    const caption = pendingMediaCaption.trim();
 
     try {
-      for (let index = 0; index < itemsToSend.length; index += 1) {
-        const item = itemsToSend[index];
+      for (const item of itemsToSend) {
         await sendMediaMessage({
           file: item.file,
           type: item.type,
           previewUrl: item.previewUrl,
-          caption: index === 0 ? caption : '',
+          caption: item.caption.trim(),
         });
       }
       setPendingMediaItems([]);
       setSelectedPendingMediaId(null);
-      setPendingMediaCaption('');
     } finally {
       setIsSendingPendingMedia(false);
     }
-  }, [isSendingPendingMedia, pendingMediaCaption, pendingMediaItems, sendMediaMessage]);
+  }, [isSendingPendingMedia, pendingMediaItems, sendMediaMessage]);
 
   useEffect(() => {
     if (pendingMediaItems.length === 0) return undefined;
@@ -5027,7 +5026,7 @@ function ChatsPage() {
                           item.id === selectedPendingMedia.id ? styles.mediaThumbnailActive : ''
                         }`}
                         onClick={() => setSelectedPendingMediaId(item.id)}
-                        aria-label={`Preview ${item.file.name}`}
+                        aria-label={`Preview ${item.file.name}${item.caption ? ' (has caption)' : ''}`}
                       >
                         {item.type === 'image' && <img src={item.previewUrl} alt="" />}
                         {item.type === 'video' && (
@@ -5038,6 +5037,9 @@ function ChatsPage() {
                         )}
                         {(item.type === 'voice' || item.type === 'file') && (
                           <FontAwesomeIcon icon={item.type === 'voice' ? faMusic : faFileLines} />
+                        )}
+                        {Boolean(item.caption?.trim()) && (
+                          <span className={styles.mediaThumbnailCaptioned} aria-hidden="true" />
                         )}
                       </button>
                     ))}
@@ -5057,8 +5059,11 @@ function ChatsPage() {
                   <div className={styles.mediaUploadComposer}>
                     <div className={styles.mediaCaptionField}>
                       <textarea
-                        value={pendingMediaCaption}
-                        onChange={(event) => setPendingMediaCaption(event.target.value.slice(0, MAX_MESSAGE_LENGTH))}
+                        value={selectedPendingMedia.caption || ''}
+                        onChange={(event) => updatePendingMediaCaption(
+                          selectedPendingMedia.id,
+                          event.target.value.slice(0, MAX_MESSAGE_LENGTH)
+                        )}
                         onKeyDown={(event) => {
                           if (event.key === 'Enter' && !event.shiftKey) {
                             event.preventDefault();
@@ -5066,11 +5071,15 @@ function ChatsPage() {
                           }
                         }}
                         rows={1}
-                        placeholder="Add a caption..."
-                        aria-label="Media caption"
+                        placeholder={
+                          pendingMediaItems.length > 1
+                            ? `Add a caption to ${getMessageFileName(selectedPendingMedia.file) || 'this file'}...`
+                            : 'Add a caption...'
+                        }
+                        aria-label={`Caption for ${getMessageFileName(selectedPendingMedia.file) || 'selected media'}`}
                         disabled={isSendingPendingMedia}
                       />
-                      <span>{pendingMediaCaption.length}/{MAX_MESSAGE_LENGTH}</span>
+                      <span>{(selectedPendingMedia.caption || '').length}/{MAX_MESSAGE_LENGTH}</span>
                     </div>
                     <button
                       type="button"

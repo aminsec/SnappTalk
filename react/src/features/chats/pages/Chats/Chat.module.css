@@ -2297,6 +2297,18 @@
 .mediaThumbnail:hover { transform: translateY(-2px); }
 .mediaThumbnailActive { border-color: #4c9dee; }
 
+/* Dot marker on thumbnails whose item already has a caption */
+.mediaThumbnailCaptioned {
+    position: absolute;
+    top: 5px;
+    right: 5px;
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: #4c9dee;
+    box-shadow: 0 0 0 2px rgba(0, 0, 0, 0.35);
+}
+
 .mediaThumbnail img,
 .mediaThumbnail video {
     width: 100%;
