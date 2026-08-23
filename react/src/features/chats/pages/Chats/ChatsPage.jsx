@@ -442,6 +442,23 @@ function ChatsPage() {
     const params = new URLSearchParams(window.location.search);
     return Boolean(params.get('startUser'));
   });
+  // Whether the conversation pane is actually on screen right now.
+  // On desktop (>768px) both panes render side-by-side, so it's always visible.
+  // On mobile the chat list and the conversation swap places, driven by isMobileChatOpen.
+  const [isMobileViewport, setIsMobileViewport] = useState(
+    () => window.matchMedia('(max-width: 768px)').matches
+  );
+  useEffect(() => {
+    const mediaQuery = window.matchMedia('(max-width: 768px)');
+    const handleChange = (event) => setIsMobileViewport(event.matches);
+    mediaQuery.addEventListener('change', handleChange);
+    return () => mediaQuery.removeEventListener('change', handleChange);
+  }, []);
+  const isChatViewVisible = !isMobileViewport || isMobileChatOpen;
+  const isChatViewVisibleRef = useRef(isChatViewVisible);
+  useEffect(() => {
+    isChatViewVisibleRef.current = isChatViewVisible;
+  }, [isChatViewVisible]);
   const isAtBottomRef = useRef(false);
   const startConversationRef = useRef(null);
   const deleteTargetName = useMemo(() => {
@@ -1331,6 +1348,9 @@ function ChatsPage() {
     (message, conversationIdStr) => {
       if (!socket || !socket.connected) return;
       if (selectedChatRef.current?.type !== 'pv') return;
+      // Only mark messages as seen while the conversation pane is actually
+      // visible — on mobile the pane can be "selected" but closed (chat list shown).
+      if (!isChatViewVisibleRef.current) return;
       if (!message || !conversationIdStr) return;
 
       const messageId = getMessageId(message);
@@ -1473,7 +1493,13 @@ function ChatsPage() {
 
       const selectedConversationId = getConversationId(selectedChatRef.current);
       const selectedConversationIdStr = selectedConversationId?.toString();
-      const isActiveConversation = selectedConversationIdStr && selectedConversationIdStr === conversationIdStr;
+      // A conversation only counts as "active" (auto-read, no unread badge) when
+      // its pane is actually visible — not merely selected behind a closed mobile pane.
+      const isActiveConversation = Boolean(
+        selectedConversationIdStr
+        && selectedConversationIdStr === conversationIdStr
+        && isChatViewVisibleRef.current
+      );
       const existsInList = contactsRef.current.some(
         (c) => getConversationId(c)?.toString() === conversationIdStr
       );
@@ -1782,8 +1808,13 @@ function ChatsPage() {
 
       const selectedConversationId = getConversationId(selectedChatRef.current);
       const selectedConversationIdStr = selectedConversationId?.toString();
-      const isActiveConversation = selectedConversationIdStr
-        && selectedConversationIdStr === conversationIdStr;
+      // Same visibility rule as handleMessageReceive: selected-but-hidden
+      // (mobile pane closed) does not count as active.
+      const isActiveConversation = Boolean(
+        selectedConversationIdStr
+        && selectedConversationIdStr === conversationIdStr
+        && isChatViewVisibleRef.current
+      );
       const existsInList = contactsRef.current.some(
         (c) => getConversationId(c)?.toString() === conversationIdStr
       );
@@ -3094,6 +3125,32 @@ function ChatsPage() {
     }
   }, []);
 
+  // Reopen refresh: when the conversation pane becomes visible again while a
+  // conversation is already selected (mobile back-button return), messages may
+  // have arrived while the pane was hidden. Re-fetch from the server so the
+  // view includes them — the selectedChatIdStr effect won't fire because the
+  // selection never changed.
+  const wasChatViewVisibleRef = useRef(isChatViewVisible);
+  useEffect(() => {
+    const wasVisible = wasChatViewVisibleRef.current;
+    wasChatViewVisibleRef.current = isChatViewVisible;
+    if (!isChatViewVisible || wasVisible) return;
+
+    const conversationIdStr = activeConversationIdRef.current?.toString();
+    if (!conversationIdStr || conversationIdStr.startsWith('temp-')) return;
+
+    setUnreadCount(conversationIdStr, 0);
+    setContacts((prev) =>
+      prev.map((chat) =>
+        getConversationId(chat)?.toString() === conversationIdStr
+          ? { ...chat, unread_messages_count: 0, unread_count: 0 }
+          : chat
+      )
+    );
+    isInitialLoadRef.current = true;
+    fetchMessages(conversationId, 0, false);
+  }, [isChatViewVisible, fetchMessages, setUnreadCount]);
+
   const loadOlderMessages = useCallback(() => {
     if (!selectedChat || isLoadingMoreRef.current || !hasMoreMessagesRef.current) return;
 
@@ -3265,6 +3322,9 @@ function ChatsPage() {
   useEffect(() => {
     const container = messagesContainerRef.current;
     if (!container) return;
+    // While the conversation pane is hidden (mobile chat list shown), don't
+    // observe anything — visibility of an off-screen pane means nothing.
+    if (!isChatViewVisible) return undefined;
 
     const conversationIdStr = activeConversationIdRef.current?.toString();
     if (!conversationIdStr) return;
@@ -3300,7 +3360,7 @@ function ChatsPage() {
     return () => {
       observer.disconnect();
     };
-  }, [emitSeenForMessage, messages, selectedChat]);
+  }, [emitSeenForMessage, messages, selectedChat, isChatViewVisible]);
 
   // Filter chats based on search query
   const filteredChats = useMemo(() => {
