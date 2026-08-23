@@ -22,6 +22,7 @@ import {
   faMicrophone,
   faStop,
   faArrowLeft,
+  faArrowDown,
   faBars,
   faDownload,
   faPaperclip,
@@ -460,6 +461,8 @@ function ChatsPage() {
     isChatViewVisibleRef.current = isChatViewVisible;
   }, [isChatViewVisible]);
   const isAtBottomRef = useRef(false);
+  const isJumpingToLatestRef = useRef(false);
+  const [showJumpToLatest, setShowJumpToLatest] = useState(false);
   const startConversationRef = useRef(null);
   const deleteTargetName = useMemo(() => {
     if (!deleteConfirm.open || !deleteConfirm.conversationId) {
@@ -477,16 +480,27 @@ function ChatsPage() {
     return chat.contact_info?.username || 'contact';
   }, [deleteConfirm.conversationId, deleteConfirm.open, contacts]);
   
-  const scrollToBottom = useCallback(() => {
+  const scrollToBottom = useCallback((behavior = 'auto') => {
     const el = messagesEndRef.current;
     const container = messagesContainerRef.current;
-    if (el) {
-      el.scrollIntoView({ behavior: 'auto', block: 'end' });
-    }
     if (container) {
-      container.scrollTop = container.scrollHeight;
+      if (behavior === 'smooth') {
+        container.scrollTo({ top: container.scrollHeight, behavior });
+      } else {
+        container.scrollTop = container.scrollHeight;
+      }
+    } else if (el) {
+      el.scrollIntoView({ behavior, block: 'end' });
     }
+    isNearBottomRef.current = true;
+    isAtBottomRef.current = true;
+    setShowJumpToLatest(false);
   }, []);
+
+  const handleJumpToLatest = useCallback(() => {
+    isJumpingToLatestRef.current = true;
+    scrollToBottom('smooth');
+  }, [scrollToBottom]);
 
   const scrollToMessage = useCallback((messageId) => {
     if (!messageId) return;
@@ -3188,6 +3202,8 @@ function ChatsPage() {
   useEffect(() => {
     if (!selectedChatIdStr) {
       setMessages([]);
+      isJumpingToLatestRef.current = false;
+      setShowJumpToLatest(false);
       setMessagesOffset(0);
       setHasMoreMessages(true);
       setMessagesConversationId(null);
@@ -3208,6 +3224,8 @@ function ChatsPage() {
     if (!isSameConversation) {
       // Reset state and fetch initial messages (last 10 messages)
       setMessages([]);
+      isJumpingToLatestRef.current = false;
+      setShowJumpToLatest(false);
       setMessagesOffset(0);
       setHasMoreMessages(true);
       setMessagesConversationId(conversationId);
@@ -3291,6 +3309,17 @@ function ChatsPage() {
       const distanceFromBottom = container.scrollHeight - container.scrollTop - container.clientHeight;
       isNearBottomRef.current = distanceFromBottom < 120;
       isAtBottomRef.current = distanceFromBottom < 6;
+      if (isJumpingToLatestRef.current) {
+        setShowJumpToLatest(false);
+        if (distanceFromBottom < 6) {
+          isJumpingToLatestRef.current = false;
+        }
+      } else {
+        const shouldShowJumpButton = distanceFromBottom > 120;
+        setShowJumpToLatest((current) => (
+          current === shouldShowJumpButton ? current : shouldShowJumpButton
+        ));
+      }
       scrollFrameRef.current = null;
     });
   }, []);
@@ -4997,6 +5026,18 @@ function ChatsPage() {
                 <div ref={messagesEndRef} />
               </div>
             </div>
+
+            {showJumpToLatest && visibleMessages.length > 0 && (
+              <button
+                type="button"
+                className={styles.jumpToLatestButton}
+                onClick={handleJumpToLatest}
+                aria-label="Jump to latest message"
+                title="Jump to latest message"
+              >
+                <FontAwesomeIcon icon={faArrowDown} aria-hidden="true" />
+              </button>
+            )}
   
             {mediaViewer && createPortal(
               <div

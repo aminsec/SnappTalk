@@ -475,6 +475,52 @@
     scrollbar-width: none;
 }
 
+.jumpToLatestButton {
+    position: absolute;
+    right: 20px;
+    bottom: 88px;
+    z-index: 14;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 42px;
+    height: 42px;
+    padding: 0;
+    border: 1px solid color-mix(in srgb, var(--chat-accent) 42%, rgba(255, 255, 255, 0.16));
+    border-radius: 999px;
+    background: color-mix(in srgb, var(--bg-panel) 84%, var(--chat-accent) 16%);
+    color: var(--text-main);
+    box-shadow: 0 8px 22px rgba(0, 0, 0, 0.28), 0 0 0 1px rgba(255, 255, 255, 0.04);
+    backdrop-filter: blur(14px) saturate(140%);
+    -webkit-backdrop-filter: blur(14px) saturate(140%);
+    cursor: pointer;
+    font: inherit;
+    font-size: 12px;
+    font-weight: 600;
+    animation: jumpToLatestIn 180ms ease-out;
+    transition: transform 160ms ease, background 160ms ease, box-shadow 160ms ease;
+}
+
+.jumpToLatestButton:hover {
+    background: color-mix(in srgb, var(--chat-accent) 24%, var(--bg-panel));
+    box-shadow: 0 10px 26px rgba(0, 0, 0, 0.32), 0 0 0 3px color-mix(in srgb, var(--chat-accent) 14%, transparent);
+    transform: translateY(-2px);
+}
+
+.jumpToLatestButton:active {
+    transform: translateY(0) scale(0.96);
+}
+
+.jumpToLatestButton svg {
+    color: var(--chat-accent);
+    font-size: 13px;
+}
+
+@keyframes jumpToLatestIn {
+    from { opacity: 0; transform: translateY(8px) scale(0.94); }
+    to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
 /* ============================================
    MESSAGE ANIMATIONS
    ============================================ */
@@ -2911,6 +2957,11 @@
     .messageWrapperGroup .message { max-width: calc(85% - 44px); }
     
     .messageMediaImage { max-width: 100%; height: auto; }
+
+    .jumpToLatestButton {
+        right: 14px;
+        bottom: 82px;
+    }
     
     /* Input bar mobile */
     .inputBar {
@@ -3124,6 +3175,11 @@
     .chatHeader .onlineStatus { font-size: 11px; }
     
     .mediaPicker { max-height: 240px; }
+
+    .jumpToLatestButton {
+        right: 12px;
+        bottom: 78px;
+    }
     
     /* Chat list small mobile */
     .chatItem {
