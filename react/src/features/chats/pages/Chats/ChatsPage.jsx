@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef, useLayoutEffect } from 'react';
 import { useCallback, useMemo } from 'react';
 import { createPortal } from 'react-dom';
-import { useLocation, useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import EmojiPicker from 'emoji-picker-react';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import {
@@ -357,9 +357,11 @@ const resolveAttachmentUrl = async (attachmentKey) => {
 function ChatsPage() {
   const location = useLocation();
   const navigate = useNavigate();
+  const { conversationId: routeConversationId } = useParams();
   const { user } = useAuth();
   const { socket, status: socketStatus } = useSocket();
   const [contacts, setContacts] = useState([]);
+  const [hasLoadedContacts, setHasLoadedContacts] = useState(false);
   const contactsRef = useRef([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedChat, setSelectedChat] = useState(null);
@@ -473,10 +475,10 @@ function ChatsPage() {
   const hasFetchedContactsRef = useRef(false);
   // Mobile responsive states
   const [isMobileChatOpen, setIsMobileChatOpen] = useState(() => {
-    // If arriving via a deep link (startUser), open the chat pane immediately
+    // If arriving via a deep link, open the chat pane immediately
     // so it doesn't slide in from the right on first render.
     const params = new URLSearchParams(window.location.search);
-    return Boolean(params.get('startUser'));
+    return Boolean(params.get('startUser') || window.location.pathname !== '/chats');
   });
   // Whether the conversation pane is actually on screen right now.
   // On desktop (>768px) both panes render side-by-side, so it's always visible.
@@ -552,9 +554,18 @@ function ChatsPage() {
   }, []);
 
   const handleSelectChat = useCallback((chat) => {
+    const conversationId = getConversationId(chat);
+    if (!conversationId) return;
     setSelectedChat(chat);
     setIsMobileChatOpen(true);
-  }, []);
+    navigate(`/chats/${encodeURIComponent(conversationId.toString())}`);
+  }, [navigate]);
+
+  const handleCloseChat = useCallback(() => {
+    setSelectedChat(null);
+    setIsMobileChatOpen(false);
+    navigate('/chats');
+  }, [navigate]);
 
   const setConversationAlias = useCallback((tempId, realId) => {
     if (!tempId || !realId) return;
@@ -611,7 +622,13 @@ function ChatsPage() {
         task.conversationId = realIdStr;
       }
     });
-  }, [setConversationAlias]);
+    if (
+      routeConversationId?.toString() === tempIdStr
+      || getConversationId(selectedChatRef.current)?.toString() === tempIdStr
+    ) {
+      navigate(`/chats/${encodeURIComponent(realIdStr)}`, { replace: true });
+    }
+  }, [navigate, routeConversationId, setConversationAlias]);
 
   const handleSendMessage = useCallback(() => {
     const content = messageInput.trim();
@@ -1332,11 +1349,13 @@ function ChatsPage() {
           unreadCountsRef.current = merged;
           return merged;
         });
+        setHasLoadedContacts(true);
         return serverChats;
       }
     } catch (error) {
       console.error('Failed to refresh conversations:', error);
     }
+    setHasLoadedContacts(true);
     return [];
   }, []);
   
@@ -2548,9 +2567,11 @@ function ChatsPage() {
         return next;
       });
 
-      if (activeConversationIdRef.current === conversationId) {
+      if (activeConversationIdRef.current?.toString() === conversationId.toString()) {
         setSelectedChat(null);
         setMessages([]);
+        setIsMobileChatOpen(false);
+        navigate('/chats', { replace: true });
       }
     };
 
@@ -2694,6 +2715,7 @@ function ChatsPage() {
     };
   }, [
     emitSeenForMessage,
+    navigate,
     promotePendingConversation,
     refreshContacts,
     setConversationAlias,
@@ -2738,6 +2760,32 @@ function ChatsPage() {
     }
 
   }, [selectedChatIdStr, setUnreadCount, socket, socketStatus, fetchContactStatus]);
+
+  useEffect(() => {
+    const routeId = routeConversationId?.toString();
+    if (!routeId) {
+      if (selectedChatRef.current) {
+        setSelectedChat(null);
+        setIsMobileChatOpen(false);
+      }
+      return;
+    }
+
+    const matchingChat = contacts.find(
+      (chat) => getConversationId(chat)?.toString() === routeId
+    );
+    if (matchingChat) {
+      if (selectedChatRef.current !== matchingChat) {
+        setSelectedChat(matchingChat);
+      }
+      setIsMobileChatOpen(true);
+      return;
+    }
+
+    if (hasLoadedContacts) {
+      navigate('/chats', { replace: true });
+    }
+  }, [contacts, hasLoadedContacts, navigate, routeConversationId]);
 
   // Close menus when clicking outside
   useEffect(() => {
@@ -2910,9 +2958,11 @@ function ChatsPage() {
             });
             return [...tempChats, ...mergedServerChats];
           });
+          setHasLoadedContacts(true);
         }
       } catch (error) {
         console.error('Failed to fetch conversations:', error);
+        setHasLoadedContacts(true);
       }
     };
 
@@ -3634,7 +3684,9 @@ function ChatsPage() {
 
       if (existingChat) {
         setSelectedChat(existingChat);
+        setIsMobileChatOpen(true);
         setIsNewConversationModalOpen(false);
+        navigate(`/chats/${encodeURIComponent(getConversationId(existingChat).toString())}`);
         return;
       }
 
@@ -3659,9 +3711,11 @@ function ChatsPage() {
 
       setContacts((prevContacts) => [optimisticChat, ...prevContacts]);
       setSelectedChat(optimisticChat);
+      setIsMobileChatOpen(true);
       setIsNewConversationModalOpen(false);
+      navigate(`/chats/${encodeURIComponent(tempId)}`);
     },
-    [contacts, user]
+    [contacts, navigate, user]
   );
 
   useEffect(() => {
@@ -3687,8 +3741,9 @@ function ChatsPage() {
     if (existingChat) {
       setSelectedChat(existingChat);
       setIsMobileChatOpen(true);
-      params.delete('startUser');
-      navigate('/chats', { replace: true });
+      navigate(`/chats/${encodeURIComponent(getConversationId(existingChat).toString())}`, {
+        replace: true,
+      });
       return;
     }
 
@@ -3697,8 +3752,9 @@ function ChatsPage() {
       if (serverChat) {
         setSelectedChat(serverChat);
         setIsMobileChatOpen(true);
-        params.delete('startUser');
-        navigate('/chats', { replace: true });
+        navigate(`/chats/${encodeURIComponent(getConversationId(serverChat).toString())}`, {
+          replace: true,
+        });
         return;
       }
 
@@ -3729,6 +3785,7 @@ function ChatsPage() {
       });
       setSelectedChat(optimisticChat);
       setIsMobileChatOpen(true);
+      navigate(`/chats/${encodeURIComponent(tempId)}`, { replace: true });
 
       const cacheBuster = `cb=${Date.now()}`;
       fetch(`/api/v1/members/${startUserId}/info?${cacheBuster}`, {
@@ -3761,10 +3818,7 @@ function ChatsPage() {
             });
           }
         })
-        .finally(() => {
-          params.delete('startUser');
-          navigate('/chats', { replace: true });
-        });
+        .catch(() => undefined);
     });
   }, [contacts, location.search, navigate, refreshContacts, user?.username]);
 
@@ -4692,7 +4746,7 @@ function ChatsPage() {
               <button
                 type="button"
                 className={styles.mobileBackButton}
-                onClick={() => setIsMobileChatOpen(false)}
+                onClick={handleCloseChat}
                 aria-label="Back to chats"
               >
                 <FontAwesomeIcon icon={faArrowLeft} />
