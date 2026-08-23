@@ -1335,6 +1335,13 @@ function ChatsPage() {
 
       const messageId = getMessageId(message);
       if (!messageId) return;
+      // Never emit `seen` for messages that don't have a server id yet —
+      // optimistic/pending messages only exist client-side.
+      if (message?.status === 'pending' || message?.status === 'error') return;
+      if (typeof messageId === 'string'
+        && (messageId.startsWith('optimistic-') || messageId.startsWith('receive-') || messageId.startsWith('temp-'))) {
+        return;
+      }
       if (message?.seen) return;
 
       const currentUserId = userRef.current?.id?.toString();

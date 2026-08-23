@@ -152,6 +152,12 @@ export async function handleMessageReply(socket: Socket, data: MessageReplyEVT) 
 export async function handleSeen(socket: Socket, data: MessageSeenEVT) {
     const { conversation_id, message_id } = data;
 
+    //Controlling values
+    if(!conversation_id || !message_id || !Types.ObjectId.isValid(conversation_id) || !Types.ObjectId.isValid(message_id)){
+        socket.emit("seen:error", {message: "Invalid data"});
+        return;
+    }
+
     //This controls access to conversaion
     if(socket.rooms.has(conversation_id)){
         const [_, error] = await seenMessageById(new Types.ObjectId(message_id), new Types.ObjectId(conversation_id), socket.userInfo._id.toString());
