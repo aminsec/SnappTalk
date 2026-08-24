@@ -330,23 +330,69 @@
    CHAT HEADER
    ============================================ */
 .chatHeader {
-    width: 100%;
+    width: auto;
+    min-height: 58px;
     display: flex;
     gap: 12px;
-    padding: 15px;
-    background: linear-gradient(180deg, rgba(255, 255, 255, 0.02), rgba(255, 255, 255, 0)) , var(--bg-panel);
-    border-bottom: 3px solid var(--input-border);
+    position: absolute;
+    top: 6px;
+    left: 12px;
+    right: 12px;
+    padding: 7px 12px;
+    box-sizing: border-box;
+    background:
+        radial-gradient(ellipse at 12% -100%, color-mix(in srgb, var(--chat-accent) 24%, transparent), transparent 58%),
+        radial-gradient(ellipse at 92% 130%, rgba(255, 255, 255, 0.055), transparent 52%),
+        rgba(12, 16, 22, 0.58);
+    backdrop-filter: blur(26px) saturate(185%) contrast(110%);
+    -webkit-backdrop-filter: blur(26px) saturate(185%) contrast(110%);
+    border: 1px solid rgba(255, 255, 255, 0.17);
+    border-radius: 25px;
     flex-direction: row;
     flex-wrap: nowrap;
     justify-content: space-between;
     align-items: center;
-    box-shadow: 0 8px 18px rgba(0, 0, 0, 0.2);
+    box-shadow:
+        0 20px 42px rgba(0, 0, 0, 0.2),
+        0 4px 12px rgba(0, 0, 0, 0.1),
+        inset 0 1px 0 rgba(255, 255, 255, 0.24),
+        inset 0 -1px 0 rgba(255, 255, 255, 0.06),
+        0 0 0 1px rgba(255, 255, 255, 0.025);
+    z-index: 10;
+}
+
+.chatHeader::before,
+.chatHeader::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    pointer-events: none;
+}
+
+.chatHeader::before {
+    background:
+        linear-gradient(112deg, rgba(255, 255, 255, 0.22), transparent 18%, transparent 72%, rgba(255, 255, 255, 0.08)),
+        linear-gradient(180deg, rgba(255, 255, 255, 0.12), transparent 34%);
+    opacity: 0.48;
+    mix-blend-mode: screen;
+}
+
+.chatHeader::after {
+    inset: 1px;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.035), inset 0 -10px 24px rgba(255, 255, 255, 0.025);
+}
+
+.chatHeader > * {
+    position: relative;
+    z-index: 1;
 }
 
 .UserStatus {
     display: flex;
     flex-direction: row;
-    gap: 15px;
+    gap: 12px;
     align-items: center;
     flex: 1;
     min-width: 0;
@@ -391,11 +437,17 @@
     display: flex;
     flex-direction: column;
     gap: 4px;
+    min-width: 0;
 }
 
 .chatHeader h2 {
     color: var(--text-main);
     font-size: 16px;
+    line-height: 1.2;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
 }
 
 .profileLink {
@@ -406,6 +458,10 @@
     font-weight: 600;
     cursor: pointer;
     padding: 0;
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
 }
 
 .profileLink:hover {
@@ -440,6 +496,7 @@
 
 .chatHeader .onlineStatus {
     font-size: 12px;
+    line-height: 1.2;
 }
 
 .statusTextOnline {
@@ -2104,6 +2161,7 @@
     position: relative;
     display: inline-flex;
     align-items: center;
+    flex-shrink: 0;
 }
 
 /* ============================================
@@ -2113,8 +2171,8 @@
     width: 36px;
     height: 36px;
     border-radius: 50%;
-    border: none;
-    background: transparent;
+    border: 1px solid rgba(255, 255, 255, 0.16);
+    background: rgba(255, 255, 255, 0.08);
     color: var(--text-muted);
     font-size: 18px;
     cursor: pointer;
@@ -2126,7 +2184,7 @@
 }
 
 .optionsButton:hover {
-    background-color: var(--item-hover);
+    background: rgba(255, 255, 255, 0.16);
     color: var(--text-main);
 }
 
@@ -2899,20 +2957,28 @@
    ============================================ */
 .mobileBackButton {
     display: none;
-    background: none;
-    border: none;
+    width: 38px;
+    height: 38px;
+    flex: 0 0 38px;
+    background: rgba(255, 255, 255, 0.08);
+    border: 1px solid rgba(255, 255, 255, 0.16);
     color: var(--text-main);
     font-size: 18px;
-    padding: 10px;
-    margin-right: 4px;
+    padding: 0;
+    margin-right: 0;
     cursor: pointer;
-    border-radius: 8px;
+    border-radius: 50%;
     align-items: center;
     justify-content: center;
+    transition: background-color 0.2s ease, transform 0.15s ease;
 }
 
 .mobileBackButton:hover {
-    background-color: var(--item-hover);
+    background: rgba(255, 255, 255, 0.16);
+}
+
+.mobileBackButton:active {
+    transform: scale(0.92);
 }
 
 /* ============================================
@@ -3013,7 +3079,15 @@
     
     .mobileBackButton { display: flex; }
     
-    .chatHeader { padding: 12px; }
+    .chatHeader {
+        width: auto;
+        min-height: 54px;
+        top: calc(6px + env(safe-area-inset-top));
+        left: 10px;
+        right: 10px;
+        padding: 5px 10px;
+        border-radius: 20px;
+    }
     
     .message { max-width: 85%; }
     .messageWrapperGroup .message { max-width: calc(85% - 44px); }
