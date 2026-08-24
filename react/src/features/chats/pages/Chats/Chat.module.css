@@ -800,6 +800,55 @@
     border-radius: 18px 18px 5px 18px;
 }
 
+.mediaWithReply {
+    padding: 3px;
+    gap: 2px;
+    overflow: hidden;
+    border-radius: 15px 15px 5px 15px;
+}
+
+.received.mediaWithReply {
+    border-radius: 15px 15px 15px 5px;
+}
+
+.mediaWithReply > .replyPreview {
+    margin: 2px 2px 1px;
+    padding: 4px 6px;
+    gap: 7px;
+    border-radius: 6px;
+}
+
+.mediaWithReply .replyPreviewLine {
+    width: 2px;
+}
+
+.mediaWithReply .replyPreviewLabel {
+    font-size: 10px;
+}
+
+.mediaWithReply .replyPreviewText {
+    font-size: 11px;
+}
+
+.mediaWithReply .mediaImageWrap,
+.mediaWithReply .mediaImageButton,
+.mediaWithReply .messageMedia,
+.mediaWithReply .mediaResolvingCard,
+.mediaWithReply .mediaManualPreview,
+.mediaWithReply .mediaDocumentWrap,
+.mediaWithReply .videoPlayer,
+.mediaWithReply .audioPlayer {
+    max-width: 100%;
+}
+
+.mediaWithReply .mediaImageWrap,
+.mediaWithReply .mediaImageButton,
+.mediaWithReply .messageMedia,
+.mediaWithReply .mediaResolvingCard,
+.mediaWithReply .videoPlayer {
+    border-radius: 13px 13px 7px 7px;
+}
+
 .received.mediaWithCaption {
     border-radius: 18px 18px 18px 5px;
 }
@@ -2179,6 +2228,7 @@
 .attachmentMenuIconMedia { background: linear-gradient(145deg, #a86cf5, #7653e8); }
 .attachmentMenuIconFile { background: linear-gradient(145deg, #54a9f7, #2f7edc); }
 .attachmentMenuIconLocation { background: linear-gradient(145deg, #58d68d, #22a866); }
+.attachmentMenuIconMusic { background: linear-gradient(145deg, #f7a44d, #e56b2f); }
 
 .mediaUploadBackdrop {
     position: absolute;

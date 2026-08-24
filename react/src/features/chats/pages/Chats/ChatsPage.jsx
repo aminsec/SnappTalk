@@ -29,6 +29,7 @@ import {
   faImage,
   faVideo,
   faMusic,
+  faCompactDisc,
   faFileLines,
   faPaperPlane,
 } from '@fortawesome/free-solid-svg-icons';
@@ -286,6 +287,11 @@ const getMediaTypeFromFile = (file) => {
   if (file.type.startsWith('video/')) return 'video';
   if (file.type.startsWith('audio/')) return 'voice';
   return 'file';
+};
+
+const isAudioFile = (file) => {
+  if (file?.type?.startsWith('audio/')) return true;
+  return /\.(aac|flac|m4a|mp3|ogg|opus|wav|weba|wma)$/i.test(file?.name || '');
 };
 
 const getMediaTypeFromMime = (mimeType) => {
@@ -3840,6 +3846,10 @@ function ChatsPage() {
     openAttachmentPicker('file-upload');
   }, [openAttachmentPicker]);
 
+  const handleUploadMusicClick = useCallback(() => {
+    openAttachmentPicker('audio-upload');
+  }, [openAttachmentPicker]);
+
   // Handle send location option click
   const handleSendLocationClick = useCallback(() => {
     setIsOptionsMenuOpen(false);
@@ -4207,13 +4217,24 @@ function ChatsPage() {
 
   const handleFileChange = useCallback((event) => {
     const files = Array.from(event.target.files || []);
+    const isAudioPicker = event.target.id === 'audio-upload';
     event.target.value = '';
     if (files.length === 0) return;
 
-    const validFiles = files.filter((file) => file.size <= MAX_FILE_SIZE);
-    const rejectedCount = files.length - validFiles.length;
+    const sizeValidFiles = files.filter((file) => file.size <= MAX_FILE_SIZE);
+    const oversizedCount = files.length - sizeValidFiles.length;
+    const validFiles = isAudioPicker
+      ? sizeValidFiles.filter(isAudioFile)
+      : sizeValidFiles;
+    const invalidAudioCount = isAudioPicker ? sizeValidFiles.length - validFiles.length : 0;
+    const rejectedCount = oversizedCount + invalidAudioCount;
+    if (invalidAudioCount > 0) {
+      toast.error(`${invalidAudioCount} ${invalidAudioCount === 1 ? 'file is' : 'files are'} not audio files.`);
+    }
     if (rejectedCount > 0) {
-      toast.error(`${rejectedCount} ${rejectedCount === 1 ? 'file is' : 'files are'} larger than 20 MB.`);
+      if (oversizedCount > 0) {
+        toast.error(`${oversizedCount} ${oversizedCount === 1 ? 'file is' : 'files are'} larger than 20 MB.`);
+      }
     }
 
     const availableSlots = Math.max(0, MAX_MEDIA_BATCH - pendingMediaItems.length);
@@ -4938,6 +4959,8 @@ function ChatsPage() {
                     && !['document', 'file'].includes(resolvedMessageType)
                   );
                   const hasMediaCaption = isMedia && Boolean(messageContent.trim());
+                  const hasReplyMedia = isMedia && Boolean(replyPreview);
+                  const showMediaFooter = isMedia && !hasMediaCaption;
                   const isDocument = resolvedMessageType === 'document'
                     || resolvedMessageType === 'file'
                     || (messageType === 'document');
@@ -5080,7 +5103,7 @@ function ChatsPage() {
                         <div
                           className={`${styles.message} ${isMyMessage ? styles.sent : styles.received} ${
                             shouldUseEmojiOnlyStyle ? styles.emojiOnly : ''
-                          } ${isMediaOnly ? styles.mediaOnly : ''} ${hasMediaCaption ? styles.mediaWithCaption : ''}`}
+                          } ${isMediaOnly ? styles.mediaOnly : ''} ${hasMediaCaption ? styles.mediaWithCaption : ''} ${hasReplyMedia ? styles.mediaWithReply : ''}`}
                           data-message-type={isMyMessage ? 'sent' : 'received'}
                         >
                           {replyPreview && (
@@ -5209,7 +5232,7 @@ function ChatsPage() {
                             <VideoPlayer
                               src={mediaUrl}
                               mimeType={message?.mime_type || 'video/mp4'}
-                              footer={isMediaOnly ? messageFooterMarkup : undefined}
+                              footer={showMediaFooter ? messageFooterMarkup : undefined}
                               fullscreenOnDoubleClick={fullscreenMedia}
                             />
                           )}
@@ -5219,7 +5242,7 @@ function ChatsPage() {
                               fileName={getMessageFileName(message)}
                               isVoice={resolvedMessageType === 'voice'}
                               accent={isMyMessage ? 'rgba(255,255,255,0.82)' : 'var(--chat-accent)'}
-                              footer={isMediaOnly ? messageFooterMarkup : undefined}
+                              footer={showMediaFooter ? messageFooterMarkup : undefined}
                             />
                           )}
                           {isDocument && (
@@ -5254,7 +5277,7 @@ function ChatsPage() {
                                     : <FontAwesomeIcon icon={faDownload} />}
                                 </span>
                               </button>
-                              {isMediaOnly && (
+                              {showMediaFooter && (
                                 <div className={styles.mediaDocumentFooter}>
                                   {messageFooterMarkup}
                                 </div>
@@ -5312,7 +5335,7 @@ function ChatsPage() {
                                   <FontAwesomeIcon icon={faDownload} />
                                 </button>
                               )}
-                              {isMediaOnly && (
+                              {showMediaFooter && (
                                 <div className={styles.mediaImageFooter}>
                                   {messageFooterMarkup}
                                 </div>
@@ -5329,7 +5352,7 @@ function ChatsPage() {
                           ) : (
                             messageContent.trim() && <p dir="auto">{messageContent}</p>
                           )}
-                          {!isMediaOnly && !hasMediaCaption && (
+                          {!isMedia && !hasMediaCaption && (
                             <div className={styles.messageFooter}>
                               {messageFooterMarkup}
                             </div>
@@ -5532,6 +5555,15 @@ function ChatsPage() {
               onChange={handleFileChange}
               title="Maximum file size is 20 MB"
             />
+            <input
+              id="audio-upload"
+              type="file"
+              multiple
+              accept="audio/*,.aac,.flac,.m4a,.mp3,.ogg,.opus,.wav,.weba,.wma"
+              hidden
+              onChange={handleFileChange}
+              title="Maximum file size is 20 MB"
+            />
             
             {/* Left Actions */}
             <div className={styles.inputActionsLeft}>
@@ -5571,6 +5603,19 @@ function ChatsPage() {
                       <span>
                         <strong>File</strong>
                         <small>Send any file up to 20 MB</small>
+                      </span>
+                    </button>
+                    <button
+                      type="button"
+                      className={`${styles.optionsMenuItem} ${styles.attachmentMenuItem}`}
+                      onClick={handleUploadMusicClick}
+                    >
+                      <span className={`${styles.attachmentMenuIcon} ${styles.attachmentMenuIconMusic}`}>
+                        <FontAwesomeIcon icon={faCompactDisc} />
+                      </span>
+                      <span>
+                        <strong>Music</strong>
+                        <small>Share an audio file up to 20 MB</small>
                       </span>
                     </button>
                     <button

@@ -84,6 +84,23 @@
     touch-action: none;
 }
 
+.audioSeekRow {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.audioSeekRow > .audioTime {
+    flex: 0 0 auto;
+    min-width: 31px;
+}
+
+.audioSeekRow .audioSeek {
+    flex: 1;
+    min-width: 0;
+}
+
 .audioSeek:focus-visible {
     outline: 2px solid var(--player-accent, #55aaf4);
     outline-offset: 3px;
@@ -111,21 +128,12 @@
     background: var(--player-accent, #55aaf4);
 }
 
-.audioMeta {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 8px;
-}
-
-.audioKind,
 .audioTime {
     color: var(--text-muted);
     font-size: 10px;
     line-height: 1;
 }
 
-.audioKind { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .audioTime { flex: 0 0 auto; font-variant-numeric: tabular-nums; }
 
 .audioDownload {
@@ -187,12 +195,13 @@
     max-width: min(100%, 76vw);
     max-height: 420px;
     overflow: hidden;
-    background: #06090d;
-    border: 1px solid rgba(255, 255, 255, 0.1);
+    background: #05070a;
+    border: 1px solid rgba(255, 255, 255, 0.14);
     border-radius: 16px;
-    box-shadow: 0 8px 22px rgba(0, 0, 0, 0.18);
+    box-shadow: 0 16px 36px rgba(0, 0, 0, 0.28), 0 0 0 1px rgba(71, 170, 255, 0.04);
     cursor: pointer;
     user-select: none;
+    isolation: isolate;
 }
 
 .videoPlayerFullscreen,
@@ -226,6 +235,7 @@
     max-height: 420px;
     object-fit: cover;
     background: #000;
+    cursor: pointer;
 }
 
 .videoBigPlay {
@@ -233,8 +243,8 @@
     top: 50%;
     left: 50%;
     transform: translate(-50%, -50%);
-    width: 52px;
-    height: 52px;
+    width: 62px;
+    height: 62px;
     border-radius: 50%;
     border: none;
     cursor: pointer;
@@ -242,19 +252,21 @@
     align-items: center;
     justify-content: center;
     color: #fff;
-    background: rgba(22, 31, 42, 0.68);
-    border: 1px solid rgba(255, 255, 255, 0.16);
-    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.26);
-    backdrop-filter: blur(8px);
-    font-size: 20px;
+    background: linear-gradient(145deg, rgba(79, 181, 255, 0.94), rgba(32, 103, 176, 0.94));
+    border: 1px solid rgba(255, 255, 255, 0.3);
+    box-shadow: 0 12px 30px rgba(0, 0, 0, 0.34), 0 0 0 7px rgba(66, 164, 239, 0.12);
+    backdrop-filter: blur(10px);
+    font-size: 22px;
     padding-left: 4px;
     transition: transform 0.15s ease, background 0.15s ease;
 }
 
 .videoBigPlay:hover {
-    background: rgba(51, 144, 236, 0.9);
+    background: linear-gradient(145deg, rgba(101, 196, 255, 0.98), rgba(39, 121, 205, 0.98));
     transform: translate(-50%, -50%) scale(1.06);
 }
+
+.videoBigPlay:active { transform: translate(-50%, -50%) scale(0.96); }
 
 .videoSpinner {
     width: 22px;
@@ -263,6 +275,30 @@
     border-top-color: #fff;
     border-radius: 50%;
     animation: mediaSpin 0.8s linear infinite;
+}
+
+.videoBuffering {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    z-index: 3;
+    width: 48px;
+    height: 48px;
+    display: grid;
+    place-items: center;
+    border-radius: 50%;
+    background: rgba(4, 9, 15, 0.62);
+    border: 1px solid rgba(255, 255, 255, 0.18);
+    box-shadow: 0 10px 24px rgba(0, 0, 0, 0.3);
+    transform: translate(-50%, -50%);
+    pointer-events: none;
+    backdrop-filter: blur(8px);
+}
+
+.videoBuffering .videoSpinner {
+    width: 19px;
+    height: 19px;
+    border-width: 2px;
 }
 
 .videoError {
@@ -283,13 +319,14 @@
     left: 0;
     right: 0;
     bottom: 0;
-    padding: 28px 10px 9px;
-    background: linear-gradient(180deg, transparent, rgba(0, 0, 0, 0.82));
+    padding: 38px 11px 11px;
+    background: linear-gradient(180deg, transparent 0%, rgba(3, 8, 14, 0.58) 38%, rgba(3, 8, 14, 0.94) 100%);
     opacity: 0;
     transition: opacity 0.2s ease;
     display: flex;
     flex-direction: column;
-    gap: 6px;
+    gap: 8px;
+    z-index: 4;
 }
 
 .videoControlsVisible {
@@ -299,35 +336,65 @@
 .videoSeek {
     width: 100%;
     cursor: pointer;
-    padding: 4px 0;
+    padding: 8px 0;
     touch-action: none;
 }
 
-.videoSeekTrack {
-    width: 100%;
-    height: 4px;
+.videoSeek:focus-visible {
+    outline: 2px solid var(--btn-color);
+    outline-offset: 4px;
     border-radius: 999px;
-    background: rgba(255, 255, 255, 0.3);
-    overflow: hidden;
+}
+
+.videoSeekTrack {
+    position: relative;
+    width: 100%;
+    height: 5px;
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.28);
+    box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.3);
+}
+
+.videoSeekBuffered,
+.videoSeekFill {
+    position: absolute;
+    inset: 0 auto 0 0;
+    border-radius: inherit;
+}
+
+.videoSeekBuffered {
+    background: rgba(255, 255, 255, 0.34);
 }
 
 .videoSeekFill {
     height: 100%;
-    border-radius: 999px;
-    background: var(--btn-color);
+    background: linear-gradient(90deg, #43aaf4, #8bd8ff);
     transition: width 0.1s linear;
+    box-shadow: 0 0 10px rgba(79, 187, 255, 0.65);
+}
+
+.videoSeekThumb {
+    position: absolute;
+    top: 50%;
+    width: 13px;
+    height: 13px;
+    border-radius: 50%;
+    background: #fff;
+    box-shadow: 0 1px 5px rgba(0, 0, 0, 0.45), 0 0 0 3px rgba(81, 185, 255, 0.28);
+    transform: translate(-50%, -50%);
+    pointer-events: none;
 }
 
 .videoControlsRow {
     display: flex;
     align-items: center;
-    gap: 8px;
+    gap: 5px;
 }
 
 .videoControlButton {
     flex-shrink: 0;
-    width: 30px;
-    height: 30px;
+    width: 34px;
+    height: 34px;
     border: none;
     background: transparent;
     color: #fff;
@@ -335,17 +402,20 @@
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    font-size: 14px;
-    border-radius: 6px;
-    transition: background 0.15s ease;
+    font-size: 13px;
+    border-radius: 50%;
+    transition: background 0.15s ease, transform 0.15s ease;
 }
 
 .videoControlButton:hover {
-    background: rgba(255, 255, 255, 0.15);
+    background: rgba(255, 255, 255, 0.16);
+    transform: translateY(-1px);
 }
 
+.videoControlButton:active { transform: scale(0.92); }
+
 .videoTime {
-    font-size: 11px;
+    font-size: 10px;
     color: rgba(255, 255, 255, 0.9);
     font-variant-numeric: tabular-nums;
     white-space: nowrap;
@@ -356,7 +426,7 @@
 }
 
 .videoVolume {
-    width: 60px;
+    width: 64px;
     cursor: pointer;
     padding: 4px 0;
     touch-action: none;
@@ -373,7 +443,7 @@
 .videoVolumeFill {
     height: 100%;
     border-radius: 999px;
-    background: #fff;
+    background: #8bd8ff;
     transition: width 0.1s linear;
 }
 

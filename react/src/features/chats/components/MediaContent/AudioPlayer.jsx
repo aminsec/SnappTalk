@@ -130,42 +130,41 @@ function AudioPlayer({ src, fileName, isVoice = false, accent = 'var(--btn-color
             {fileName}
           </span>
         )}
-        <div
-          className={styles.audioSeek}
-          ref={seekRef}
-          onClick={handleSeek}
-          role="slider"
-          aria-label="Seek"
-          aria-valuemin={0}
-          aria-valuemax={100}
-          aria-valuenow={Math.round(progressPercent)}
-          tabIndex={0}
-          onKeyDown={(e) => {
-            if (e.key === 'ArrowRight' && audioRef.current) {
-              audioRef.current.currentTime = Math.min(
-                audioRef.current.duration || 0,
-                (audioRef.current.currentTime || 0) + 5
-              );
-            } else if (e.key === 'ArrowLeft' && audioRef.current) {
-              audioRef.current.currentTime = Math.max(
-                0,
-                (audioRef.current.currentTime || 0) - 5
-              );
-            }
-          }}
-        >
-          <div className={styles.audioWaveform} aria-hidden="true">
-            {WAVEFORM_BARS.map((height, index) => (
-              <span
-                key={`${height}-${index}`}
-                className={index / (WAVEFORM_BARS.length - 1) <= progress ? styles.audioWaveformPlayed : ''}
-                style={{ height: `${height}px` }}
-              />
-            ))}
+        <div className={styles.audioSeekRow}>
+          <div
+            className={styles.audioSeek}
+            ref={seekRef}
+            onClick={handleSeek}
+            role="slider"
+            aria-label="Seek"
+            aria-valuemin={0}
+            aria-valuemax={100}
+            aria-valuenow={Math.round(progressPercent)}
+            tabIndex={0}
+            onKeyDown={(e) => {
+              if (e.key === 'ArrowRight' && audioRef.current) {
+                audioRef.current.currentTime = Math.min(
+                  audioRef.current.duration || 0,
+                  (audioRef.current.currentTime || 0) + 5
+                );
+              } else if (e.key === 'ArrowLeft' && audioRef.current) {
+                audioRef.current.currentTime = Math.max(
+                  0,
+                  (audioRef.current.currentTime || 0) - 5
+                );
+              }
+            }}
+          >
+            <div className={styles.audioWaveform} aria-hidden="true">
+              {WAVEFORM_BARS.map((height, index) => (
+                <span
+                  key={`${height}-${index}`}
+                  className={index / (WAVEFORM_BARS.length - 1) <= progress ? styles.audioWaveformPlayed : ''}
+                  style={{ height: `${height}px` }}
+                />
+              ))}
+            </div>
           </div>
-        </div>
-        <div className={styles.audioMeta}>
-          <span className={styles.audioKind}>{isVoice ? 'Voice message' : 'Audio'}</span>
           <span className={styles.audioTime}>
             {isError ? 'Unavailable' : formatTime(isPlaying || currentTime > 0 ? currentTime : duration)}
           </span>
