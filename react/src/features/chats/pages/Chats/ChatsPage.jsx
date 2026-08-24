@@ -56,6 +56,11 @@ import origamiIcon from '@/shared/assets/images/mono/plant.svg';
 import planetIcon from '@/shared/assets/images/mono/strategy.svg';
 import { wallpapers, WALLPAPER_STORAGE_KEY } from '@/shared/utils/wallpapers';
 import {
+  getMessageSize,
+  getMessageSizeOption,
+  MESSAGE_SIZE_KEY,
+} from '@/shared/utils/messagePreferences';
+import {
   getAutoDownloadMedia,
   getFullscreenMedia,
   MEDIA_AUTO_DOWNLOAD_KEY,
@@ -408,6 +413,7 @@ function ChatsPage() {
     }
     return localStorage.getItem(WALLPAPER_STORAGE_KEY) || 'aurora';
   });
+  const [messageSize, setMessageSize] = useState(getMessageSize);
   const [editingMessage, setEditingMessage] = useState(null);
   const [replyingToMessage, setReplyingToMessage] = useState(null);
   const [messageContextMenu, setMessageContextMenu] = useState(null);
@@ -429,13 +435,18 @@ function ChatsPage() {
       if (!changedKey || changedKey === MEDIA_FULLSCREEN_KEY) {
         setFullscreenMedia(getFullscreenMedia());
       }
+      if (!changedKey || changedKey === MESSAGE_SIZE_KEY) {
+        setMessageSize(getMessageSize());
+      }
     };
 
     window.addEventListener('storage', syncMediaPreferences);
     window.addEventListener('media-preferences-change', syncMediaPreferences);
+    window.addEventListener('message-preferences-change', syncMediaPreferences);
     return () => {
       window.removeEventListener('storage', syncMediaPreferences);
       window.removeEventListener('media-preferences-change', syncMediaPreferences);
+      window.removeEventListener('message-preferences-change', syncMediaPreferences);
     };
   }, []);
 
@@ -4494,6 +4505,7 @@ function ChatsPage() {
       || wallpapers.find((wallpaper) => wallpaper.id === 'aurora');
   }, [wallpaperId]);
   const hasWallpaper = resolvedWallpaper?.src && wallpaperId !== 'none';
+  const messageSizeOption = getMessageSizeOption(messageSize);
   const chatThemeStyle = {
     '--chat-accent': resolvedWallpaper?.accent || '#3390ec',
     '--chat-accent-hover': resolvedWallpaper?.accentHover || '#2678c7',
@@ -4504,6 +4516,13 @@ function ChatsPage() {
     '--notification-badge': resolvedWallpaper?.accent || '#3390ec',
     '--icon-active-bg': resolvedWallpaper?.accent || '#3390ec',
     '--text-link': resolvedWallpaper?.accent || '#3390ec',
+    '--chat-message-font-size': messageSizeOption.fontSize,
+    '--chat-message-line-height': messageSizeOption.lineHeight,
+    '--chat-bubble-padding-y': messageSizeOption.bubblePaddingY,
+    '--chat-bubble-padding-x': messageSizeOption.bubblePaddingX,
+    '--chat-bubble-gap': messageSizeOption.bubbleGap,
+    '--chat-bubble-radius': messageSizeOption.bubbleRadius,
+    '--chat-caption-font-size': messageSizeOption.captionFontSize,
   };
   const wallpaperStyle = hasWallpaper
     ? { backgroundImage: `url(${resolvedWallpaper.src})` }
@@ -5350,7 +5369,9 @@ function ChatsPage() {
                               </div>
                             </div>
                           ) : (
-                            messageContent.trim() && <p dir="auto">{messageContent}</p>
+                            messageContent.trim() && (
+                              <p dir="auto" className={styles.messageText}>{messageContent}</p>
+                            )
                           )}
                           {!isMedia && !hasMediaCaption && (
                             <div className={styles.messageFooter}>
