@@ -193,7 +193,9 @@
     position: relative;
     width: 360px;
     max-width: min(100%, 76vw);
-    max-height: 420px;
+    aspect-ratio: 16 / 10;
+    height: auto;
+    max-height: none;
     overflow: hidden;
     background: #05070a;
     border: 1px solid rgba(255, 255, 255, 0.14);
@@ -231,8 +233,8 @@
     display: block;
     width: 100%;
     height: 100%;
-    min-height: 180px;
-    max-height: 420px;
+    min-height: 0;
+    max-height: none;
     object-fit: cover;
     background: #000;
     cursor: pointer;
@@ -499,7 +501,6 @@
 @media (max-width: 480px) {
     .audioPlayer { width: 275px; max-width: 80vw; }
     .audioPlayerVoice { width: 255px; }
-    .videoPlayer { width: 82vw; max-height: 360px; }
-    .videoPlayerVideo { max-height: 360px; }
+    .videoPlayer { width: 82vw; }
     .videoVolume { display: none; }
 }

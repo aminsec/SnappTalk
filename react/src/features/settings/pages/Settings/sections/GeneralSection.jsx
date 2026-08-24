@@ -1,12 +1,10 @@
 import { useState } from 'react';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { faCloudArrowDown, faExpand } from '@fortawesome/free-solid-svg-icons';
+import { faCloudArrowDown } from '@fortawesome/free-solid-svg-icons';
 
 import {
   getAutoDownloadMedia,
-  getFullscreenMedia,
   MEDIA_AUTO_DOWNLOAD_KEY,
-  MEDIA_FULLSCREEN_KEY,
   saveMediaPreference,
 } from '@/shared/utils/mediaPreferences';
 
@@ -39,7 +37,6 @@ function PreferenceSwitch({ checked, description, icon, label, onChange }) {
 
 function GeneralSection() {
   const [autoDownload, setAutoDownload] = useState(getAutoDownloadMedia);
-  const [fullscreenMedia, setFullscreenMedia] = useState(getFullscreenMedia);
 
   const updatePreference = (key, value, setter) => {
     setter(value);
@@ -68,15 +65,6 @@ function GeneralSection() {
           onChange={(value) => updatePreference(MEDIA_AUTO_DOWNLOAD_KEY, value, setAutoDownload)}
         />
 
-        <div className={styles.preferenceDivider} />
-
-        <PreferenceSwitch
-          icon={faExpand}
-          label="Fullscreen media viewer"
-          description="Open photos in the immersive viewer and enable double-click fullscreen for videos."
-          checked={fullscreenMedia}
-          onChange={(value) => updatePreference(MEDIA_FULLSCREEN_KEY, value, setFullscreenMedia)}
-        />
       </section>
 
       <div className={styles.preferenceNote}>

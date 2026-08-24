@@ -78,8 +78,6 @@
 
 .preferenceCopy strong { font-size: 14px; font-weight: 650; }
 .preferenceCopy span { color: var(--text-muted); font-size: 11px; line-height: 1.5; }
-.preferenceDivider { height: 1px; margin-left: 76px; background: rgba(255, 255, 255, 0.07); }
-
 .switch { position: relative; flex: 0 0 auto; cursor: pointer; }
 .switch input { position: absolute; width: 1px; height: 1px; opacity: 0; pointer-events: none; }
 
@@ -129,6 +127,5 @@
   .generalContainer { gap: 20px; }
   .preferenceRow { align-items: flex-start; padding: 15px 14px; gap: 11px; }
   .preferenceIcon { width: 38px; height: 38px; flex-basis: 38px; }
-  .preferenceDivider { margin-left: 63px; }
   .switch { margin-top: 6px; }
 }

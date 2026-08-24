@@ -23,7 +23,7 @@ const formatTime = (seconds) => {
  * Shows a poster/thumbnail with a centered play button; on play, reveals a
  * custom control bar (play/pause, seek, time, volume, fullscreen).
  */
-function VideoPlayer({ src, mimeType = 'video/mp4', poster, footer, fullscreenOnDoubleClick = true }) {
+function VideoPlayer({ src, mimeType = 'video/mp4', poster, footer }) {
   const videoRef = useRef(null);
   const containerRef = useRef(null);
   const [isPlaying, setIsPlaying] = useState(false);
@@ -236,7 +236,7 @@ function VideoPlayer({ src, mimeType = 'video/mp4', poster, footer, fullscreenOn
         preload="metadata"
         playsInline
         onClick={togglePlay}
-        onDoubleClick={fullscreenOnDoubleClick ? toggleFullscreen : undefined}
+        onDoubleClick={toggleFullscreen}
       />
 
       {/* Sent/received time + seen overlay (Telegram-style) */}
