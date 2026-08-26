@@ -886,32 +886,7 @@ function ChatsPage() {
 
             const newConversationId = ack?.conversationId || ack?.conversation?._id || ack?.conversation?.id;
             if (newConversationId) {
-              setConversationAlias(conversationId, newConversationId);
-              setContacts((prev) =>
-                prev.map((chat) =>
-                  getConversationId(chat) === conversationId
-                    ? {
-                        ...chat,
-                        _id: newConversationId,
-                        id: newConversationId,
-                        client_id: chat.client_id || getConversationId(chat),
-                      }
-                    : chat
-                )
-              );
-              setSelectedChat((prev) =>
-                prev && getConversationId(prev) === conversationId
-                  ? { ...prev, _id: newConversationId, id: newConversationId }
-                  : prev
-              );
-              setMessages((prev) =>
-                prev.map((m) =>
-                  m.conversation_id === conversationId
-                    ? { ...m, conversation_id: newConversationId }
-                    : m
-                )
-              );
-              setMessagesConversationId(newConversationId);
+              promotePendingConversation(conversationId, newConversationId);
             } else {
               refreshContacts();
             }
@@ -964,10 +939,10 @@ function ChatsPage() {
     }
   }, [
     messageInput,
+    promotePendingConversation,
     replyingToMessage,
     scrollToBottom,
     selectedChat,
-    setConversationAlias,
     socket,
     user?.id,
   ]);
@@ -1384,12 +1359,14 @@ function ChatsPage() {
             const id = getConversationId(chat)?.toString();
             if (!id) return false;
             const isTemp = id.startsWith('temp-');
+            const aliasedId = conversationAliasRef.current.get(id);
+            const isPromoted = aliasedId && aliasedId !== id;
             const missingOnServer = !serverIds.has(id);
             const isSelected = selectedId && selectedId === id;
             const hasPending = (pendingMessagesRef.current[id] || []).length > 0;
             const isEmpty = !chat.last_message?.content;
-            return isTemp
-              || (missingOnServer && (isEmpty || isSelected || hasPending));
+            return !isPromoted && (isTemp
+              || (missingOnServer && (isEmpty || isSelected || hasPending)));
           });
           const tempContactIds = new Set(
             tempChats
@@ -1959,6 +1936,9 @@ function ChatsPage() {
 
       const pending = pendingSendMapRef.current[trackId];
       if (!pending?.tempId) return;
+      const pendingPv = pendingPvRef.current?.trackId?.toString() === trackId.toString()
+        ? pendingPvRef.current
+        : null;
       delete pendingSendMapRef.current[trackId];
       if (pendingAckTimersRef.current[pending.tempId]) {
         clearTimeout(pendingAckTimersRef.current[pending.tempId]);
@@ -2009,6 +1989,26 @@ function ChatsPage() {
           return chat;
         })
       );
+
+      if (pendingPv?.tempId && pendingPv.contactUserId) {
+        void refreshContacts().then((serverChats) => {
+          const contactUserId = pendingPv.contactUserId.toString();
+          const resolvedChat = (serverChats || []).find((chat) => {
+            if (chat?.type !== 'pv') return false;
+            const chatContactId = (chat.contact_info?._id || chat.contact_info?.id)?.toString();
+            const chatConversationId = getConversationId(chat)?.toString();
+            return chatContactId === contactUserId
+              && chatConversationId
+              && !chatConversationId.startsWith('temp-');
+          });
+          const resolvedConversationId = getConversationId(resolvedChat);
+          if (!resolvedConversationId) return;
+          promotePendingConversation(pendingPv.tempId, resolvedConversationId);
+          if (pendingPvRef.current?.trackId?.toString() === trackId.toString()) {
+            pendingPvRef.current = null;
+          }
+        }).catch(() => undefined);
+      }
     };
 
     const resolveReplyPreview = (replyId) => {
@@ -2950,14 +2950,33 @@ function ChatsPage() {
       return;
     }
 
-    const matchingChat = contacts.find(
-      (chat) => getConversationId(chat)?.toString() === routeId
-    );
+    const resolvedRouteId = conversationAliasRef.current.get(routeId) || routeId;
+    const selectedId = getConversationId(selectedChatRef.current)?.toString();
+    const resolvedSelectedId = selectedId
+      ? (conversationAliasRef.current.get(selectedId) || selectedId)
+      : null;
+    const matchingChat = contacts.find((chat) => {
+      const chatId = getConversationId(chat)?.toString();
+      if (!chatId) return false;
+      return (conversationAliasRef.current.get(chatId) || chatId) === resolvedRouteId;
+    });
     if (matchingChat) {
-      if (selectedChatRef.current !== matchingChat) {
+      if (selectedChatRef.current !== matchingChat && resolvedSelectedId !== resolvedRouteId) {
         setSelectedChat(matchingChat);
       }
       setIsMobileChatOpen(true);
+      if (resolvedRouteId !== routeId) {
+        navigate(`/chats/${encodeURIComponent(resolvedRouteId)}`, { replace: true });
+      }
+      return;
+    }
+
+    if (resolvedSelectedId === resolvedRouteId) {
+      setIsMobileChatOpen(true);
+      return;
+    }
+
+    if (routeId.startsWith('temp-')) {
       return;
     }
 
@@ -3066,13 +3085,19 @@ function ChatsPage() {
             const serverIds = new Set(
               serverChats.map((chat) => getConversationId(chat)?.toString()).filter(Boolean)
             );
+            const selectedId = getConversationId(selectedChatRef.current)?.toString();
             const tempChats = prev.filter((chat) => {
               const id = getConversationId(chat)?.toString();
               if (!id) return false;
               const isTemp = id.startsWith('temp-');
+              const aliasedId = conversationAliasRef.current.get(id);
+              const isPromoted = aliasedId && aliasedId !== id;
               const missingOnServer = !serverIds.has(id);
+              const isSelected = selectedId && selectedId === id;
+              const hasPending = (pendingMessagesRef.current[id] || []).length > 0;
               const isEmpty = !chat.last_message?.content;
-              return (isTemp || missingOnServer) && isEmpty;
+              return !isPromoted && (isTemp
+                || (missingOnServer && (isEmpty || isSelected || hasPending)));
             });
             const tempContactIds = new Set(
               tempChats
