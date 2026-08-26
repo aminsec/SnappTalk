@@ -431,7 +431,50 @@ const resolveAttachmentPreview = async (attachmentKey, mediaType) => {
     });
     if (!response.ok || response.status !== 206) return '';
     const blob = await response.blob();
-    return blob.size > 0 ? URL.createObjectURL(blob) : '';
+    if (!blob.size) return '';
+
+    const previewUrl = URL.createObjectURL(blob);
+    if (mediaType !== 'gif') return previewUrl;
+
+    // A partial GIF can remain animated in the browser, which makes the
+    // blurred preview look like it is repeatedly painting behind the overlay.
+    // Freeze it to the first decoded frame before storing it as a preview.
+    try {
+      const image = new Image();
+      image.src = previewUrl;
+      if (typeof image.decode === 'function') {
+        await image.decode();
+      } else {
+        await new Promise((resolve, reject) => {
+          image.onload = resolve;
+          image.onerror = reject;
+        });
+      }
+
+      if (!image.naturalWidth || !image.naturalHeight) {
+        throw new Error('GIF preview has no decodable frame.');
+      }
+
+      const canvas = document.createElement('canvas');
+      canvas.width = image.naturalWidth;
+      canvas.height = image.naturalHeight;
+      const context = canvas.getContext('2d');
+      if (!context) throw new Error('Unable to create GIF preview canvas.');
+      context.drawImage(image, 0, 0);
+      const stillBlob = await new Promise((resolve) => {
+        canvas.toBlob(resolve, 'image/png');
+      });
+      if (!stillBlob) throw new Error('Unable to encode GIF preview.');
+
+      URL.revokeObjectURL(previewUrl);
+      return URL.createObjectURL(stillBlob);
+    } catch (error) {
+      // Do not fall back to an animated partial GIF. A solid blurred panel is
+      // preferable to a preview that continuously repeats or leaks content.
+      console.warn('Failed to freeze GIF preview:', error);
+      URL.revokeObjectURL(previewUrl);
+      return '';
+    }
   } catch (error) {
     console.error('Failed to resolve media preview:', error);
     return '';
@@ -5323,6 +5366,9 @@ function ChatsPage() {
                   const isDocument = resolvedMessageType === 'document'
                     || resolvedMessageType === 'file'
                     || (messageType === 'document');
+                  const isVisualManualPreview = showMediaDownloadPreview
+                    && !isDocument
+                    && !['voice', 'audio'].includes(resolvedMessageType);
                   const isMediaOnly = isMedia && !messageContent.trim() && !replyPreview;
                   const isEmojiOnly = isEmojiOnlyMessage(messageContent);
                   const shouldUseEmojiOnlyStyle = isEmojiOnly && !replyPreview && !isMedia;
@@ -5463,7 +5509,7 @@ function ChatsPage() {
                         <div
                           className={`${styles.message} ${isMyMessage ? styles.sent : styles.received} ${
                             shouldUseEmojiOnlyStyle ? styles.emojiOnly : ''
-                          } ${isMediaOnly ? styles.mediaOnly : ''} ${hasMediaCaption ? styles.mediaWithCaption : ''} ${hasReplyMedia ? styles.mediaWithReply : ''}`}
+                          } ${isMediaOnly ? styles.mediaOnly : ''} ${hasMediaCaption ? styles.mediaWithCaption : ''} ${hasReplyMedia ? styles.mediaWithReply : ''} ${isVisualManualPreview ? styles.mediaWithManualPreview : ''}`}
                           data-message-type={isMyMessage ? 'sent' : 'received'}
                         >
                           {replyPreview && (
