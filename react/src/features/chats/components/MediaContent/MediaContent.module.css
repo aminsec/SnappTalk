@@ -23,6 +23,7 @@
     flex-shrink: 0;
     width: 46px;
     height: 46px;
+    padding: 0;
     border-radius: 50%;
     border: none;
     cursor: pointer;
@@ -45,6 +46,12 @@
     transform: scale(0.96);
 }
 
+.audioPlayButton:disabled {
+    cursor: wait;
+    filter: none;
+    transform: none;
+}
+
 .audioSpinner {
     width: 16px;
     height: 16px;
@@ -53,6 +60,36 @@
     border-radius: 50%;
     animation: mediaSpin 0.8s linear infinite;
 }
+
+.audioDownloadProgress {
+    width: 46px;
+    height: 46px;
+    display: inline-grid;
+    place-items: center;
+    border-radius: 50%;
+    background: conic-gradient(
+        var(--player-accent, #55aaf4) var(--audio-download-progress, 0deg),
+        rgba(255, 255, 255, 0.2) 0deg
+    );
+    box-shadow: 0 4px 14px rgba(10, 50, 85, 0.28);
+    transition: background 160ms linear;
+}
+
+.audioDownloadProgressInner {
+    width: 36px;
+    height: 36px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 1px;
+    border-radius: 50%;
+    background: color-mix(in srgb, var(--player-accent, #338fE8) 74%, #102133);
+    border: 1px solid rgba(255, 255, 255, 0.18);
+}
+
+.audioDownloadProgressInner svg { font-size: 11px; }
+.audioDownloadProgressInner span { font-size: 8px; font-weight: 700; line-height: 1; }
 
 @keyframes mediaSpin {
     to { transform: rotate(360deg); }

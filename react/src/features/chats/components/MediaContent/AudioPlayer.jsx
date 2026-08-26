@@ -1,8 +1,10 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import {
+  faDownload,
   faPlay,
   faPause,
+  faXmark,
 } from '@fortawesome/free-solid-svg-icons';
 import styles from './MediaContent.module.css';
 
@@ -19,7 +21,16 @@ const WAVEFORM_BARS = [8, 14, 20, 11, 24, 17, 28, 13, 22, 31, 18, 10, 25, 16, 29
  * Telegram-style audio player with a custom UI (no browser default controls).
  * Supports both voice messages (compact) and audio files (with file name).
  */
-function AudioPlayer({ src, fileName, isVoice = false, accent = 'var(--btn-color)', footer }) {
+function AudioPlayer({
+  src,
+  fileName,
+  isVoice = false,
+  accent = 'var(--btn-color)',
+  footer,
+  onDownload,
+  isDownloading = false,
+  downloadProgress,
+}) {
   const audioRef = useRef(null);
   const [isPlaying, setIsPlaying] = useState(false);
   const [progress, setProgress] = useState(0); // 0..1
@@ -29,6 +40,15 @@ function AudioPlayer({ src, fileName, isVoice = false, accent = 'var(--btn-color
   const [isError, setIsError] = useState(false);
   const [isSeeking, setIsSeeking] = useState(false);
   const seekRef = useRef(null);
+
+  useEffect(() => {
+    setIsPlaying(false);
+    setProgress(0);
+    setDuration(0);
+    setCurrentTime(0);
+    setIsLoading(Boolean(src));
+    setIsError(false);
+  }, [src]);
 
   const togglePlay = useCallback(() => {
     const audio = audioRef.current;
@@ -114,10 +134,31 @@ function AudioPlayer({ src, fileName, isVoice = false, accent = 'var(--btn-color
       <button
         type="button"
         className={styles.audioPlayButton}
-        onClick={togglePlay}
-        aria-label={isPlaying ? 'Pause' : 'Play'}
+        onClick={onDownload || togglePlay}
+        disabled={isDownloading && !onDownload}
+        aria-label={isDownloading && onDownload
+          ? 'Cancel audio download'
+          : onDownload && typeof downloadProgress === 'number'
+            ? 'Resume audio download'
+            : onDownload
+              ? 'Download audio'
+              : (isPlaying ? 'Pause' : 'Play')}
       >
-        {isLoading && !isPlaying ? (
+        {onDownload && (typeof downloadProgress === 'number' || isDownloading) ? (
+          <span
+            className={styles.audioDownloadProgress}
+            style={{ '--audio-download-progress': `${Math.max(0, Math.min(100, Number(downloadProgress) || 0)) * 3.6}deg` }}
+          >
+            <span className={styles.audioDownloadProgressInner}>
+              <FontAwesomeIcon icon={isDownloading ? faXmark : faDownload} />
+              <span>{Math.round(Number(downloadProgress) || 0)}%</span>
+            </span>
+          </span>
+        ) : isDownloading ? (
+          <span className={styles.audioSpinner} />
+        ) : onDownload ? (
+          <FontAwesomeIcon icon={faDownload} />
+        ) : isLoading && !isPlaying ? (
           <span className={styles.audioSpinner} />
         ) : (
           <FontAwesomeIcon icon={isPlaying ? faPause : faPlay} />

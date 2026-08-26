@@ -170,6 +170,9 @@ const getConversationId = (conversation) =>
   || conversation?.conversation_id
   || conversation?.conversationId;
 const getMessageId = (message) => message?._id || message?.id;
+const getMediaStateKey = (message) => (
+  message?.attachment_key || getMessageId(message)
+)?.toString() || '';
 const getReplyMessageId = (reply) => {
   if (!reply) return null;
   if (typeof reply !== 'object') return reply;
@@ -187,6 +190,18 @@ const getMessageMediaUrl = (message) =>
   || message?.mediaUrl
   || message?.preview_url
   || message?.local_preview
+  || '';
+// Only use URLs that represent the complete attachment for a download.
+// preview_url/local_preview may be a small or intentionally partial preview
+// and must never become the source of the full media transfer.
+const getMessageDownloadUrl = (message) =>
+  message?.file_url
+  || message?.media_url
+  || message?.url
+  || message?.fileUrl
+  || message?.mediaUrl
+  || message?.download_url
+  || message?.downloadUrl
   || '';
 const getSenderId = (message) =>
   message?.sender_id
@@ -370,15 +385,54 @@ const getFileExtension = (fileName) => {
   return extension.toUpperCase();
 };
 
-// Cache of attachment_key -> pre-signed download URL
+// Cache of attachment_key -> { url, expiresAt }. Pre-signed URLs are
+// time-limited credentials: with auto-download off, a URL can be resolved for
+// the blurred preview long before the user taps "Download", so entries must
+// expire or every later download would replay a dead signature.
 const mediaUrlCache = new Map();
+
+// Safety margin below the real signature lifetime, absorbing clock skew
+// between this client and the storage backend.
+const MEDIA_URL_EXPIRY_MARGIN_MS = 60 * 1000;
+const MEDIA_URL_FALLBACK_TTL_MS = 50 * 60 * 1000;
+
+// Pre-signed S3/MinIO URLs carry X-Amz-Date (signature start, format
+// YYYYMMDDTHHMMSSZ) and X-Amz-Expires (lifetime in seconds). Parse both to
+// learn when the URL dies; fall back to a conservative TTL if absent.
+const getPresignedUrlExpiry = (url) => {
+  try {
+    const query = new URL(url, window.location.origin).searchParams;
+    const expiresSeconds = Number(query.get('X-Amz-Expires'));
+    const dateMatch = query.get('X-Amz-Date')?.match(/^(\d{4})(\d{2})(\d{2})T(\d{2})(\d{2})(\d{2})Z$/);
+    if (expiresSeconds > 0 && dateMatch) {
+      const signedAtMs = Date.UTC(
+        Number(dateMatch[1]),
+        Number(dateMatch[2]) - 1,
+        Number(dateMatch[3]),
+        Number(dateMatch[4]),
+        Number(dateMatch[5]),
+        Number(dateMatch[6])
+      );
+      return signedAtMs + expiresSeconds * 1000 - MEDIA_URL_EXPIRY_MARGIN_MS;
+    }
+  } catch {
+    // Malformed URL — fall through to the conservative default.
+  }
+  return Date.now() + MEDIA_URL_FALLBACK_TTL_MS;
+};
 
 // Resolves a message's attachment_key to a downloadable pre-signed URL
 // using the backend media download endpoint.
-const resolveAttachmentUrl = async (attachmentKey) => {
+const resolveAttachmentUrl = async (attachmentKey, { forceRefresh = false } = {}) => {
   if (!attachmentKey) return '';
-  if (mediaUrlCache.has(attachmentKey)) {
-    return mediaUrlCache.get(attachmentKey);
+  if (!forceRefresh) {
+    const cached = mediaUrlCache.get(attachmentKey);
+    if (cached && cached.expiresAt > Date.now()) {
+      return cached.url;
+    }
+    if (cached) {
+      mediaUrlCache.delete(attachmentKey);
+    }
   }
   try {
     const response = await fetch('/api/v1/user/media/download', {
@@ -395,7 +449,7 @@ const resolveAttachmentUrl = async (attachmentKey) => {
     const data = await response.json();
     const url = data?.download_url || data?.data?.download_url || '';
     if (url) {
-      mediaUrlCache.set(attachmentKey, url);
+      mediaUrlCache.set(attachmentKey, { url, expiresAt: getPresignedUrlExpiry(url) });
     }
     return url;
   } catch (error) {
@@ -481,6 +535,80 @@ const resolveAttachmentPreview = async (attachmentKey, mediaType) => {
   }
 };
 
+const VISUAL_MEDIA_TYPES = ['image', 'gif', 'sticker', 'video'];
+
+// Keep a manual preview mounted until the browser has decoded the complete
+// media. This prevents a signed URL/blob state change from briefly removing
+// the message before the actual image, GIF, or video can paint.
+const waitForVisualMediaReady = (url, mediaType) => {
+  if (!url || !VISUAL_MEDIA_TYPES.includes(mediaType)) return Promise.resolve();
+
+  return new Promise((resolve, reject) => {
+    let element;
+    let settled = false;
+    const timeoutId = window.setTimeout(() => finish(new Error('Media took too long to prepare.')), 30000);
+
+    const cleanup = () => {
+      window.clearTimeout(timeoutId);
+      if (!element) return;
+      element.onload = null;
+      element.onerror = null;
+      element.onloadeddata = null;
+      if (mediaType === 'video') {
+        element.pause();
+        element.removeAttribute('src');
+        element.load();
+      }
+    };
+
+    function finish(error) {
+      if (settled) return;
+      settled = true;
+      cleanup();
+      if (error) reject(error);
+      else resolve();
+    }
+
+    if (mediaType === 'video') {
+      element = document.createElement('video');
+      element.preload = 'auto';
+      element.muted = true;
+      element.playsInline = true;
+      element.onloadeddata = () => finish();
+      element.onerror = () => finish(new Error('Unable to prepare video.'));
+      element.src = url;
+      element.load();
+      return;
+    }
+
+    element = new Image();
+    element.onload = () => {
+      const decodePromise = typeof element.decode === 'function'
+        ? element.decode().catch(() => undefined)
+        : Promise.resolve();
+      decodePromise.then(() => finish());
+    };
+    element.onerror = () => finish(new Error('Unable to prepare media.'));
+    element.src = url;
+  });
+};
+
+const DownloadProgressRing = ({ progress = 0, active = false, compact = false }) => {
+  const safeProgress = Math.max(0, Math.min(100, Number(progress) || 0));
+  return (
+    <span
+      className={`${styles.downloadProgressRing} ${compact ? styles.downloadProgressRingCompact : ''}`}
+      style={{ '--download-progress': `${safeProgress * 3.6}deg` }}
+      aria-hidden="true"
+    >
+      <span className={styles.downloadProgressRingInner}>
+        <FontAwesomeIcon icon={active ? faXmark : faDownload} className={styles.downloadProgressCancel} />
+        <span className={styles.downloadProgressPercent}>{Math.round(safeProgress)}%</span>
+      </span>
+    </span>
+  );
+};
+
 function ChatsPage() {
   const location = useLocation();
   const navigate = useNavigate();
@@ -499,8 +627,10 @@ function ChatsPage() {
   const [selectedPendingMediaId, setSelectedPendingMediaId] = useState(null);
   const [mediaViewer, setMediaViewer] = useState(null);
   const [autoDownloadMedia, setAutoDownloadMedia] = useState(getAutoDownloadMedia);
-  const autoDownloadMediaRef = useRef(autoDownloadMedia);
   const [manualMediaLoading, setManualMediaLoading] = useState({});
+  const manualMediaLoadingRef = useRef({});
+  const [mediaDownloadProgress, setMediaDownloadProgress] = useState({});
+  const mediaDownloadTasksRef = useRef(new Map());
   const [isNewConversationModalOpen, setIsNewConversationModalOpen] = useState(false);
   const [activeTab, setActiveTab] = useState('all');
   const [isOptionsMenuOpen, setIsOptionsMenuOpen] = useState(false);
@@ -1182,22 +1312,141 @@ function ChatsPage() {
     setMessageContextMenu(null);
   }, []);
 
-  const handleDownloadMessage = useCallback(async (message) => {
+  const cancelMediaDownload = useCallback((messageId) => {
+    const id = messageId?.toString();
+    if (!id) return;
+    const task = mediaDownloadTasksRef.current.get(id);
+    if (!task?.active) return;
+    task.controller?.abort();
+  }, []);
+
+  const clearMediaDownloadState = useCallback((messageId, { keepProgress = false } = {}) => {
+    const id = messageId?.toString();
+    if (!id) return;
+    delete manualMediaLoadingRef.current[id];
+    setManualMediaLoading((current) => {
+      if (!current[id]) return current;
+      const next = { ...current };
+      delete next[id];
+      return next;
+    });
+    if (!keepProgress) {
+      setMediaDownloadProgress((current) => {
+        if (current[id] === undefined) return current;
+        const next = { ...current };
+        delete next[id];
+        return next;
+      });
+    }
+  }, []);
+
+  const downloadMediaBlob = useCallback(async (message, preferredUrl = '', options = {}) => {
+    const { keepLoading = false } = options;
+    const mediaStateKey = getMediaStateKey(message);
+    if (!mediaStateKey) throw new Error('Media message is missing a download key.');
+
+    const existingTask = mediaDownloadTasksRef.current.get(mediaStateKey);
+    if (existingTask?.active) return null;
+
+    const task = existingTask || {
+      url: '',
+      chunks: [],
+      loaded: 0,
+      total: Number(message?.file_size) || 0,
+      mimeType: message?.mime_type || '',
+    };
+    task.url = task.url || preferredUrl || getMessageDownloadUrl(message);
+    task.active = true;
+    task.controller = new AbortController();
+    mediaDownloadTasksRef.current.set(mediaStateKey, task);
+    manualMediaLoadingRef.current[mediaStateKey] = true;
+    setManualMediaLoading((current) => ({ ...current, [mediaStateKey]: true }));
+    setMediaDownloadProgress((current) => ({
+      ...current,
+      [mediaStateKey]: task.total > 0 ? (task.loaded / task.total) * 100 : 0,
+    }));
+
+    try {
+      if (!task.url && message?.attachment_key) {
+        task.url = await resolveAttachmentUrl(message.attachment_key);
+      }
+      if (task.controller.signal.aborted) {
+        const abortError = new Error('Download cancelled.');
+        abortError.name = 'AbortError';
+        throw abortError;
+      }
+      if (!task.url) throw new Error('File is not ready yet.');
+
+      const headers = task.loaded > 0 ? { Range: `bytes=${task.loaded}-` } : undefined;
+      const response = await fetch(task.url, {
+        headers,
+        signal: task.controller.signal,
+      });
+      if (!response.ok || !response.body) throw new Error('Download failed');
+
+      // A resumable response must be 206. If storage ignores Range, restart
+      // cleanly because appending a full 200 response would corrupt the file.
+      if (task.loaded > 0 && response.status !== 206) {
+        task.chunks = [];
+        task.loaded = 0;
+        setMediaDownloadProgress((current) => ({ ...current, [mediaStateKey]: 0 }));
+      }
+
+      const contentRange = response.headers.get('content-range');
+      const rangeTotal = contentRange?.match(/\/(\d+)$/)?.[1];
+      const contentLength = Number(response.headers.get('content-length')) || 0;
+      task.total = Number(rangeTotal) || (contentLength ? task.loaded + contentLength : task.total);
+      task.mimeType = response.headers.get('content-type') || task.mimeType;
+
+      const reader = response.body.getReader();
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        task.chunks.push(value);
+        task.loaded += value.byteLength;
+        const progress = task.total > 0 ? Math.min(100, (task.loaded / task.total) * 100) : 0;
+        setMediaDownloadProgress((current) => ({ ...current, [mediaStateKey]: progress }));
+      }
+
+      const blob = new Blob(task.chunks, { type: task.mimeType || message?.mime_type || '' });
+      if (!blob.size) throw new Error('Downloaded media is empty.');
+      mediaDownloadTasksRef.current.delete(mediaStateKey);
+      if (!keepLoading) clearMediaDownloadState(mediaStateKey);
+      return blob;
+    } catch (error) {
+      const wasAborted = error?.name === 'AbortError' || task.controller?.signal.aborted;
+      task.active = false;
+      task.controller = null;
+      if (wasAborted) {
+        clearMediaDownloadState(mediaStateKey, { keepProgress: true });
+        return null;
+      }
+      // The stored URL may be a stale pre-signed signature (403 after expiry).
+      // Drop it so a retry resolves a fresh one instead of replaying the dead
+      // URL forever.
+      mediaDownloadTasksRef.current.delete(mediaStateKey);
+      if (task.url && message?.attachment_key) {
+        mediaUrlCache.delete(message.attachment_key.toString());
+        task.url = '';
+      }
+      clearMediaDownloadState(mediaStateKey);
+      throw error;
+    }
+  }, [clearMediaDownloadState]);
+
+  const handleDownloadMessage = useCallback(async (message, preferredUrl = '') => {
     if (!message) return;
     setMessageContextMenu(null);
-    let url = getMessageMediaUrl(message);
-    if (!url && message?.attachment_key) {
-      url = await resolveAttachmentUrl(message.attachment_key);
-    }
-    if (!url) {
-      toast.error('File is not ready yet.');
+    const mediaStateKey = getMediaStateKey(message);
+    if (mediaStateKey && manualMediaLoadingRef.current[mediaStateKey]) {
+      cancelMediaDownload(mediaStateKey);
       return;
     }
-    const fileName = getMessageFileName(message) || 'attachment';
+
     try {
-      const response = await fetch(url);
-      if (!response.ok) throw new Error('Download failed');
-      const blob = await response.blob();
+      const blob = await downloadMediaBlob(message, preferredUrl);
+      if (!blob) return;
+      const fileName = getMessageFileName(message) || 'attachment';
       const objectUrl = URL.createObjectURL(blob);
       const link = document.createElement('a');
       link.href = objectUrl;
@@ -1208,9 +1457,9 @@ function ChatsPage() {
       URL.revokeObjectURL(objectUrl);
     } catch (error) {
       console.error('Failed to download media:', error);
-      window.open(url, '_blank');
+      toast.error(error?.message || 'Unable to download this file.');
     }
-  }, []);
+  }, [cancelMediaDownload, downloadMediaBlob]);
 
   const handleResendMessage = useCallback((message) => {
     const conversationId = message?.conversation_id;
@@ -1498,63 +1747,84 @@ function ChatsPage() {
   const [hasMoreMessages, setHasMoreMessages] = useState(true);
   const [messagesOffset, setMessagesOffset] = useState(0);
   const [messagesConversationId, setMessagesConversationId] = useState(null);
-  // Maps message id -> resolved pre-signed media URL (from attachment_key)
+  // A completed blob belongs to the attachment, not to a message instance.
+  // The server can replace an optimistic message id after sending, while the
+  // attachment_key remains stable.
   const [resolvedMediaUrls, setResolvedMediaUrls] = useState({});
   const resolvedMediaUrlsRef = useRef({});
   const [mediaPreviewUrls, setMediaPreviewUrls] = useState({});
   const mediaPreviewUrlsRef = useRef({});
   const mediaPreviewRequestsRef = useRef(new Map());
 
-  useEffect(() => {
-    autoDownloadMediaRef.current = autoDownloadMedia;
-  }, [autoDownloadMedia]);
-
   const loadMediaMessage = useCallback(async (message) => {
-    const messageId = getMessageId(message);
+    const mediaStateKey = getMediaStateKey(message);
     const attachmentKey = message?.attachment_key;
-    if (!messageId || !attachmentKey || manualMediaLoading[messageId]) return;
+    if (!mediaStateKey || !attachmentKey) return;
+    if (manualMediaLoadingRef.current[mediaStateKey]) {
+      cancelMediaDownload(mediaStateKey);
+      return;
+    }
 
-    setManualMediaLoading((current) => ({ ...current, [messageId]: true }));
+    const mediaType = getRenderableMediaType(message);
+    if (['document', 'file'].includes(mediaType)) {
+      await handleDownloadMessage(message);
+      return;
+    }
+
+    manualMediaLoadingRef.current[mediaStateKey] = true;
+    setManualMediaLoading((current) => ({ ...current, [mediaStateKey]: true }));
+    let downloadedUrl = '';
     try {
-      const signedUrl = await resolveAttachmentUrl(attachmentKey);
-      if (!signedUrl) throw new Error('Media is not available right now.');
-      const mediaType = getRenderableMediaType(message);
-      let url = signedUrl;
+      const blob = await downloadMediaBlob(message, '', { keepLoading: true });
+      if (!blob) return;
+      downloadedUrl = URL.createObjectURL(blob);
 
-      // Audio is intentionally download-only while auto-download is disabled.
-      // Fetch the complete file before exposing the player, so the play button
-      // cannot start streaming a file the user has not chosen to download.
-      if (['voice', 'audio'].includes(mediaType)) {
-        const response = await fetch(signedUrl);
-        if (!response.ok) throw new Error('Audio is not available right now.');
-        const blob = await response.blob();
-        url = URL.createObjectURL(blob);
+      try {
+        await waitForVisualMediaReady(downloadedUrl, mediaType);
+      } catch (prepareError) {
+        // The complete blob is already available. Do not throw it away when
+        // an optional browser decode/preparation step fails; rendering the
+        // blob lets the media element perform its normal decode and avoids
+        // forcing the user to download the same bytes a second time.
+        console.warn('Media preparation failed; rendering the downloaded blob:', prepareError);
       }
 
-      const previewUrl = mediaPreviewUrlsRef.current[messageId];
-      if (previewUrl?.startsWith('blob:')) {
-        URL.revokeObjectURL(previewUrl);
-        delete mediaPreviewUrlsRef.current[messageId];
-        setMediaPreviewUrls((current) => {
-          const next = { ...current };
-          delete next[messageId];
-          return next;
-        });
+      const previousUrl = resolvedMediaUrlsRef.current[mediaStateKey];
+      if (previousUrl?.startsWith('blob:') && previousUrl !== downloadedUrl) {
+        URL.revokeObjectURL(previousUrl);
       }
-      const previousUrl = resolvedMediaUrlsRef.current[messageId];
-      if (previousUrl?.startsWith('blob:')) URL.revokeObjectURL(previousUrl);
-      resolvedMediaUrlsRef.current[messageId] = url;
-      setResolvedMediaUrls((current) => ({ ...current, [messageId]: url }));
+      resolvedMediaUrlsRef.current[mediaStateKey] = downloadedUrl;
+      // Capture the URL in an immutable local BEFORE the updater runs. A
+      // functional updater closes over the *variable*, not its value, and
+      // `downloadedUrl` is reset to '' below — so React would flush the update
+      // reading '' instead of the blob URL, reverting the media to "Tap to load".
+      const finalDownloadedUrl = downloadedUrl;
+      setResolvedMediaUrls((current) => ({ ...current, [mediaStateKey]: finalDownloadedUrl }));
+
+      const previewUrl = mediaPreviewUrlsRef.current[mediaStateKey];
+      if (previewUrl?.startsWith('blob:')) URL.revokeObjectURL(previewUrl);
+      delete mediaPreviewUrlsRef.current[mediaStateKey];
+      setMediaPreviewUrls((current) => {
+        if (!current[mediaStateKey]) return current;
+        const next = { ...current };
+        delete next[mediaStateKey];
+        return next;
+      });
+      clearMediaDownloadState(mediaStateKey);
+      downloadedUrl = '';
     } catch (error) {
+      if (downloadedUrl?.startsWith('blob:')) URL.revokeObjectURL(downloadedUrl);
+      clearMediaDownloadState(mediaStateKey);
       toast.error(error?.message || 'Unable to load media.');
     } finally {
+      delete manualMediaLoadingRef.current[mediaStateKey];
       setManualMediaLoading((current) => {
         const next = { ...current };
-        delete next[messageId];
+        delete next[mediaStateKey];
         return next;
       });
     }
-  }, [manualMediaLoading]);
+  }, [cancelMediaDownload, clearMediaDownloadState, downloadMediaBlob, handleDownloadMessage]);
   const messagesContainerRef = useRef(null);
   const isLoadingMoreRef = useRef(false);
   const messagesOffsetRef = useRef(0);
@@ -1579,91 +1849,165 @@ function ChatsPage() {
     if (!autoDownloadMedia) return undefined;
     const pending = [];
     messages.forEach((message) => {
-      const id = getMessageId(message);
+      const id = getMessageId(message)?.toString();
       const key = message?.attachment_key;
-      if (!id || !key) return;
-      if (resolvedMediaUrlsRef.current[id]) return;
-      if (message?.local_preview) return; // optimistic message already has a preview
-      pending.push({ id, key });
+      const mediaStateKey = getMediaStateKey(message);
+      if (!id || !key || !mediaStateKey) return;
+      if (resolvedMediaUrlsRef.current[mediaStateKey]) return;
+      if (mediaDownloadTasksRef.current.has(key.toString())
+        || manualMediaLoadingRef.current[key.toString()]) return;
+      if (message?.local_preview && message?.status === 'pending') return;
+      const mediaType = getRenderableMediaType(message);
+      pending.push({ id, key, mediaType });
     });
     if (pending.length === 0) return;
 
-    let cancelled = false;
-    pending.forEach(({ id, key }) => {
-      resolveAttachmentUrl(key).then((url) => {
-        if (cancelled || !url) return;
-        resolvedMediaUrlsRef.current[id] = url;
-        setResolvedMediaUrls((prev) => ({ ...prev, [id]: url }));
-      });
+    pending.forEach(({ id, key, mediaType }) => {
+      void (async () => {
+        try {
+          const blob = await downloadMediaBlob({
+            ...messagesRef.current.find((message) => getMessageId(message)?.toString() === id),
+            _id: id,
+            id,
+            attachment_key: key,
+            type: mediaType,
+          }, '', { keepLoading: true });
+          if (!blob) return;
+
+          const readyUrl = URL.createObjectURL(blob);
+          try {
+            await waitForVisualMediaReady(readyUrl, mediaType);
+          } catch (prepareError) {
+            console.warn('Auto-downloaded media preparation failed; rendering the blob:', prepareError);
+          }
+
+          const currentMessage = messagesRef.current.find((message) => (
+            getMessageId(message)?.toString() === id
+            || message?.attachment_key === key
+          ));
+          if (!currentMessage) {
+            URL.revokeObjectURL(readyUrl);
+            clearMediaDownloadState(key);
+            return;
+          }
+          const currentMediaStateKey = getMediaStateKey(currentMessage) || key.toString();
+          const previousUrl = resolvedMediaUrlsRef.current[currentMediaStateKey];
+          if (previousUrl?.startsWith('blob:') && previousUrl !== readyUrl) {
+            URL.revokeObjectURL(previousUrl);
+          }
+          resolvedMediaUrlsRef.current[currentMediaStateKey] = readyUrl;
+          setResolvedMediaUrls((prev) => ({ ...prev, [currentMediaStateKey]: readyUrl }));
+
+          const previewUrl = mediaPreviewUrlsRef.current[currentMediaStateKey]
+            || mediaPreviewUrlsRef.current[key.toString()]
+            || mediaPreviewUrlsRef.current[id];
+          if (previewUrl?.startsWith('blob:')) URL.revokeObjectURL(previewUrl);
+          delete mediaPreviewUrlsRef.current[currentMediaStateKey];
+          delete mediaPreviewUrlsRef.current[key.toString()];
+          delete mediaPreviewUrlsRef.current[id];
+          setMediaPreviewUrls((current) => {
+            if (!current[currentMediaStateKey] && !current[key.toString()] && !current[id]) return current;
+            const next = { ...current };
+            delete next[currentMediaStateKey];
+            delete next[key.toString()];
+            delete next[id];
+            return next;
+          });
+          clearMediaDownloadState(key);
+        } catch (error) {
+          clearMediaDownloadState(key);
+          console.error('Failed to auto-download media:', error);
+        }
+      })();
     });
-    return () => {
-      cancelled = true;
-    };
-  }, [autoDownloadMedia, messages]);
+    return undefined;
+  }, [autoDownloadMedia, clearMediaDownloadState, downloadMediaBlob, messages]);
 
   useEffect(() => {
-    const activeMessageIds = new Set(
-      messages.map((message) => getMessageId(message)?.toString()).filter(Boolean)
+    const activeMediaStateKeys = new Set(
+      messages.map((message) => getMediaStateKey(message)).filter(Boolean)
     );
 
-    Object.entries(mediaPreviewUrlsRef.current).forEach(([messageId, previewUrl]) => {
-      if (!activeMessageIds.has(messageId)) {
-        if (previewUrl.startsWith('blob:')) URL.revokeObjectURL(previewUrl);
-        delete mediaPreviewUrlsRef.current[messageId];
-        mediaPreviewRequestsRef.current.delete(messageId);
+    mediaDownloadTasksRef.current.forEach((task, messageId) => {
+      if (!activeMediaStateKeys.has(messageId)) {
+        task.controller?.abort();
+        mediaDownloadTasksRef.current.delete(messageId);
+        clearMediaDownloadState(messageId);
       }
     });
 
-    Object.entries(resolvedMediaUrlsRef.current).forEach(([messageId, mediaUrl]) => {
-      if (!activeMessageIds.has(messageId) && mediaUrl.startsWith('blob:')) {
-        URL.revokeObjectURL(mediaUrl);
-        delete resolvedMediaUrlsRef.current[messageId];
+    Object.keys(manualMediaLoadingRef.current).forEach((messageId) => {
+      if (!activeMediaStateKeys.has(messageId)) clearMediaDownloadState(messageId);
+    });
+
+    setMediaDownloadProgress((current) => {
+      const next = Object.fromEntries(
+        Object.entries(current).filter(([messageId]) => activeMediaStateKeys.has(messageId))
+      );
+      return Object.keys(next).length === Object.keys(current).length ? current : next;
+    });
+
+    Object.entries(mediaPreviewUrlsRef.current).forEach(([mediaStateKey, previewUrl]) => {
+      if (!activeMediaStateKeys.has(mediaStateKey)) {
+        if (previewUrl.startsWith('blob:')) URL.revokeObjectURL(previewUrl);
+        delete mediaPreviewUrlsRef.current[mediaStateKey];
+        mediaPreviewRequestsRef.current.delete(mediaStateKey);
       }
     });
 
-    if (autoDownloadMedia) {
-      Object.values(mediaPreviewUrlsRef.current).forEach((previewUrl) => {
-        if (previewUrl.startsWith('blob:')) URL.revokeObjectURL(previewUrl);
-      });
-      mediaPreviewUrlsRef.current = {};
-      mediaPreviewRequestsRef.current.clear();
-      setMediaPreviewUrls({});
-      return undefined;
-    }
+    Object.entries(resolvedMediaUrlsRef.current).forEach(([mediaStateKey, mediaUrl]) => {
+      if (!activeMediaStateKeys.has(mediaStateKey)) {
+        if (mediaUrl.startsWith('blob:')) {
+          URL.revokeObjectURL(mediaUrl);
+        }
+        delete resolvedMediaUrlsRef.current[mediaStateKey];
+      }
+    });
+
+    setResolvedMediaUrls((current) => {
+      const next = Object.fromEntries(
+        Object.entries(current).filter(([mediaStateKey]) => activeMediaStateKeys.has(mediaStateKey))
+      );
+      return Object.keys(next).length === Object.keys(current).length ? current : next;
+    });
 
     messages.forEach((message) => {
-      const messageId = getMessageId(message)?.toString();
+      const mediaStateKey = getMediaStateKey(message);
       const attachmentKey = message?.attachment_key;
       const mediaType = getRenderableMediaType(message);
       const isVisualMedia = ['image', 'gif', 'sticker', 'video'].includes(mediaType);
-      if (!messageId || !attachmentKey || !isVisualMedia) return;
-      if (mediaPreviewUrlsRef.current[messageId] || mediaPreviewRequestsRef.current.has(messageId)) return;
+      if (!mediaStateKey || !attachmentKey || !isVisualMedia) return;
+      if (mediaPreviewUrlsRef.current[mediaStateKey]
+        || mediaPreviewRequestsRef.current.has(mediaStateKey)) return;
 
       const request = resolveAttachmentPreview(attachmentKey, mediaType)
         .then((previewUrl) => {
-          if (!previewUrl || autoDownloadMediaRef.current || resolvedMediaUrlsRef.current[messageId]) {
+          if (!previewUrl || resolvedMediaUrlsRef.current[mediaStateKey]) {
             if (previewUrl?.startsWith('blob:')) URL.revokeObjectURL(previewUrl);
             return;
           }
-          mediaPreviewUrlsRef.current[messageId] = previewUrl;
-          setMediaPreviewUrls((current) => ({ ...current, [messageId]: previewUrl }));
+          mediaPreviewUrlsRef.current[mediaStateKey] = previewUrl;
+          setMediaPreviewUrls((current) => ({ ...current, [mediaStateKey]: previewUrl }));
         })
         .finally(() => {
-          mediaPreviewRequestsRef.current.delete(messageId);
+          mediaPreviewRequestsRef.current.delete(mediaStateKey);
         });
-      mediaPreviewRequestsRef.current.set(messageId, request);
+      mediaPreviewRequestsRef.current.set(mediaStateKey, request);
     });
 
     return undefined;
-  }, [autoDownloadMedia, messages]);
+  }, [autoDownloadMedia, clearMediaDownloadState, messages]);
 
   useEffect(() => () => {
+    mediaDownloadTasksRef.current.forEach((task) => task.controller?.abort());
+    mediaDownloadTasksRef.current.clear();
     Object.values(mediaPreviewUrlsRef.current).forEach((previewUrl) => {
       if (previewUrl.startsWith('blob:')) URL.revokeObjectURL(previewUrl);
     });
     mediaPreviewUrlsRef.current = {};
     mediaPreviewRequestsRef.current.clear();
-    Object.values(resolvedMediaUrlsRef.current).forEach((mediaUrl) => {
+    const resolvedUrls = new Set(Object.values(resolvedMediaUrlsRef.current));
+    resolvedUrls.forEach((mediaUrl) => {
       if (mediaUrl.startsWith('blob:')) URL.revokeObjectURL(mediaUrl);
     });
     resolvedMediaUrlsRef.current = {};
@@ -5323,6 +5667,7 @@ function ChatsPage() {
                   const isMyMessage = Boolean(messageSenderId && currentUserId) &&
                     messageSenderId === currentUserId;
                   const messageId = message._id || message.id || `msg-${index}`;
+                  const mediaStateKey = getMediaStateKey(message);
                   const messageContent = message.content || message.text || '';
                   const messageTime = message.when || message.timestamp || message.created_at;
                   const isPrivateChat = selectedChat?.type === 'pv';
@@ -5336,8 +5681,13 @@ function ChatsPage() {
                     ? messages.find((candidate) => getMessageId(candidate)?.toString() === replyTargetId)
                     : null;
                   const replyPreview = buildReplyPreview(replyTarget || replyReference);
-                  const resolvedMediaUrl = resolvedMediaUrls[messageId] || '';
-                  const mediaUrl = getMessageMediaUrl(message) || resolvedMediaUrl;
+                  const resolvedMediaUrl = resolvedMediaUrls[mediaStateKey] || '';
+                  // Once a manual/automatic download finishes, render its
+                  // retained blob instead of continuing to show a preview URL.
+                  const mediaUrl = resolvedMediaUrl
+                    || (message?.attachment_key
+                      ? getMessageDownloadUrl(message)
+                      : getMessageMediaUrl(message));
                   const messageType = message.type || (mediaUrl ? 'file' : 'text');
                   const resolvedMessageType = getRenderableMediaType({
                     ...message,
@@ -5345,20 +5695,21 @@ function ChatsPage() {
                   });
                   const isMediaReady = Boolean(mediaUrl);
                   const isMedia = Boolean(mediaUrl || message?.attachment_key);
-                  const isManualMediaLoading = Boolean(manualMediaLoading[messageId]);
-                  const mediaPreviewUrl = mediaPreviewUrls[messageId] || '';
+                  const isManualMediaLoading = Boolean(manualMediaLoading[mediaStateKey]);
+                  const mediaPreviewUrl = mediaPreviewUrls[mediaStateKey] || '';
+                  const isAudioMedia = ['voice', 'audio'].includes(resolvedMessageType);
+                  const isVisualMedia = VISUAL_MEDIA_TYPES.includes(resolvedMessageType);
+                  const downloadProgress = mediaDownloadProgress[mediaStateKey];
+                  const hasDownloadProgress = typeof downloadProgress === 'number';
                   const showMediaDownloadPreview = Boolean(
                     message?.attachment_key
                     && !mediaUrl
-                    && !['document', 'file'].includes(resolvedMessageType)
-                    && !autoDownloadMedia
+                    && isVisualMedia
                   );
-                  const isMediaResolving = Boolean(
+                  const showAudioDownloadButton = Boolean(
                     message?.attachment_key
                     && !mediaUrl
-                    && autoDownloadMedia
-                    && !showMediaDownloadPreview
-                    && !['document', 'file'].includes(resolvedMessageType)
+                    && isAudioMedia
                   );
                   const hasMediaCaption = isMedia && Boolean(messageContent.trim());
                   const hasReplyMedia = isMedia && Boolean(replyPreview);
@@ -5368,7 +5719,7 @@ function ChatsPage() {
                     || (messageType === 'document');
                   const isVisualManualPreview = showMediaDownloadPreview
                     && !isDocument
-                    && !['voice', 'audio'].includes(resolvedMessageType);
+                    && isVisualMedia;
                   const isMediaOnly = isMedia && !messageContent.trim() && !replyPreview;
                   const isEmojiOnly = isEmojiOnlyMessage(messageContent);
                   const shouldUseEmojiOnlyStyle = isEmojiOnly && !replyPreview && !isMedia;
@@ -5590,113 +5941,69 @@ function ChatsPage() {
                             </div>
                           )}
                           {showMediaDownloadPreview && !isDocument && (
-                            ['voice', 'audio'].includes(resolvedMessageType) ? (
-                              <div className={`${styles.audioManualCard} ${isMediaOnly ? styles.audioManualCardOnly : ''}`}>
-                                <button
-                                  type="button"
-                                  className={styles.audioDownloadButton}
-                                  onClick={() => loadMediaMessage(message)}
-                                  disabled={isManualMediaLoading}
-                                  aria-label={isManualMediaLoading ? 'Downloading audio' : 'Download audio'}
-                                >
-                                  {isManualMediaLoading ? (
+                            <button
+                              type="button"
+                              className={`${styles.mediaManualPreview} ${
+                                resolvedMessageType === 'video'
+                                  ? styles.mediaManualPreviewVideo
+                                  : styles.mediaManualPreviewVisual
+                              } ${
+                                isManualMediaLoading ? styles.mediaManualPreviewLoading : ''
+                              }`}
+                              onClick={() => loadMediaMessage(message)}
+                              aria-label={isManualMediaLoading
+                                ? `Cancel ${resolvedMessageType} download`
+                                : hasDownloadProgress
+                                  ? `Resume ${resolvedMessageType} download`
+                                  : `Download ${resolvedMessageType} media`}
+                            >
+                              {mediaPreviewUrl && resolvedMessageType === 'video' && (
+                                <video
+                                  className={styles.mediaManualPreviewMedia}
+                                  src={mediaPreviewUrl}
+                                  muted
+                                  playsInline
+                                  preload="metadata"
+                                  aria-hidden="true"
+                                />
+                              )}
+                              {mediaPreviewUrl && resolvedMessageType !== 'video' && (
+                                <img
+                                  className={styles.mediaManualPreviewMedia}
+                                  src={mediaPreviewUrl}
+                                  alt=""
+                                  aria-hidden="true"
+                                />
+                              )}
+                              <span className={styles.mediaManualBlur} aria-hidden="true" />
+                              <span className={styles.mediaManualAction}>
+                                <span className={styles.mediaManualIcon}>
+                                  {hasDownloadProgress || isManualMediaLoading ? (
+                                    <DownloadProgressRing
+                                      progress={downloadProgress || 0}
+                                      active={isManualMediaLoading}
+                                    />
+                                  ) : isManualMediaLoading ? (
                                     <span className={styles.mediaManualSpinner} />
                                   ) : (
-                                    <FontAwesomeIcon icon={faDownload} />
+                                    <FontAwesomeIcon icon={resolvedMessageType === 'video' ? faVideo : faImage} />
                                   )}
-                                </button>
-                                <div className={styles.audioManualInfo}>
-                                  <strong>{getMessageFileName(message) || 'Audio message'}</strong>
-                                  <span>{isManualMediaLoading ? 'Downloading audio…' : 'Download to play'}</span>
-                                </div>
-                                {isMediaOnly && (
-                                  <span className={styles.mediaManualFooter}>
-                                    {messageFooterMarkup}
-                                  </span>
-                                )}
-                              </div>
-                            ) : (
-                              <button
-                                type="button"
-                                className={`${styles.mediaManualPreview} ${
-                                  resolvedMessageType === 'video'
-                                    ? styles.mediaManualPreviewVideo
-                                    : styles.mediaManualPreviewVisual
-                                } ${
-                                  isManualMediaLoading ? styles.mediaManualPreviewLoading : ''
-                                }`}
-                                onClick={() => loadMediaMessage(message)}
-                                disabled={isManualMediaLoading}
-                                aria-label={isManualMediaLoading
-                                  ? `Downloading ${resolvedMessageType} media`
-                                  : `Download ${resolvedMessageType} media`}
-                              >
-                                {mediaPreviewUrl && resolvedMessageType === 'video' && (
-                                  <video
-                                    className={styles.mediaManualPreviewMedia}
-                                    src={mediaPreviewUrl}
-                                    muted
-                                    playsInline
-                                    preload="metadata"
-                                    aria-hidden="true"
-                                  />
-                                )}
-                                {mediaPreviewUrl && resolvedMessageType !== 'video' && (
-                                  <img
-                                    className={styles.mediaManualPreviewMedia}
-                                    src={mediaPreviewUrl}
-                                    alt=""
-                                    aria-hidden="true"
-                                  />
-                                )}
-                                <span className={styles.mediaManualBlur} aria-hidden="true" />
-                                <span className={styles.mediaManualAction}>
-                                  <span className={styles.mediaManualIcon}>
-                                    {isManualMediaLoading ? (
-                                      <span className={styles.mediaManualSpinner} />
-                                    ) : (
-                                      <FontAwesomeIcon icon={resolvedMessageType === 'video' ? faVideo : faImage} />
-                                    )}
-                                  </span>
-                                  <strong>
-                                    {isManualMediaLoading
-                                      ? `Downloading ${resolvedMessageType === 'video' ? 'video' : 'media'}…`
-                                      : `Download ${resolvedMessageType === 'video' ? 'video' : 'media'}`}
-                                  </strong>
-                                  <small>{isManualMediaLoading ? 'Preparing media' : 'Tap to load'}</small>
                                 </span>
-                                {isMediaOnly && (
-                                  <span className={styles.mediaManualFooter}>
-                                    {messageFooterMarkup}
-                                  </span>
+                                {!isManualMediaLoading && !hasDownloadProgress && (
+                                  <>
+                                    <strong>
+                                      Download {resolvedMessageType === 'video' ? 'video' : 'media'}
+                                    </strong>
+                                    <small>Tap to load</small>
+                                  </>
                                 )}
-                              </button>
-                            )
-                          )}
-                          {isMediaResolving && !isDocument && (
-                            <div
-                              className={`${styles.mediaResolvingCard} ${
-                                ['voice', 'audio'].includes(resolvedMessageType)
-                                  ? styles.mediaResolvingAudio
-                                  : resolvedMessageType === 'video'
-                                    ? styles.mediaResolvingVideo
-                                    : styles.mediaResolvingVisual
-                              } ${
-                                isMediaOnly && ['voice', 'audio'].includes(resolvedMessageType)
-                                  ? styles.mediaResolvingAudioOnly
-                                  : ''
-                              }`}
-                              role="status"
-                              aria-label="Loading media"
-                            >
-                              <span className={styles.mediaResolvingSpinner} />
-                              <span>Loading media</span>
+                              </span>
                               {isMediaOnly && (
                                 <span className={styles.mediaManualFooter}>
                                   {messageFooterMarkup}
                                 </span>
                               )}
-                            </div>
+                            </button>
                           )}
                           {isMediaReady && (resolvedMessageType === 'video') && (
                             <VideoPlayer
@@ -5705,13 +6012,18 @@ function ChatsPage() {
                               footer={showMediaFooter ? messageFooterMarkup : undefined}
                             />
                           )}
-                          {isMediaReady && (resolvedMessageType === 'voice' || resolvedMessageType === 'audio') && (
+                          {isMedia && isAudioMedia && (
                             <AudioPlayer
                               src={mediaUrl}
                               fileName={getMessageFileName(message)}
                               isVoice={resolvedMessageType === 'voice'}
                               accent={isMyMessage ? 'rgba(255,255,255,0.82)' : 'var(--chat-accent)'}
                               footer={showMediaFooter ? messageFooterMarkup : undefined}
+                              onDownload={showAudioDownloadButton
+                                ? () => loadMediaMessage(message)
+                                : undefined}
+                              isDownloading={isManualMediaLoading}
+                              downloadProgress={downloadProgress}
                             />
                           )}
                           {isDocument && (
@@ -5719,11 +6031,12 @@ function ChatsPage() {
                               <button
                                 type="button"
                                 className={styles.fileAttachment}
-                                onClick={() => (mediaUrl
-                                  ? handleDownloadMessage(message)
-                                  : loadMediaMessage(message))}
-                                disabled={isManualMediaLoading || (autoDownloadMedia && !mediaUrl)}
-                                aria-label={`Download ${getMessageFileName(message) || 'attachment'}`}
+                                onClick={() => handleDownloadMessage(message)}
+                                aria-label={isManualMediaLoading
+                                  ? `Cancel download of ${getMessageFileName(message) || 'attachment'}`
+                                  : hasDownloadProgress
+                                    ? `Resume download of ${getMessageFileName(message) || 'attachment'}`
+                                    : `Download ${getMessageFileName(message) || 'attachment'}`}
                               >
                                 <span className={styles.fileAttachmentIcon}>
                                   <span>{getFileExtension(getMessageFileName(message))}</span>
@@ -5735,15 +6048,18 @@ function ChatsPage() {
                                   </span>
                                   <span className={styles.fileAttachmentSize}>
                                     {message?.file_size ? formatFileSize(message.file_size) : 'Document'}
-                                    {!mediaUrl
-                                      ? (isManualMediaLoading || autoDownloadMedia ? ' · preparing' : ' · tap to download')
-                                      : ''}
                                   </span>
                                 </span>
                                 <span className={styles.fileAttachmentDownload}>
-                                  {isManualMediaLoading || (autoDownloadMedia && !mediaUrl)
-                                    ? <span className={styles.filePreparingSpinner} />
-                                    : <FontAwesomeIcon icon={faDownload} />}
+                                  {hasDownloadProgress || isManualMediaLoading ? (
+                                    <DownloadProgressRing
+                                      progress={downloadProgress || 0}
+                                      active={isManualMediaLoading}
+                                      compact
+                                    />
+                                  ) : (
+                                    <FontAwesomeIcon icon={faDownload} />
+                                  )}
                                 </span>
                               </button>
                               {showMediaFooter && (
@@ -5782,7 +6098,7 @@ function ChatsPage() {
                                   }}
                                 />
                               </button>
-                              {resolvedMessageType !== 'sticker' && (
+                              {!['sticker', 'gif'].includes(resolvedMessageType) && (
                                 <button
                                   type="button"
                                   className={styles.mediaQuickDownload}
