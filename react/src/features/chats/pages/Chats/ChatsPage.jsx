@@ -170,6 +170,15 @@ const getConversationId = (conversation) =>
   || conversation?.conversation_id
   || conversation?.conversationId;
 const getMessageId = (message) => message?._id || message?.id;
+const getReplyMessageId = (reply) => {
+  if (!reply) return null;
+  if (typeof reply !== 'object') return reply;
+  return reply.messageId
+    || reply.message_id
+    || getMessageId(reply)
+    || reply.replied_to
+    || null;
+};
 const getMessageMediaUrl = (message) =>
   message?.file_url
   || message?.media_url
@@ -221,14 +230,7 @@ const normalizeMessage = (message, chat, currentUserId) => {
     || message?.replyTo
     || message?.reply_to_message;
   const repliedTo = message?.replied_to;
-  const replyPreview = existingReply || (repliedTo
-    ? {
-        messageId: repliedTo?._id || repliedTo?.id || null,
-        content: repliedTo?.content || repliedTo?.text || '',
-        type: repliedTo?.type || 'text',
-        sender: repliedTo?.sender || repliedTo?.sender_id || repliedTo?.sender_name,
-      }
-    : null);
+  const replyPreview = buildReplyPreview(existingReply || repliedTo);
 
   return {
     ...message,
@@ -321,6 +323,45 @@ const getFileNameFromAttachmentKey = (attachmentKey) => {
 const getMessageFileName = (message) => {
   if (message?.file_name) return message.file_name;
   return getFileNameFromAttachmentKey(message?.attachment_key);
+};
+
+// Reply targets can arrive as a populated message, a small replied_to object,
+// or only as an id from the socket event. Keep one media-aware shape for all
+// of those sources so the reply preview never depends on a caption being set.
+const buildReplyPreview = (reply, fallbackMessageId = null) => {
+  const source = reply && typeof reply === 'object' ? reply : {};
+  const messageId = getReplyMessageId(reply) || fallbackMessageId;
+  if (!messageId) return null;
+
+  const sourceType = source.type || source.message_type || '';
+  const type = sourceType === 'file'
+    ? (getMediaTypeFromMime(source.mime_type) || sourceType)
+    : sourceType || getMediaTypeFromMime(source.mime_type)
+      || (source.attachment_key ? 'document' : 'text');
+  const rawContent = source.content ?? source.text ?? '';
+  const content = typeof rawContent === 'string'
+    ? rawContent.trim()
+    : rawContent
+      ? String(rawContent)
+      : '';
+  const previewText = content || getMessagePreviewText({ ...source, type, content });
+  const sender = typeof source.sender === 'string' || typeof source.sender === 'number'
+    ? source.sender
+    : source.sender_name || source.sender_username || undefined;
+
+  return {
+    ...source,
+    messageId: messageId.toString(),
+    content: previewText,
+    type,
+    sender,
+    sender_id: source.sender_id || getSenderId(source),
+    sender_info: source.sender_info,
+    attachment_key: source.attachment_key || '',
+    file_name: source.file_name || '',
+    mime_type: source.mime_type || '',
+    file_size: source.file_size || 0,
+  };
 };
 
 const getFileExtension = (fileName) => {
@@ -707,13 +748,7 @@ function ChatsPage() {
 
     const optimisticId = `optimistic-${Date.now()}`;
     const replyTo = replyingToMessage
-      ? {
-          messageId: getMessageId(replyingToMessage),
-          content: replyingToMessage?.content
-            || replyingToMessage?.text
-            || getMessagePreviewText(replyingToMessage),
-          sender: replyingToMessage?.sender,
-        }
+      ? buildReplyPreview(replyingToMessage)
       : null;
     const optimisticMessage = {
       _id: optimisticId,
@@ -1219,14 +1254,22 @@ function ChatsPage() {
       }
     }
 
-    if (isMedia) {
+    if (isMedia && replyToId) {
+      socket.emit(SOCKET_EVENTS.MESSAGE_SEND_REPLY, {
+        conversation_id: conversationId.toString(),
+        message_text: content || '',
+        reply_to: replyToId,
+        track_id: messageId,
+        message_type: messageType,
+        attachment_key: attachmentKey,
+      });
+    } else if (isMedia) {
       socket.emit(SOCKET_EVENTS.MESSAGE_SEND, {
         conversation_id: conversationId,
         message_text: content || '',
         track_id: messageId,
         message_type: messageType,
         attachment_key: attachmentKey,
-        replied_to: replyToId || null,
       });
     } else if (replyToId) {
       socket.emit(SOCKET_EVENTS.MESSAGE_SEND_REPLY, {
@@ -2012,19 +2055,13 @@ function ChatsPage() {
     };
 
     const resolveReplyPreview = (replyId) => {
-      if (!replyId) return null;
-      const replyIdStr = replyId.toString();
+      const replyMessageId = getReplyMessageId(replyId);
+      if (!replyMessageId) return null;
+      const replyIdStr = replyMessageId.toString();
       const match = messagesRef.current.find(
         (m) => getMessageId(m)?.toString() === replyIdStr
       );
-      if (!match) {
-        return { messageId: replyIdStr };
-      }
-      return {
-        messageId: replyIdStr,
-        content: match?.content || match?.text || '',
-        sender: match?.sender,
-      };
+      return buildReplyPreview(match || replyId, replyIdStr);
     };
 
     const handleMessageSendReplyAck = (payload) => {
@@ -2232,14 +2269,24 @@ function ChatsPage() {
         }
 
         if (socket && socket.connected && resolvedConversationId) {
-          socket.emit(SOCKET_EVENTS.MESSAGE_SEND, {
-            conversation_id: resolvedConversationId,
-            message_text: pendingPv.messageText,
-            track_id: pendingTrackId,
-            message_type: pendingPv.messageType || 'text',
-            attachment_key: pendingPv.attachmentKey || '',
-            replied_to: pendingPv.repliedTo || null,
-          });
+          if (pendingPv.repliedTo) {
+            socket.emit(SOCKET_EVENTS.MESSAGE_SEND_REPLY, {
+              conversation_id: resolvedConversationId,
+              message_text: pendingPv.messageText,
+              reply_to: pendingPv.repliedTo,
+              track_id: pendingTrackId,
+              message_type: pendingPv.messageType || 'text',
+              attachment_key: pendingPv.attachmentKey || '',
+            });
+          } else {
+            socket.emit(SOCKET_EVENTS.MESSAGE_SEND, {
+              conversation_id: resolvedConversationId,
+              message_text: pendingPv.messageText,
+              track_id: pendingTrackId,
+              message_type: pendingPv.messageType || 'text',
+              attachment_key: pendingPv.attachmentKey || '',
+            });
+          }
         }
 
         pendingPvRef.current = null;
@@ -2277,9 +2324,11 @@ function ChatsPage() {
       }
 
       if (!trackId) return;
-      const pending = pendingSendMapRef.current[trackId];
+      const pending = pendingSendMapRef.current[trackId]
+        || pendingReplyMapRef.current[trackId];
       if (!pending?.tempId) return;
       delete pendingSendMapRef.current[trackId];
+      delete pendingReplyMapRef.current[trackId];
       if (pendingAckTimersRef.current[pending.tempId]) {
         clearTimeout(pendingAckTimersRef.current[pending.tempId]);
         delete pendingAckTimersRef.current[pending.tempId];
@@ -4147,16 +4196,10 @@ function ChatsPage() {
       }
 
       const replyTo = replyToOverride !== undefined
-        ? replyToOverride
+        ? buildReplyPreview(replyToOverride)
         : replyingToMessage
-        ? {
-            messageId: getMessageId(replyingToMessage),
-            content: replyingToMessage?.content
-              || replyingToMessage?.text
-              || getMessagePreviewText(replyingToMessage),
-            sender: replyingToMessage?.sender,
-          }
-        : null;
+          ? buildReplyPreview(replyingToMessage)
+          : null;
 
       setReplyingToMessage(null);
 
@@ -4297,9 +4340,14 @@ function ChatsPage() {
         }
 
         // Register pending ack so the optimistic message gets its real id
-        pendingSendMapRef.current[optimisticId] = {
+        // A temporary PV is created by the regular send event. Once the
+        // conversation exists, media replies use the reply event so the
+        // recipient receives the replied_to relationship as well.
+        const pendingMap = replyTo && !isPendingPv ? pendingReplyMapRef : pendingSendMapRef;
+        pendingMap.current[optimisticId] = {
           tempId: optimisticId,
           conversationId: conversationId.toString(),
+          ...(replyTo ? { replyToId: replyTo.messageId } : {}),
         };
         if (pendingAckTimersRef.current[optimisticId]) {
           clearTimeout(pendingAckTimersRef.current[optimisticId]);
@@ -4436,20 +4484,30 @@ function ChatsPage() {
               track_id: optimisticId,
               message_type: backendType,
               attachment_key: attachmentKey,
-              replied_to: replyTo?.messageId || null,
             });
           }
           return;
         }
 
-        socket.emit(SOCKET_EVENTS.MESSAGE_SEND, {
-          conversation_id: conversationId,
-          message_text: caption || '',
-          track_id: optimisticId,
-          message_type: backendType,
-          attachment_key: attachmentKey,
-          replied_to: replyTo?.messageId || null,
-        });
+        const event = replyTo
+          ? SOCKET_EVENTS.MESSAGE_SEND_REPLY
+          : SOCKET_EVENTS.MESSAGE_SEND;
+        socket.emit(event, replyTo
+          ? {
+              conversation_id: conversationId.toString(),
+              message_text: caption || '',
+              reply_to: replyTo.messageId,
+              track_id: optimisticId,
+              message_type: backendType,
+              attachment_key: attachmentKey,
+            }
+          : {
+              conversation_id: conversationId,
+              message_text: caption || '',
+              track_id: optimisticId,
+              message_type: backendType,
+              attachment_key: attachmentKey,
+            });
       } catch (error) {
         const uploadWasCanceled = error?.name === 'AbortError';
         if (!uploadWasCanceled) {
@@ -5226,7 +5284,15 @@ function ChatsPage() {
                   const messageTime = message.when || message.timestamp || message.created_at;
                   const isPrivateChat = selectedChat?.type === 'pv';
                   const isGroupChat = selectedChat?.type === 'group';
-                  const replyPreview = message.reply_to || message.replyTo || message.reply_to_message;
+                  const replyReference = message.reply_to
+                    || message.replyTo
+                    || message.reply_to_message
+                    || message.replied_to;
+                  const replyTargetId = getReplyMessageId(replyReference)?.toString();
+                  const replyTarget = replyTargetId
+                    ? messages.find((candidate) => getMessageId(candidate)?.toString() === replyTargetId)
+                    : null;
+                  const replyPreview = buildReplyPreview(replyTarget || replyReference);
                   const resolvedMediaUrl = resolvedMediaUrls[messageId] || '';
                   const mediaUrl = getMessageMediaUrl(message) || resolvedMediaUrl;
                   const messageType = message.type || (mediaUrl ? 'file' : 'text');
@@ -5261,7 +5327,7 @@ function ChatsPage() {
                   const isEmojiOnly = isEmojiOnlyMessage(messageContent);
                   const shouldUseEmojiOnlyStyle = isEmojiOnly && !replyPreview && !isMedia;
                   const replyPreviewText = truncateMessage(
-                    replyPreview?.content || replyPreview?.text || getMessagePreviewText(replyPreview),
+                    getMessagePreviewText(replyPreview),
                     80
                   );
                   const senderIdStr = messageSenderId;
@@ -6020,12 +6086,7 @@ function ChatsPage() {
                       )}
                     </div>
                     <p className={styles.replyBarText}>
-                      {truncateMessage(
-                        replyingToMessage?.content
-                          || replyingToMessage?.text
-                          || getMessagePreviewText(replyingToMessage),
-                        80
-                      )}
+                      {truncateMessage(getMessagePreviewText(replyingToMessage), 80)}
                     </p>
                   </div>
                   <button

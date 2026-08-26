@@ -1,6 +1,5 @@
 import { Socket } from "socket.io";
 import { Conversation as ConversationModel } from "../models/conversatations.model";
-import { Types } from "mongoose";
 import { ErrorResponse } from "../types/response.types";
 
 export async function connectUserToRooms(socket: Socket): Promise<[true | false | null, ErrorResponse | null]> {
@@ -24,7 +23,7 @@ export async function connectUserToRooms(socket: Socket): Promise<[true | false 
 };
 
 export async function sendUserStatusToRooms(socket: Socket, status: string): Promise<void> {
-    for(let rooms of socket.rooms){
+    for (let rooms of socket.rooms){
         socket.to(rooms).emit(`status:${status}`, {user_id: socket.userInfo._id});
     }
 

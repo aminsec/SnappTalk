@@ -76,6 +76,7 @@ export async function handleMessageSend(socket: Socket, data: MessageSendEVT) {
 export async function handleMessageReply(socket: Socket, data: MessageReplyEVT) {
     const { userInfo } = socket;
     const { conversation_id, message_text, reply_to, track_id, message_type, attachment_key } = data;
+    console.log(conversation_id, message_text, reply_to, track_id, message_type, attachment_key)
 
     if(!validMessageTypes.includes(message_type)){
         socket.emit("error", {message: "Invalid message type"});
