@@ -593,6 +593,92 @@ const waitForVisualMediaReady = (url, mediaType) => {
   });
 };
 
+// --- Telegram-style media box locking (zero layout shift on download) ---
+// A GIF's header carries the FULL file's logical screen size, so even the
+// 256KB partial-range preview decodes at the real intrinsic dimensions.
+// Plain images carry their size in the header too. Video dimensions come
+// from metadata, which the browser fetches with ranged requests.
+const sniffImageDimensions = (url) => new Promise((resolve) => {
+  if (!url) {
+    resolve(null);
+    return;
+  }
+  const image = new Image();
+  image.onload = () => {
+    resolve(
+      image.naturalWidth && image.naturalHeight
+        ? { width: image.naturalWidth, height: image.naturalHeight }
+        : null
+    );
+  };
+  image.onerror = () => resolve(null);
+  image.src = url;
+});
+
+const sniffVideoDimensions = (url) => new Promise((resolve) => {
+  if (!url) {
+    resolve(null);
+    return;
+  }
+  const video = document.createElement('video');
+  video.preload = 'metadata';
+  video.muted = true;
+  let settled = false;
+  const timeoutId = window.setTimeout(() => finish(null), 15000);
+  const finish = (value) => {
+    if (settled) return;
+    settled = true;
+    window.clearTimeout(timeoutId);
+    video.onloadedmetadata = null;
+    video.onerror = null;
+    video.removeAttribute('src');
+    video.load();
+    resolve(value);
+  };
+  video.onloadedmetadata = () => {
+    finish(
+      video.videoWidth && video.videoHeight
+        ? { width: video.videoWidth, height: video.videoHeight }
+        : null
+    );
+  };
+  video.onerror = () => finish(null);
+  video.src = url;
+});
+
+const sniffMediaDimensions = (url, mediaType) => (
+  mediaType === 'video' ? sniffVideoDimensions(url) : sniffImageDimensions(url)
+);
+
+// Per-type caps for the locked box. Both the blurred preview and the loaded
+// media render inside exactly this box, so downloading never resizes anything.
+const MEDIA_BOX_CAPS = {
+  image: { width: 390, height: 440 },
+  gif: { width: 390, height: 440 },
+  video: { width: 390, height: 440 },
+};
+
+const getLockedMediaBox = (dimensions, mediaType) => {
+  if (!dimensions?.width || !dimensions?.height) return null;
+  const cap = MEDIA_BOX_CAPS[mediaType] || MEDIA_BOX_CAPS.image;
+  const aspectRatio = dimensions.width / dimensions.height;
+  if (!Number.isFinite(aspectRatio) || aspectRatio <= 0) return null;
+  let width = cap.width;
+  let height = width / aspectRatio;
+  if (height > cap.height) {
+    height = cap.height;
+    width = height * aspectRatio;
+  }
+  if (!Number.isFinite(width) || !Number.isFinite(height) || width <= 0 || height <= 0) {
+    return null;
+  }
+  return {
+    width: Math.round(width),
+    height: Math.round(height),
+    aspectRatio: `${dimensions.width} / ${dimensions.height}`,
+  };
+};
+
 const DownloadProgressRing = ({ progress = 0, active = false, compact = false }) => {
   const safeProgress = Math.max(0, Math.min(100, Number(progress) || 0));
   return (
@@ -1755,6 +1841,18 @@ function ChatsPage() {
   const [mediaPreviewUrls, setMediaPreviewUrls] = useState({});
   const mediaPreviewUrlsRef = useRef({});
   const mediaPreviewRequestsRef = useRef(new Map());
+  // Intrinsic media sizes keyed by media state key. Shared by the blurred
+  // preview and the loaded media so both occupy the same box (no size jump
+  // when the user downloads). Session-scoped: keyed by attachment_key, which
+  // survives optimistic-id → real-id promotion.
+  const [mediaDimensions, setMediaDimensions] = useState({});
+  const mediaDimensionsRef = useRef({});
+  const rememberMediaDimensions = useCallback((mediaStateKey, dimensions) => {
+    if (!mediaStateKey || !dimensions?.width || !dimensions?.height) return;
+    if (mediaDimensionsRef.current[mediaStateKey]) return;
+    mediaDimensionsRef.current[mediaStateKey] = dimensions;
+    setMediaDimensions((current) => ({ ...current, [mediaStateKey]: dimensions }));
+  }, []);
 
   const loadMediaMessage = useCallback(async (message) => {
     const mediaStateKey = getMediaStateKey(message);
@@ -1788,6 +1886,13 @@ function ChatsPage() {
         // forcing the user to download the same bytes a second time.
         console.warn('Media preparation failed; rendering the downloaded blob:', prepareError);
       }
+
+      // Lock the loaded media's box before it first paints (covers the case
+      // where the blurred preview never produced dimensions).
+      rememberMediaDimensions(
+        mediaStateKey,
+        await sniffMediaDimensions(downloadedUrl, mediaType)
+      );
 
       const previousUrl = resolvedMediaUrlsRef.current[mediaStateKey];
       if (previousUrl?.startsWith('blob:') && previousUrl !== downloadedUrl) {
@@ -1824,7 +1929,7 @@ function ChatsPage() {
         return next;
       });
     }
-  }, [cancelMediaDownload, clearMediaDownloadState, downloadMediaBlob, handleDownloadMessage]);
+  }, [cancelMediaDownload, clearMediaDownloadState, downloadMediaBlob, handleDownloadMessage, rememberMediaDimensions]);
   const messagesContainerRef = useRef(null);
   const isLoadingMoreRef = useRef(false);
   const messagesOffsetRef = useRef(0);
@@ -1881,6 +1986,12 @@ function ChatsPage() {
             console.warn('Auto-downloaded media preparation failed; rendering the blob:', prepareError);
           }
 
+          // Sniff before the resolved URL state lands so the first paint of
+          // the loaded media is already exactly sized.
+          if (['image', 'gif', 'video'].includes(mediaType)) {
+            rememberMediaDimensions(key, await sniffMediaDimensions(readyUrl, mediaType));
+          }
+
           const currentMessage = messagesRef.current.find((message) => (
             getMessageId(message)?.toString() === id
             || message?.attachment_key === key
@@ -1921,7 +2032,7 @@ function ChatsPage() {
       })();
     });
     return undefined;
-  }, [autoDownloadMedia, clearMediaDownloadState, downloadMediaBlob, messages]);
+  }, [autoDownloadMedia, clearMediaDownloadState, downloadMediaBlob, messages, rememberMediaDimensions]);
 
   useEffect(() => {
     const activeMediaStateKeys = new Set(
@@ -1964,6 +2075,18 @@ function ChatsPage() {
       }
     });
 
+    Object.keys(mediaDimensionsRef.current).forEach((mediaStateKey) => {
+      if (!activeMediaStateKeys.has(mediaStateKey)) {
+        delete mediaDimensionsRef.current[mediaStateKey];
+      }
+    });
+    setMediaDimensions((current) => {
+      const next = Object.fromEntries(
+        Object.entries(current).filter(([mediaStateKey]) => activeMediaStateKeys.has(mediaStateKey))
+      );
+      return Object.keys(next).length === Object.keys(current).length ? current : next;
+    });
+
     setResolvedMediaUrls((current) => {
       const next = Object.fromEntries(
         Object.entries(current).filter(([mediaStateKey]) => activeMediaStateKeys.has(mediaStateKey))
@@ -1981,10 +2104,15 @@ function ChatsPage() {
         || mediaPreviewRequestsRef.current.has(mediaStateKey)) return;
 
       const request = resolveAttachmentPreview(attachmentKey, mediaType)
-        .then((previewUrl) => {
+        .then(async (previewUrl) => {
           if (!previewUrl || resolvedMediaUrlsRef.current[mediaStateKey]) {
             if (previewUrl?.startsWith('blob:')) URL.revokeObjectURL(previewUrl);
             return;
+          }
+          // Sniff the intrinsic size BEFORE the preview paints so the blurred
+          // card is already in the box the loaded media will occupy.
+          if (['image', 'gif', 'video'].includes(mediaType)) {
+            rememberMediaDimensions(mediaStateKey, await sniffMediaDimensions(previewUrl, mediaType));
           }
           mediaPreviewUrlsRef.current[mediaStateKey] = previewUrl;
           setMediaPreviewUrls((current) => ({ ...current, [mediaStateKey]: previewUrl }));
@@ -1996,7 +2124,7 @@ function ChatsPage() {
     });
 
     return undefined;
-  }, [autoDownloadMedia, clearMediaDownloadState, messages]);
+  }, [autoDownloadMedia, clearMediaDownloadState, messages, rememberMediaDimensions]);
 
   useEffect(() => () => {
     mediaDownloadTasksRef.current.forEach((task) => task.controller?.abort());
@@ -5701,6 +5829,17 @@ function ChatsPage() {
                   const isVisualMedia = VISUAL_MEDIA_TYPES.includes(resolvedMessageType);
                   const downloadProgress = mediaDownloadProgress[mediaStateKey];
                   const hasDownloadProgress = typeof downloadProgress === 'number';
+                  // Telegram-style media box locking: the blurred preview and
+                  // the loaded media share one box derived from the sniffed
+                  // intrinsic size, so downloading never shifts the layout.
+                  const lockedMediaBox = getLockedMediaBox(
+                    mediaDimensions[mediaStateKey],
+                    resolvedMessageType
+                  );
+                  const lockApplies = Boolean(lockedMediaBox)
+                    && ['image', 'gif', 'video'].includes(resolvedMessageType);
+                  const lockedBoxWidth = lockedMediaBox ? `${lockedMediaBox.width}px` : undefined;
+                  const lockedBoxRatio = lockedMediaBox?.aspectRatio;
                   const showMediaDownloadPreview = Boolean(
                     message?.attachment_key
                     && !mediaUrl
@@ -5712,6 +5851,20 @@ function ChatsPage() {
                     && isAudioMedia
                   );
                   const hasMediaCaption = isMedia && Boolean(messageContent.trim());
+                  // GIFs render at a fixed media width even when captioned, so
+                  // the preview card must always take the locked width. Photos
+                  // stretch with the caption block, so only the ratio is locked
+                  // when a caption is present (CSS keeps width: 100%). The
+                  // maxWidth mirrors the loaded media's own CSS clamp (the video
+                  // player clamps at min(100%, 76vw)) so both states clamp
+                  // identically on narrow screens.
+                  const lockedPreviewStyle = !lockApplies
+                    ? undefined
+                    : resolvedMessageType === 'video'
+                      ? { width: lockedBoxWidth, maxWidth: 'min(100%, 76vw)', aspectRatio: lockedBoxRatio }
+                      : resolvedMessageType === 'gif' || !hasMediaCaption
+                        ? { width: lockedBoxWidth, maxWidth: '100%', aspectRatio: lockedBoxRatio }
+                        : { aspectRatio: lockedBoxRatio };
                   const hasReplyMedia = isMedia && Boolean(replyPreview);
                   const showMediaFooter = isMedia && !hasMediaCaption;
                   const isDocument = resolvedMessageType === 'document'
@@ -5950,6 +6103,7 @@ function ChatsPage() {
                               } ${
                                 isManualMediaLoading ? styles.mediaManualPreviewLoading : ''
                               }`}
+                              style={lockedPreviewStyle}
                               onClick={() => loadMediaMessage(message)}
                               aria-label={isManualMediaLoading
                                 ? `Cancel ${resolvedMessageType} download`
@@ -6010,6 +6164,9 @@ function ChatsPage() {
                               src={mediaUrl}
                               mimeType={message?.mime_type || 'video/mp4'}
                               footer={showMediaFooter ? messageFooterMarkup : undefined}
+                              style={lockApplies && resolvedMessageType === 'video'
+                                ? { width: lockedBoxWidth, aspectRatio: lockedBoxRatio }
+                                : undefined}
                             />
                           )}
                           {isMedia && isAudioMedia && (
@@ -6070,7 +6227,14 @@ function ChatsPage() {
                             </div>
                           )}
                           {isMediaReady && !isDocument && !['video', 'voice', 'audio'].includes(resolvedMessageType) && (
-                            <div className={styles.mediaImageWrap}>
+                            <div
+                              className={styles.mediaImageWrap}
+                              style={lockApplies && resolvedMessageType === 'image'
+                                ? (hasMediaCaption
+                                  ? { aspectRatio: lockedBoxRatio }
+                                  : { width: lockedBoxWidth, aspectRatio: lockedBoxRatio })
+                                : undefined}
+                            >
                               <button
                                 type="button"
                                 className={styles.mediaImageButton}
@@ -6093,6 +6257,9 @@ function ChatsPage() {
                                       ? styles.messageMediaGif
                                       : styles.messageMediaImage
                                 }`}
+                                style={lockApplies && resolvedMessageType === 'gif'
+                                  ? { width: lockedBoxWidth, aspectRatio: lockedBoxRatio, maxHeight: 'none' }
+                                  : undefined}
                                 onError={(e) => {
                                     e.target.style.display = 'none';
                                   }}

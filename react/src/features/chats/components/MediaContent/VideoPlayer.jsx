@@ -23,7 +23,7 @@ const formatTime = (seconds) => {
  * Shows a poster/thumbnail with a centered play button; on play, reveals a
  * custom control bar (play/pause, seek, time, volume, fullscreen).
  */
-function VideoPlayer({ src, mimeType = 'video/mp4', poster, footer }) {
+function VideoPlayer({ src, mimeType = 'video/mp4', poster, footer, style }) {
   const videoRef = useRef(null);
   const containerRef = useRef(null);
   const [isPlaying, setIsPlaying] = useState(false);
@@ -222,6 +222,7 @@ function VideoPlayer({ src, mimeType = 'video/mp4', poster, footer }) {
     <div
       ref={containerRef}
       className={`${styles.videoPlayer} ${isFullscreen ? styles.videoPlayerFullscreen : ''}`}
+      style={style}
       onMouseMove={showControls}
       onPointerMove={showControls}
       onMouseLeave={() => {
