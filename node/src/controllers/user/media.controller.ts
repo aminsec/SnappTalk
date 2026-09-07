@@ -7,14 +7,15 @@ import { getMessageByAttachmentKey } from "../../services/messages.services";
 import { checkUserHasAccessToConversation } from "../../utils/validate";
 
 export async function handleMediaUpload(req: Request, resp: Response){
-
-    if(!req.file) {
+    const { file } = req;
+    
+    if(!file) {
         const error: ErrorResponse = {message: "File is required", state: "Failed", type: "input_error"};
         showError(error, resp);
         return;
     }
 
-    const [fileKey, error] = await uploadMediaToS3(req.file, BUCKETS.MEDIA);
+    const [fileKey, error] = await uploadMediaToS3(file, BUCKETS.MEDIA);
     if(error){
         showError(error, resp);
         return;

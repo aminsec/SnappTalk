@@ -3,6 +3,7 @@ import * as accountInfoController  from "../../controllers/user/account.controll
 import { check } from 'express-validator';
 import { checkThereIsAnyError } from "../../middlewares/errors";
 import { globalReg } from "../../utils/regex";
+import { upload } from "../../middlewares/multer";
 const router = express.Router();
 
 router.get("/", accountInfoController.showUserInfo);
@@ -39,13 +40,7 @@ router.put("/password", [
   checkThereIsAnyError
 ], accountInfoController.updateUserPassword);
 
-router.post("/profile", [
-  check("content")
-  .notEmpty().withMessage("Content parameter is required")
-  .isString().withMessage("Content must be a string"),
-
-  checkThereIsAnyError
-], accountInfoController.updateUserProfile);
+router.post("/profile", upload.single("file"), accountInfoController.updateUserProfile);
 
 router.delete("/delete-account", accountInfoController.deleteUserAccount);
 
