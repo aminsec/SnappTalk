@@ -4,7 +4,6 @@ import { checkThereIsAnyError } from "../../middlewares/errors";
 import { upload } from "../../middlewares/multer";
 import { handleMediaUpload, handleMediaDownload } from "../../controllers/user/media.controller";
 
-
 const router = express.Router();
 
 router.post("/upload", upload.single("file"), handleMediaUpload);
