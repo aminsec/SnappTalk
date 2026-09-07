@@ -2,73 +2,18 @@ import { Conversation } from "../types/conversation.types";
 import { ErrorResponse } from "../types/response.types";
 import { Conversation as ConversationModel } from "../models/conversatations.model";
 import { ProtectedUserInfo } from "../types/user.types";
-import { getUserInfoById } from "./account.services";
 import { Types } from "mongoose";
-import { whiteListConversations } from "../utils/operations";
-import { deleteConversationMessages, getMessageById, getUnreadMessagesCount } from "./messages.services";
+import { deleteConversationMessages } from "./messages.services";
 
 export async function getUserConversations(userInfo: ProtectedUserInfo): Promise<[Conversation[] | null, ErrorResponse | null]> {
     try {
         const conversations: Conversation[] = await ConversationModel.find(
-            {members: 
-                {$in: [new Types.ObjectId(userInfo.id)]}
+            {members:
+                {$in: [userInfo._id]}
             }
         ).lean();
 
-        let detailedConversations: Conversation[] = [];
-
-        //Attaching contact userinfo for pv types of conversations
-        for(let conversation of conversations){
-            var contactId = (conversation.members[0]).toString() !== userInfo.id ? conversation.members[0].toString() : conversation.members[1].toString();
-            //Attaching last messsage to contact
-            const lastMessageId = conversation.last_message_id[userInfo.id.toString()];
-            const [lastMessage, error] = await getMessageById(lastMessageId);
-            if(error || lastMessage === null) {
-                const err: ErrorResponse = {message: "message not found", state: "failed", type: "not_found"};
-                return [null, err];
-            }
-
-            //This check is for checking conversations that deleted last time or not
-            if(conversation.deleted_for[userInfo.id] > lastMessage.created_at){
-                continue;
-            }
-            
-            const [senderOfLastMessage, _] = await getUserInfoById(new Types.ObjectId(lastMessage.sender));
-
-            conversation.last_message = {
-                content: lastMessage.content,
-                type: lastMessage.type,
-                sender: senderOfLastMessage?.username,
-                when: lastMessage.created_at,
-                seen: conversation.type == "group" && Object.keys(lastMessage.seen_by).length > 0 ? true : contactId in lastMessage.seen_by ? true : false
-            };
-
-            //Extracting contact userid by checking !userid
-            if(conversation.type === "pv" && conversation.members){    
-                const [contactUserInfo, error] = await getUserInfoById(new Types.ObjectId(contactId));
-                if(error){
-                    console.log(error);
-                    throw new Error();
-                }
-
-                conversation.contact_info = contactUserInfo;
-
-                if(contactUserInfo){
-                    const [unreadMessages, err] = await getUnreadMessagesCount(userInfo.id.toString(), conversation._id);
-                    if(err || unreadMessages === null){
-                        const err: ErrorResponse = {message: "message not found", state: "failed", type: "not_found"};
-                        return [null, err];
-                    }
-
-                    conversation.unread_messages_count = unreadMessages;
-                }
-            }
-
-            detailedConversations.push(conversation)
-        }
-
-        const validConversations: Conversation[] = whiteListConversations(detailedConversations);
-        return [validConversations, null];
+        return [conversations, null];
 
     } catch (error) {
         console.log(error);
@@ -87,7 +32,7 @@ export async function checkIsThereConversation(firstUserId: Types.ObjectId, seco
                 type: "pv"
             }
         ).lean();
-    
+
         if(conversation){
             return [conversation._id, null];
 
@@ -167,7 +112,8 @@ export async function updateConversationLastMessageId(conversationId: Types.Obje
                             }
                         }
                     }
-                ]
+                ],
+                {updatePipeline: true}
             );
 
         } else {
@@ -195,7 +141,7 @@ export async function softDeleteConversation(userInfo: ProtectedUserInfo, conver
             _id: conversationId
         }, {
             $set: {
-                [`deleted_for.${userInfo.id}`]: new Date()
+                [`deleted_for.${userInfo._id}`]: new Date()
             }
         });
 
@@ -232,10 +178,10 @@ export async function getConversationById(convId: Types.ObjectId): Promise<[Conv
         const conversation: Conversation | null = await ConversationModel.findOne({
             _id: convId
         }).lean();
-    
+
         if(conversation){
             return [conversation, null];
-    
+
         }else{
             return [null, null];
         }

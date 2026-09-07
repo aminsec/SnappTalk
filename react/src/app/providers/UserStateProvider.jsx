@@ -31,6 +31,11 @@ const UserStateProvider = ({ children }) => {
 
         const payload = await response.json();
         const resolvedUser = payload?.userInfo ?? null;
+        // Backend whitelists users with `_id`; normalize to `id` too so every
+        // consumer (seen logic, ownership checks) can rely on `user.id`.
+        if (resolvedUser && !resolvedUser.id && resolvedUser._id) {
+          resolvedUser.id = resolvedUser._id.toString();
+        }
         setUser(resolvedUser);
         setStatus(resolvedUser ? AUTH_STATUS.AUTHENTICATED : AUTH_STATUS.UNAUTHENTICATED);
         setError(null);

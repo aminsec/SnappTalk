@@ -14,17 +14,17 @@ export function sendResponse(data: Resp, headers: any = {}, code:number, resp: R
     headers["Content-Type"] = "application/json"; // Setting content-type to json
     resp.statusCode = code; // Setting status code
     resp.header(headers);
-    resp.send(JSON.stringify(data)); 
+    resp.send(JSON.stringify(data));
     resp.end();
 };
 
 export function showError(error: ErrorResponse, resp: Response){
     sendResponse(error, {}, (
-        error.type === "not_found" ? 404 : 
-        error.type === "system_error" ? 500 : 
-        error.type === "creds_error" ? 401 : 
-        error.type === "access_denied" ? 403 : 
-        error.type === "input_error" ? 400 : 
+        error.type === "not_found" ? 404 :
+        error.type === "system_error" ? 500 :
+        error.type === "creds_error" ? 401 :
+        error.type === "access_denied" ? 403 :
+        error.type === "input_error" ? 400 :
         500), resp);
 
     if(error.type === "system_error"){
@@ -35,7 +35,7 @@ export function showError(error: ErrorResponse, resp: Response){
 
 export function whiteListUserInfo(userData: RawUserInfo): ProtectedUserInfo{
     const validatedUserData = {
-        id: userData._id.toString(),
+        _id: userData._id,
         username: userData.username,
         email: userData.email,
         role: userData.role,
@@ -128,14 +128,14 @@ export async function deleteFileFromUploads(filename: string): Promise<[Boolean 
 export function generateJWTToken(userInfo: ProtectedUserInfo): [string | null, ErrorResponse | null] {
     try {
         const userInfoToBeSign = {
-            id: userInfo.id,
+            _id: userInfo._id,
             email: userInfo.email,
             username: userInfo.username,
             profile_pic: userInfo.profile_pic,
             role: userInfo.role,
             joined_at: userInfo.joined_at,
         }
-    
+
         const token = jwt.sign(userInfoToBeSign, String(process.env.JWT_SECRET_KEY), {expiresIn: "24h"});
         return [token, null];
 

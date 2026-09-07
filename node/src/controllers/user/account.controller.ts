@@ -4,16 +4,23 @@ import { Request, Response } from "express";
 import {ErrorResponse } from "../../types/response.types";
 import { checkUserExistsByEmail } from "../../services/auth.services";
 import { Types } from "mongoose";
+import { ProtectedUserInfo } from "../../types/user.types";
 
 export async function showUserInfo(req: Request, resp: Response) {
-    const userid = req.userInfo.id;
-    const [userInfo, error] = await getUserInfoById(new Types.ObjectId(userid));
+    const userid = req.userInfo._id;
+    const [userInfo, error] = await getUserInfoById([userid]);
     if(error){
         showError(error, resp);
         return;
     }
 
-    const responseData = {state: "success", userInfo: userInfo};
+    if (!userInfo) {
+      const error:ErrorResponse = {state: "failed", message: "Couldn't get information", type: "system_error"};
+      showError(error, resp);
+      return;
+    }
+
+    const responseData = {state: "success", userInfo: userInfo[0]};
     sendResponse(responseData, {}, 200, resp);
 };
 
@@ -58,7 +65,7 @@ export async function updateUserInfo(req: Request, resp: Response) {
 
     //Updating username if was not equal to the current one
     if(username !== userInfo.username){
-        const [usernameUpdatedResult, usernameUpdateError] = await updateUsername(new Types.ObjectId(userInfo.id), username);
+        const [usernameUpdatedResult, usernameUpdateError] = await updateUsername(new Types.ObjectId(userInfo._id), username);
         if(usernameUpdateError){
             showError(usernameUpdateError, resp);
             return;
@@ -69,7 +76,7 @@ export async function updateUserInfo(req: Request, resp: Response) {
 
     //Updating email if was not equal to the current one
     if(email !== userInfo.email){
-        const [emailUpdatedResult, emailUpdateError] = await updateEmail(userInfo.id, email);
+        const [emailUpdatedResult, emailUpdateError] = await updateEmail(userInfo._id, email);
         if(emailUpdateError){
             showError(emailUpdateError, resp);
             return;
@@ -79,7 +86,7 @@ export async function updateUserInfo(req: Request, resp: Response) {
     }
 
     //Updating bio
-    const [updateBioResult, updateBioError] = await updateBio(userInfo.id, bio);
+    const [updateBioResult, updateBioError] = await updateBio(userInfo._id, bio);
     if(updateBioError){
         showError(updateBioError, resp);
         return;
@@ -89,7 +96,7 @@ export async function updateUserInfo(req: Request, resp: Response) {
 
     //Checking if everything was fine
     if(emailUpdated === true && usernameUpdated === true && bioUpdated === true){
-       
+
         //Adding user current session to dead_sessions and assigning new token
         const [revoked, err] = await revokeUserToken(req.cookies.token);
         if(err){
@@ -99,7 +106,7 @@ export async function updateUserInfo(req: Request, resp: Response) {
 
         if(revoked === true){
             //Getting new user info
-            const [newUserInfo, error] = await getUserInfoById(new Types.ObjectId(userInfo.id));
+            const [newUserInfo, error] = await getUserInfoById([userInfo._id]);
             if(error){
                 showError(error, resp);
                 return;
@@ -107,7 +114,7 @@ export async function updateUserInfo(req: Request, resp: Response) {
 
             //Creating new token
             if(newUserInfo){
-                const [token, error] = generateJWTToken(newUserInfo);
+                const [token, error] = generateJWTToken(newUserInfo[0]);
                  if(error){
                     showError(error, resp);
                     return;
@@ -130,7 +137,7 @@ export async function updateUserPassword(req: Request, resp: Response) {
     const { userInfo } = req;
 
     //checking old password is correct
-    const [rawUserInfo, err] = await getRawUserInfo(userInfo.id);
+    const [rawUserInfo, err] = await getRawUserInfo(userInfo._id);
     if(err){
         showError(err, resp);
         return;
@@ -144,7 +151,7 @@ export async function updateUserPassword(req: Request, resp: Response) {
 
     const isOldPasswordCorrect: Boolean = await checkBcrypt(old_password, rawUserInfo.password);
     if(isOldPasswordCorrect === true){
-        const [updatePasswordResult, err] = await updatePassword(userInfo.id, new_password);
+        const [updatePasswordResult, err] = await updatePassword(userInfo._id, new_password);
         if(err){
             showError(err, resp);
             return;
@@ -167,11 +174,11 @@ export async function updateUserPassword(req: Request, resp: Response) {
 export async function updateUserProfile(req: Request, resp: Response) {
     const { content } = req.body;
     const { userInfo } = req;
-    
+
     //Removing the old profile file, if profile image was not the default "default.png" image
     const userProfilePicAdress = userInfo.profile_pic;
     const profilePicFileName = userProfilePicAdress.split("/").pop() ?? "default.png"; // --> /statics/images/default.png -> default.png
-   
+
     const [removeResult, error] = await deleteFileFromUploads(profilePicFileName);
     if(error){
         showError(error, resp);
@@ -187,7 +194,7 @@ export async function updateUserProfile(req: Request, resp: Response) {
 
         if(updateProfileResult){
             //Updating user profilePic address in db
-            const [updateResult, error] = await updateProfilePicAddress(new Types.ObjectId(userInfo.id), updateProfileResult);
+            const [updateResult, error] = await updateProfilePicAddress(userInfo._id, updateProfileResult);
             if(error){
                 showError(error, resp);
                 return;
@@ -202,15 +209,15 @@ export async function updateUserProfile(req: Request, resp: Response) {
                 }
 
                 if(revoked === true){
-                    const [userData, err] = await getUserInfoById(new Types.ObjectId(userInfo.id));
+                    const [userData, err] = await getUserInfoById([userInfo._id]);
                     if(err){
                         showError(err, resp);
                         return;
                     }
 
                     if(userData){
-                        userData.profile_pic = "/statics/images/" + updateProfileResult; // Updating userInfo with new profile pic address
-                        const [newToken, error] = generateJWTToken(userData);
+                        userData[0].profile_pic = "/statics/images/" + updateProfileResult; // Updating userInfo with new profile pic address
+                        const [newToken, error] = generateJWTToken(userData[0]);
                         if(error){
                             showError(error, resp);
                             return;
@@ -244,20 +251,20 @@ export async function updateUserProfile(req: Request, resp: Response) {
 
 export async function deleteUserAccount(req: Request, resp: Response) {
     const { userInfo } = req;
-    
-    const [ usernameUpdateResult, error ] = await updateUsername(new Types.ObjectId(userInfo.id), "Deleted Account");
+
+    const [ usernameUpdateResult, error ] = await updateUsername(userInfo._id, "Deleted Account");
     if(error){
         showError(error, resp);
         return;
     }
 
-    const [ profilePicUpdateResult, err ] = await updateProfilePicAddress(new Types.ObjectId(userInfo.id), "deleted_account.png");
+    const [ profilePicUpdateResult, err ] = await updateProfilePicAddress(userInfo._id, "deleted_account.png");
     if(err){
         showError(err, resp);
         return;
     }
 
-    const [ statusResult, Error] = await setAccountDeleted(new Types.ObjectId(userInfo.id));
+    const [ statusResult, Error] = await setAccountDeleted(userInfo._id);
     if(Error){
         showError(Error, resp);
         return;

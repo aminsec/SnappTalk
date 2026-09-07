@@ -1,63 +1,28 @@
-<svg width="1920" height="1080" viewBox="0 0 1920 1080" fill="none" xmlns="http://www.w3.org/2000/svg">
+<svg xmlns="http://www.w3.org/2000/svg" width="1440" height="1000" viewBox="0 0 1440 1000" fill="none">
   <defs>
-    <linearGradient id="oceanDeep" x1="0" y1="0" x2="0" y2="1080" gradientUnits="userSpaceOnUse">
-      <stop offset="0" stop-color="#0A1E3A"/>
-      <stop offset="0.4" stop-color="#0E3A5C"/>
-      <stop offset="0.7" stop-color="#0A4A6E"/>
-      <stop offset="1" stop-color="#062A44"/>
+    <linearGradient id="base" x1="0" y1="0" x2="1440" y2="1000" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#071822"/><stop offset=".48" stop-color="#0A2630"/><stop offset="1" stop-color="#07161F"/>
     </linearGradient>
-    <radialGradient id="lightShaft" cx="0" cy="0" r="1" gradientUnits="userSpaceOnUse" gradientTransform="translate(960 0) scale(700 900)">
-      <stop stop-color="#7FD4FF" stop-opacity="0.35"/>
-      <stop offset="0.5" stop-color="#7FD4FF" stop-opacity="0.1"/>
-      <stop offset="1" stop-color="#7FD4FF" stop-opacity="0"/>
+    <radialGradient id="teal" cx="0" cy="0" r="1" gradientTransform="translate(1080 250) rotate(145) scale(720 500)" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#28B7B0" stop-opacity=".24"/><stop offset="1" stop-color="#28B7B0" stop-opacity="0"/>
     </radialGradient>
-    <radialGradient id="tealGlow" cx="0" cy="0" r="1" gradientUnits="userSpaceOnUse" gradientTransform="translate(400 700) scale(500 400)">
-      <stop stop-color="#2DD4BF" stop-opacity="0.3"/>
-      <stop offset="1" stop-color="#2DD4BF" stop-opacity="0"/>
+    <radialGradient id="blue" cx="0" cy="0" r="1" gradientTransform="translate(270 820) rotate(-30) scale(620 420)" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#287EAD" stop-opacity=".2"/><stop offset="1" stop-color="#287EAD" stop-opacity="0"/>
     </radialGradient>
-    <radialGradient id="blueGlow" cx="0" cy="0" r="1" gradientUnits="userSpaceOnUse" gradientTransform="translate(1500 500) scale(520 420)">
-      <stop stop-color="#3B82F6" stop-opacity="0.28"/>
-      <stop offset="1" stop-color="#3B82F6" stop-opacity="0"/>
-    </radialGradient>
-    <linearGradient id="wave" x1="0" y1="0" x2="1920" y2="0" gradientUnits="userSpaceOnUse">
-      <stop offset="0" stop-color="#2DD4BF" stop-opacity="0.35"/>
-      <stop offset="0.5" stop-color="#7FD4FF" stop-opacity="0.5"/>
-      <stop offset="1" stop-color="#3B82F6" stop-opacity="0.35"/>
-    </linearGradient>
-    <filter id="waveBlur" x="-50%" y="-50%" width="200%" height="200%">
-      <feGaussianBlur stdDeviation="10"/>
-    </filter>
+    <pattern id="bubbles" width="220" height="220" patternUnits="userSpaceOnUse">
+      <g fill="none" stroke="#B8F7F2" stroke-opacity=".05" stroke-width="1.3">
+        <circle cx="40" cy="52" r="10"/><circle cx="168" cy="144" r="15"/><circle cx="102" cy="190" r="4"/>
+        <path d="M10 115c32-24 63-24 95 0s63 24 105 0"/>
+      </g>
+    </pattern>
+    <filter id="blur"><feGaussianBlur stdDeviation="55"/></filter>
   </defs>
-
-  <!-- Deep ocean -->
-  <rect width="1920" height="1080" fill="url(#oceanDeep)"/>
-
-  <!-- Light shafts from surface -->
-  <rect width="1920" height="1080" fill="url(#lightShaft)"/>
-
-  <!-- Color glows -->
-  <rect width="1920" height="1080" fill="url(#tealGlow)"/>
-  <rect width="1920" height="1080" fill="url(#blueGlow)"/>
-
-  <!-- Gentle waves -->
-  <g filter="url(#waveBlur)">
-    <path d="M-100 300C180 260 380 340 620 300C860 260 1080 340 1320 300C1560 260 1780 330 2020 290V360C1780 400 1560 340 1320 380C1080 420 860 340 620 380C380 420 180 340 -100 380V300Z" fill="url(#wave)" opacity="0.5"/>
-    <path d="M-100 520C200 480 420 560 680 520C940 480 1180 560 1440 520C1700 480 1880 540 2020 510V580C1880 620 1700 560 1440 600C1180 640 940 560 680 600C420 640 200 560 -100 600V520Z" fill="url(#wave)" opacity="0.4"/>
-    <path d="M-100 740C240 700 480 780 740 740C1000 700 1260 780 1520 740C1780 700 1920 750 2020 730V800C1920 840 1780 780 1520 820C1260 860 1000 780 740 820C480 860 240 780 -100 820V740Z" fill="url(#wave)" opacity="0.3"/>
+  <rect width="1440" height="1000" fill="url(#base)"/>
+  <rect width="1440" height="1000" fill="url(#teal)" filter="url(#blur)"/>
+  <rect width="1440" height="1000" fill="url(#blue)" filter="url(#blur)"/>
+  <g fill="none" stroke="#77DED7" stroke-opacity=".07">
+    <path d="M-80 300c300-100 520 110 800 0s480 60 800-40"/><path d="M-80 490c300-100 520 110 800 0s480 60 800-40"/><path d="M-80 680c300-100 520 110 800 0s480 60 800-40"/>
   </g>
-
-  <!-- Bubbles -->
-  <g fill="none" stroke="#7FD4FF" stroke-width="1.5">
-    <circle cx="300" cy="400" r="6" opacity="0.4"/>
-    <circle cx="520" cy="620" r="4" opacity="0.3"/>
-    <circle cx="760" cy="480" r="5" opacity="0.35"/>
-    <circle cx="1100" cy="560" r="7" opacity="0.4"/>
-    <circle cx="1400" cy="420" r="4" opacity="0.3"/>
-    <circle cx="1680" cy="640" r="6" opacity="0.35"/>
-    <circle cx="900" cy="760" r="5" opacity="0.3"/>
-    <circle cx="1250" cy="820" r="4" opacity="0.25"/>
-  </g>
-
-  <!-- Bottom depth fade -->
-  <rect x="0" y="900" width="1920" height="180" fill="#041A2E" opacity="0.5"/>
+  <rect width="1440" height="1000" fill="url(#bubbles)"/>
+  <rect width="1440" height="1000" fill="#02090D" fill-opacity=".07"/>
 </svg>

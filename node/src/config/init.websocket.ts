@@ -1,9 +1,9 @@
 import { Server } from 'socket.io';
-import { handleSocketConnection } from '../main';
+import { handleSocketConnection } from '../socket/socket.routes';
 import http from "http";
-import { authenticateSocket } from "../../middlewares/socket.middlewares";
-import { connectUserToRooms, sendUserStatusToRooms } from '../../services/socket.services';
-import { setUserStatus } from '../../services/account.services';
+import { authenticateSocket } from "../middlewares/socket.middlewares";
+import { connectUserToRooms, sendUserStatusToRooms } from '../services/socket.services';
+import { setUserStatus } from '../services/account.services';
 import { Types } from "mongoose";
 
 export function initSocket(server: http.Server){
@@ -35,11 +35,11 @@ export function initSocket(server: http.Server){
 
     if(success === true){
       //Attaching user id as key and socket id as value to online users map to track user because we can not change socket.id
-      onlineUsers.set(socket.userInfo.id, socket.id);
+      onlineUsers.set(socket.userInfo._id.toString(), socket.id);
 
       //Sending online status to all rooms
       sendUserStatusToRooms(socket, "online");
-      await setUserStatus(new Types.ObjectId(socket.userInfo.id), "online");
+      await setUserStatus(new Types.ObjectId(socket.userInfo._id.toString()), "online");
       handleSocketConnection(socket, io, onlineUsers);
     }else{
       socket.emit("error", {message: "Couldn't connect to rooms"});

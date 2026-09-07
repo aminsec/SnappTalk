@@ -1,22 +1,27 @@
 import { connectToSnappTalkDB } from "./config/database";
+import { initSocket } from "./config/init.websocket";
+import { HeadBucketCommand } from "@aws-sdk/client-s3";
+import { s3Client, BUCKETS } from "./config/s3.minio";
 import http from "http";
 import app from "./app";
-import { initSocket } from "./socket/config/init";
 
 const PORT = Number(process.env.APP_PORT) || 2020;
 const server = http.createServer(app);
 
-try {
-  // Connecting to database when starting app
-  connectToSnappTalkDB();
+async function start() {
+  try {
+    //Conneting to servers
+    await connectToSnappTalkDB();
+    await s3Client.send(new HeadBucketCommand({ Bucket: BUCKETS.PROFILE_PICS }));
+    await s3Client.send(new HeadBucketCommand({ Bucket: BUCKETS.MEDIA }));
+    console.log("Connected to MinIO S3");
 
-  // Starting WebSocket
-  initSocket(server);
-  
-} catch (error) {
-  console.error("System error occurred while starting one of servers", error);
-};
+    initSocket(server);
+    server.listen(PORT, () => console.log(`SnappTalk app listening on port ${PORT}`));
+  } catch (error) {
+    console.error("Failed to start:", error);
+    process.exit(1);
+  }
+}
 
-server.listen(PORT, () => {
-  console.log(`SnappTalk app listening on port ${PORT}`);
-});
+start();

@@ -4,10 +4,11 @@ import { User } from "../models/users.model";
 import { ProtectedUserInfo, RawUserInfo } from "../types/user.types";
 import { ErrorResponse } from "../types/response.types";
 import { makeBcryptHash, whiteListUserInfo } from "../utils/operations";
+import { PROTECTED_USER_INFO_FIELDS_TO_SELECT } from "../constants/user";
 
-export async function getRawUserInfo(userid: string): Promise<[RawUserInfo | null, ErrorResponse | null]> {
+export async function getRawUserInfo(userid: Types.ObjectId): Promise<[RawUserInfo | null, ErrorResponse | null]> {
     try {
-        const user: RawUserInfo | null = await User.findOne({_id: new Types.ObjectId(userid)}).lean();
+        const user: RawUserInfo | null = await User.findOne({_id: userid}).lean();
         if(user){
             return [user, null];
 
@@ -23,19 +24,10 @@ export async function getRawUserInfo(userid: string): Promise<[RawUserInfo | nul
     }
 };
 
-export async function getUserInfoById(id: Types.ObjectId): Promise<[ProtectedUserInfo | null, ErrorResponse | null]> {
+export async function getUserInfoById(id: Types.ObjectId[]): Promise<[ProtectedUserInfo[] | null, ErrorResponse | null]> {
     try {
-        const user: RawUserInfo | null = await User.findById(id).lean();
-
-        if(user){
-            //White listing user data
-            const userData: ProtectedUserInfo = whiteListUserInfo(user);
-            return [userData, null];
-
-        }else{
-            const err: ErrorResponse = {message: "User not found", state: "failed", type: "not_found"};
-            return [null, err];
-        }
+        const user: ProtectedUserInfo[] | null = await User.find({_id: {$in: id}}).select(PROTECTED_USER_INFO_FIELDS_TO_SELECT).lean();
+        return [user, null];
 
     } catch (error) {
         console.log(error);
@@ -104,10 +96,10 @@ export async function updateUsername(userid: Types.ObjectId, newUsername: string
     }
 };
 
-export async function updateEmail(userid: string, newEmail: string): Promise<[true | false | null, null | ErrorResponse]> {
+export async function updateEmail(userid: Types.ObjectId, newEmail: string): Promise<[true | false | null, null | ErrorResponse]> {
     try {
         const result = await User.updateOne(
-            {_id: new Types.ObjectId(userid)},
+            {_id: userid},
             {$set: {email: newEmail}}
         );
 
@@ -124,11 +116,11 @@ export async function updateEmail(userid: string, newEmail: string): Promise<[tr
     }
 };
 
-export async function updatePassword(userid: string, newPassword: string): Promise<[true | false | null, null | ErrorResponse]> {
+export async function updatePassword(userid: Types.ObjectId, newPassword: string): Promise<[true | false | null, null | ErrorResponse]> {
     try {
         const newPasswordHash = await makeBcryptHash(newPassword);
         const result = await User.updateOne(
-            {_id: new Types.ObjectId(userid)},
+            {_id: userid},
             {$set: {password: newPasswordHash}}
         );
 
@@ -145,10 +137,10 @@ export async function updatePassword(userid: string, newPassword: string): Promi
     }
 };
 
-export async function updateBio(userid: string, newBio: string): Promise<[true | false | null, null | ErrorResponse]> {
+export async function updateBio(userid: Types.ObjectId, newBio: string): Promise<[true | false | null, null | ErrorResponse]> {
     try {
         const result = await User.updateOne(
-            {_id: new Types.ObjectId(userid)},
+            {_id: userid},
             {$set: {bio: newBio}}
         );
 

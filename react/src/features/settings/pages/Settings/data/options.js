@@ -1,4 +1,4 @@
-import { faUser, faCog, faPalette } from '@fortawesome/free-solid-svg-icons';
+import { faUser, faCog, faPalette, faShieldHalved } from '@fortawesome/free-solid-svg-icons';
 
 export const settingsOptions = [
   {
@@ -18,5 +18,11 @@ export const settingsOptions = [
     icon: faPalette,
     iconBg: "#2D90E4",
     path: "/settings/appearance",
+  },
+  {
+    label: "Account",
+    icon: faShieldHalved,
+    iconBg: "#8B5CF6",
+    path: "/settings/account",
   },
 ];

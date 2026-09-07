@@ -14,23 +14,23 @@ export async function showUserConversationMessages(req: Request, resp: Response)
     const { userInfo } = req;
 
     //Checking if user has access to the conversation
-    const [conversation, err]: [Conversation | null, ErrorResponse | null] = await checkUserHasAccessToConversation(new Types.ObjectId(conversationId), userInfo.id);
-    
+    const [conversation, err]: [Conversation | null, ErrorResponse | null] = await checkUserHasAccessToConversation(new Types.ObjectId(conversationId), userInfo._id.toString());
+
     //If user had not access to conversation, a not found error will be shown
     if(err){
         showError(err, resp);
         return;
     }
 
-    const messagesDeletedSinceForUser = conversation?.deleted_for?.[userInfo.id]?.toString(); // This can be null because of groups 
-    const [messages, error]: [Message[] | null, ErrorResponse | null] = await getConversationMessagesByLimitedDate(new Types.ObjectId(conversationId), messagesDeletedSinceForUser || "0", limit, offset, new Types.ObjectId(userInfo.id));
+    const messagesDeletedSinceForUser = conversation?.deleted_for?.[userInfo._id.toString()]?.toString(); // This can be null because of groups
+    const [messages, error]: [Message[] | null, ErrorResponse | null] = await getConversationMessagesByLimitedDate(new Types.ObjectId(conversationId), messagesDeletedSinceForUser || "0", limit, offset, userInfo._id);
     if(error){
         showError(error, resp);
         return;
     }
 
     //Filtering messages that are deleted for the user
-    const filteredMessages = await filterMessagesDeletedForUser(messages || [], new Types.ObjectId(userInfo.id));
+    const filteredMessages = await filterMessagesDeletedForUser(messages || [], userInfo._id);
     const responseData = {state: "success", messages: filteredMessages};
     sendResponse(responseData, {}, 200, resp);
 };

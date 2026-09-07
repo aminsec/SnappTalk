@@ -5,21 +5,37 @@ import { Types } from "mongoose";
 import { getConversationById, updateConversationLastMessageId } from "../../services/conversations.services";
 import { handlePvConversationDelete } from "./conversation.event";
 import { InsertMessage } from "../../types/messages.types";
+import { validMessageTypes } from "../../types/messages.types";
 
 export async function handleMessageSend(socket: Socket, data: MessageSendEVT) {
-    const { conversation_id, message_text, track_id } = data;
+    const { conversation_id, message_text, track_id, message_type, attachment_key, replied_to} = data;
     const { userInfo } = socket;
+
+    if(!validMessageTypes.includes(message_type)){
+        socket.emit("error", {message: "Invalid message type"});
+        return;
+    }
+
+    if(!conversation_id || !track_id || !message_type){
+        socket.emit("error", {message: "Invalid data"});
+        return;
+    }
+
+    if(message_text.length > 255){
+        socket.emit("error", {message: "Message is too long"});
+        return;
+    }
 
     //Checking user has access the conversation
     if(socket.rooms.has(conversation_id)){
         //Inserting message
         const insertData: InsertMessage = {
-            sender: new Types.ObjectId(userInfo.id),
-            content: message_text,
+            sender: userInfo._id,
+            content: message_text || " ",
             conversation_id: new Types.ObjectId(conversation_id),
-            replied_to: null,
-            attachments: [],
-            type: "text",
+            replied_to: replied_to? new Types.ObjectId(replied_to) : null,
+            attachment_key: attachment_key || "",
+            type: message_type,
             deleted_for: []
         }
 
@@ -40,6 +56,8 @@ export async function handleMessageSend(socket: Socket, data: MessageSendEVT) {
                 conversation_id,
                 message_id: insertedMessageId.toString(),
                 message_text,
+                message_type: message_type || "text",
+                attachment_key: attachment_key || "",
                 sender_info: socket.userInfo,
                 when: Date.now()
             });
@@ -57,30 +75,46 @@ export async function handleMessageSend(socket: Socket, data: MessageSendEVT) {
 
 export async function handleMessageReply(socket: Socket, data: MessageReplyEVT) {
     const { userInfo } = socket;
-    const { conversation_id, message_text, reply_to, track_id } = data;
+    const { conversation_id, message_text, reply_to, track_id, message_type, attachment_key } = data;
+    console.log(conversation_id, message_text, reply_to, track_id, message_type, attachment_key)
+
+    if(!validMessageTypes.includes(message_type)){
+        socket.emit("error", {message: "Invalid message type"});
+        return;
+    }
+
+    if(!conversation_id || !track_id || !message_type || !reply_to){
+        socket.emit("error", {message: "Invalid data"});
+        return;
+    }
+
+    if(message_text.length > 255){
+        socket.emit("error", {message: "Message is too long"});
+        return;
+    }
 
     //Checking user has access the conversation
     if(socket.rooms.has(conversation_id)){
-        const [replyMessageInfo, error] = await getMessageById(new Types.ObjectId(reply_to));
+        const [replyMessageInfo, error] = await getMessageById([new Types.ObjectId(reply_to)]);
         if(error || replyMessageInfo === null){
             socket.emit("message:send:reply:error", {message: "Message not found", conversation_id, track_id});
             return;
         }
 
         //Checking if the reply message is a message of conversation. User can not reply a message doesn't exist in the conversation
-        if(replyMessageInfo.conversation_id.toString() !== conversation_id){
+        if(replyMessageInfo[0].conversation_id.toString() !== conversation_id){
             socket.emit("message:send:reply:error", {message: "Message not found", conversation_id, track_id});
             return;
         }
 
         //Inserting message
         const insertData: InsertMessage = {
-            sender: new Types.ObjectId(userInfo.id),
-            content: message_text,
+            sender: new Types.ObjectId(userInfo._id),
+            content: message_text || " ",
             conversation_id: new Types.ObjectId(conversation_id),
             replied_to: reply_to? new Types.ObjectId(reply_to) : null,
-            attachments: [],
-            type: "text",
+            attachment_key: attachment_key || "",
+            type: message_type || "text",
             deleted_for: []
         };
 
@@ -103,6 +137,8 @@ export async function handleMessageReply(socket: Socket, data: MessageReplyEVT) 
             conversation_id,
             message_id: insertedMessageId,
             message_text,
+            message_type: message_type || "text",
+            attachment_key: attachment_key || "",
             replied_to: reply_to,
             when: new Date(),
             sender_info: socket.userInfo
@@ -117,9 +153,15 @@ export async function handleMessageReply(socket: Socket, data: MessageReplyEVT) 
 export async function handleSeen(socket: Socket, data: MessageSeenEVT) {
     const { conversation_id, message_id } = data;
 
-    //This controls access to conversaion 
+    //Controlling values
+    if(!conversation_id || !message_id || !Types.ObjectId.isValid(conversation_id) || !Types.ObjectId.isValid(message_id)){
+        socket.emit("seen:error", {message: "Invalid data"});
+        return;
+    }
+
+    //This controls access to conversaion
     if(socket.rooms.has(conversation_id)){
-        const [_, error] = await seenMessageById(new Types.ObjectId(message_id), new Types.ObjectId(conversation_id), socket.userInfo.id.toString());
+        const [_, error] = await seenMessageById(new Types.ObjectId(message_id), new Types.ObjectId(conversation_id), socket.userInfo._id.toString());
         if(error){
             socket.emit("seen:error", error);
             return;
@@ -137,26 +179,26 @@ export async function handleMessageEdit(socket: Socket, data: MessageEditEVT) {
     const { userInfo } = socket;
 
     //Checking user is sender of the message
-    const [message, error] = await getMessageById(new Types.ObjectId(message_id));
+    const [message, error] = await getMessageById([new Types.ObjectId(message_id)]);
     if(error || message === null){
         socket.emit("message:edit:error", {message: error?.message});
         return;
     }
 
-    if(message.sender.toString() !== userInfo.id){
+    if(message[0].sender.toString() !== userInfo._id.toString()){
         const error = {message: "Access denied"};
         socket.emit("message:edit:error", error);
         return;
     }
 
-    if(new_message.length > 255) { 
+    if(new_message.length > 255) {
         const error = {message: "Message is too long"};
         socket.emit("message:edit:error", error);
         return;
     }
 
     //Editing message
-    const [editResult, err] = await editMessageById(new Types.ObjectId(message._id), new_message);
+    const [editResult, err] = await editMessageById(new Types.ObjectId(message[0]._id), new_message);
 
     if(err){
         socket.emit("message:edit:error", {message_id, error: err.message});
@@ -166,8 +208,8 @@ export async function handleMessageEdit(socket: Socket, data: MessageEditEVT) {
     //Sending success and new message to room of message
     socket.emit("message:edit:ack", {message: "Message edited successfully"});
 
-    const conversationOfMessage = message.conversation_id;
-    socket.to(conversationOfMessage.toString()).emit("message:edited", {message_id, new_message, conversation_id: message.conversation_id});
+    const conversationOfMessage = message[0].conversation_id;
+    socket.to(conversationOfMessage.toString()).emit("message:edited", {message_id, new_message, conversation_id: message[0].conversation_id});
     return;
 };
 
@@ -176,21 +218,21 @@ export async function handleMessageDeleteForAll(socket: Socket, data: MessageDel
     const { userInfo } = socket;
     let isLastMessage = false;
 
-    const [messageInfo, error] = await getMessageById(new Types.ObjectId(message_id));
+    const [messageInfo, error] = await getMessageById([new Types.ObjectId(message_id)]);
     if(messageInfo === null || error){
         socket.emit("message:delete:error", {message: "Message not found", message_id});
         return;
     }
 
     //Checking user is sender of the message
-    if(messageInfo.sender.toString() === userInfo.id){
-        const [conversationOfMessage, error] = await getConversationById(messageInfo.conversation_id);
+    if(messageInfo[0].sender.toString() === userInfo._id.toString()){
+        const [conversationOfMessage, error] = await getConversationById(messageInfo[0].conversation_id);
         if(error || conversationOfMessage === null){
             socket.emit("message:delete:error", {message: "Message not found", message_id});
             return;
         }
 
-        var [oneMessageBeforeLastMessage, err] = await getConversationMessagesByLimitedDate(conversationOfMessage._id, "0", 2, 0, new Types.ObjectId(userInfo.id)); //This will be an array with two elements, if the message is not the only message left in converstion
+        var [oneMessageBeforeLastMessage, err] = await getConversationMessagesByLimitedDate(conversationOfMessage._id, "0", 2, 0, userInfo._id); //This will be an array with two elements, if the message is not the only message left in converstion
         if(err || oneMessageBeforeLastMessage === null){
             socket.emit("message:delete:error", {message: "Coudn't delete message"});
             return;
@@ -203,7 +245,7 @@ export async function handleMessageDeleteForAll(socket: Socket, data: MessageDel
         }
 
         //Checking if the message is last message of conversation because if it is we need to update last message of conversation
-        if(conversationOfMessage.last_message_id[userInfo.id.toString()].toString() === messageInfo._id.toString()){
+        if(conversationOfMessage.last_message_id[userInfo._id.toString()].toString() === messageInfo[0]._id.toString()){
             isLastMessage = true;
             const [updateResult, err] = await updateConversationLastMessageId(conversationOfMessage._id, oneMessageBeforeLastMessage[1]._id, "both");
             if(err){
@@ -212,7 +254,7 @@ export async function handleMessageDeleteForAll(socket: Socket, data: MessageDel
             }
         }
 
-        const [deleteResult, Error] = await deleteMessageById(messageInfo._id);
+        const [deleteResult, Error] = await deleteMessageById(messageInfo[0]._id);
         if(Error){
             socket.emit("message:delete:error", {message: Error.message, message_id});
             return;
@@ -220,7 +262,7 @@ export async function handleMessageDeleteForAll(socket: Socket, data: MessageDel
 
         if(deleteResult){
             socket.emit("message:delete:ack", {message: "Message deleted successfully", message_id});
-            socket.to(messageInfo.conversation_id.toString()).emit("message:deleted", {message_id, conversation_id: conversationOfMessage._id, is_last_message: isLastMessage});
+            socket.to(messageInfo[0].conversation_id.toString()).emit("message:deleted", {message_id, conversation_id: conversationOfMessage._id, is_last_message: isLastMessage});
             return;
         }
 
@@ -235,28 +277,28 @@ export async function handleMessageDeleteForMe(socket: Socket, data: MessageDele
     const { userInfo } = socket;
     let isLastMessage = false;
 
-    const [messageInfo, err] = await getMessageById(new Types.ObjectId(message_id));
+    const [messageInfo, err] = await getMessageById([new Types.ObjectId(message_id)]);
     if(messageInfo === null || err){
         socket.emit("message:delete:for_me:error", {message: "Message not found", message_id});
         return;
     }
 
     //Security check, user can only delete messages that has access to its conversation
-    if(!socket.rooms.has(messageInfo.conversation_id.toString())){
+    if(!socket.rooms.has(messageInfo[0].conversation_id.toString())){
         socket.emit("message:delete:for_me:error", {message: "Access denied", message_id});
         return;
     }
 
     //Updating last message of conversation if the deleted message is the last message of conversation
-    const [conversationOfMessage, returnError] = await getConversationById(messageInfo.conversation_id);
+    const [conversationOfMessage, returnError] = await getConversationById(messageInfo[0].conversation_id);
     if(returnError || conversationOfMessage === null){
         socket.emit("message:delete:for_me:error", {message: "Couldn't delete message", message_id});
         return;
     }
 
-    if(conversationOfMessage.last_message_id[userInfo.id.toString()].toString() === message_id){
+    if(conversationOfMessage.last_message_id[userInfo._id.toString()].toString() === message_id){
         isLastMessage = true;
-        const [oneMessageBeforeLastMessage, error] = await getConversationMessagesByLimitedDate(conversationOfMessage._id, "0", 2, 0, new Types.ObjectId(userInfo.id));
+        const [oneMessageBeforeLastMessage, error] = await getConversationMessagesByLimitedDate(conversationOfMessage._id, "0", 2, 0, new Types.ObjectId(userInfo._id));
         if(error || oneMessageBeforeLastMessage === null){
             socket.emit("message:delete:error", {message: "Coudn't delete message"});
             return;
@@ -268,14 +310,14 @@ export async function handleMessageDeleteForMe(socket: Socket, data: MessageDele
             return;
         }
 
-        const [updateResult, err] = await updateConversationLastMessageId(conversationOfMessage._id, oneMessageBeforeLastMessage[1]._id, "one", new Types.ObjectId(userInfo.id));
+        const [updateResult, err] = await updateConversationLastMessageId(conversationOfMessage._id, oneMessageBeforeLastMessage[1]._id, "one", new Types.ObjectId(userInfo._id));
         if(err){
             socket.emit("message:delete:error", {message: err.message, message_id});
             return;
         }
     }
 
-    const [softDeleteResult, error] = await softDeleteMessage(new Types.ObjectId(message_id), new Types.ObjectId(userInfo.id));
+    const [softDeleteResult, error] = await softDeleteMessage(new Types.ObjectId(message_id), new Types.ObjectId(userInfo._id));
     if(error){
         socket.emit("message:delete:error", {message: error.message, message_id});
         return;
@@ -283,7 +325,7 @@ export async function handleMessageDeleteForMe(socket: Socket, data: MessageDele
 
     if(softDeleteResult){
         socket.emit("message:delete:ack", {message: "Message deleted successfully", message_id});
-        socket.to(messageInfo.conversation_id.toString()).emit("message:deleted", {message_id, conversation_id: conversationOfMessage._id, is_last_message: isLastMessage});
+        socket.to(messageInfo[0].conversation_id.toString()).emit("message:deleted", {message_id, conversation_id: conversationOfMessage._id, is_last_message: isLastMessage});
         return;
     }
 };

@@ -6,14 +6,29 @@ import { createNewMessage } from "../../services/messages.services";
 import { checkUserHasAccessToConversation } from "../../utils/validate";
 import { ErrorResponse } from "../../types/response.types";
 import { Conversation } from "../../types/conversation.types";
-import { InsertMessage } from "../../types/messages.types";
+import { InsertMessage, validMessageTypes } from "../../types/messages.types";
 
 export async function handleNewPvConversationEvent(socket: Socket, data: NewPvConversationEVT, onlineUsers: Map<string, string>, io: Server) {
-    const requestedUserId = new Types.ObjectId(socket.userInfo.id);
+    const requestedUserId = socket.userInfo._id;
     const contactUserId = new Types.ObjectId(data.new_user_id);
     const { userInfo } = socket;
-    const { track_id } = data;
-    
+    const { message_text, track_id, message_type, attachment_key } = data;
+
+    if( !track_id || !message_type){
+        socket.emit("error", {message: "Invalid data"});
+        return;
+    }
+
+    if(!validMessageTypes.includes(message_type)){
+        socket.emit("error", {message: "Invalid message type"});
+        return;
+    }
+
+    if(message_text.length > 255){
+        socket.emit("error", {message: "Message is too long"});
+        return;
+    }
+
     //Checking if there is a conversation with requested user id
     const [conversationId, error] = await checkIsThereConversation(requestedUserId, contactUserId);
 
@@ -39,12 +54,12 @@ export async function handleNewPvConversationEvent(socket: Socket, data: NewPvCo
     if(newPvConversationId){
         //Inserting message
         const insertData: InsertMessage = {
-            sender: new Types.ObjectId(userInfo.id),
-            content: data.message_text,
+            sender: userInfo._id,
+            content: message_text || " ",
             conversation_id: newPvConversationId,
             replied_to: null,
-            attachments: [],
-            type: "text",
+            attachment_key: attachment_key || "",
+            type: message_type,
             deleted_for: []
         };
 
@@ -66,13 +81,15 @@ export async function handleNewPvConversationEvent(socket: Socket, data: NewPvCo
             socket.join(newPvConversationId.toString());
             const targetSocketId = onlineUsers.get(contactUserId.toString());
             if(targetSocketId){ //Checks if user is online
-                const targetSocket = io.sockets.sockets.get(targetSocketId) as Socket; 
+                const targetSocket = io.sockets.sockets.get(targetSocketId) as Socket;
                 targetSocket?.join(newPvConversationId.toString());
                 targetSocket?.emit("new_pv_conversation", {conversation_id: newPvConversationId.toString()});
                 socket.to(newPvConversationId.toString()).emit("message:receive", {
                     conversation_id: newPvConversationId.toString(),
                     message_id: newMessageId.toString(),
                     message_text: data.message_text,
+                    message_type: message_type || "text",
+                    attachment_key: attachment_key || "",
                     sender_info: socket.userInfo,
                     when: Date.now()
                 });
@@ -96,7 +113,7 @@ export async function handlePvConversationDelete(socket: Socket, data: pvConvers
     }
 
     //Checking if user has access to the conversation
-    const [conversation, err]: [Conversation | null, ErrorResponse | null] = await checkUserHasAccessToConversation(new Types.ObjectId(conversation_id), userInfo.id);
+    const [conversation, err]: [Conversation | null, ErrorResponse | null] = await checkUserHasAccessToConversation(new Types.ObjectId(conversation_id), userInfo._id.toString());
 
     //If user had not access to conversation, a not found error will be shown
     if(err || conversation === null){
@@ -112,12 +129,12 @@ export async function handlePvConversationDelete(socket: Socket, data: pvConvers
                 socket.emit("conversation:pv:delete:error", {message: error.message, conversation_id});
                 return;
             }
-    
+
             socket.emit("conversation:pv:delete:ack", {message: "Conversation deleted successfully", conversation_id});
             return;
-    
+
         }else if(delete_for === "all"){
-            const [deleteResult, error] = await hardDeleteConversation(new Types.ObjectId(conversation_id)); 
+            const [deleteResult, error] = await hardDeleteConversation(new Types.ObjectId(conversation_id));
             if(error){
                 socket.emit("conversation:pv:delete:error", {message: error.message, conversation_id});
                 return;

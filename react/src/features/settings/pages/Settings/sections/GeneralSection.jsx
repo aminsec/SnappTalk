@@ -1,97 +1,78 @@
 import { useState } from 'react';
-import toast from 'react-hot-toast';
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+import { faCloudArrowDown } from '@fortawesome/free-solid-svg-icons';
 
-import { Button } from '@/shared/components';
+import {
+  getAutoDownloadMedia,
+  MEDIA_AUTO_DOWNLOAD_KEY,
+  saveMediaPreference,
+} from '@/shared/utils/mediaPreferences';
 
 import styles from './GeneralSection.module.css';
 
-function MainSection() {
-  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
-  const [isDeleting, setIsDeleting] = useState(false);
+function PreferenceSwitch({ checked, description, icon, label, onChange }) {
+  return (
+    <div className={styles.preferenceRow}>
+      <span className={styles.preferenceIcon} aria-hidden="true">
+        <FontAwesomeIcon icon={icon} />
+      </span>
+      <div className={styles.preferenceCopy}>
+        <strong>{label}</strong>
+        <span>{description}</span>
+      </div>
+      <label className={styles.switch}>
+        <input
+          type="checkbox"
+          checked={checked}
+          onChange={(event) => onChange(event.target.checked)}
+          aria-label={label}
+        />
+        <span className={styles.switchTrack} aria-hidden="true">
+          <span className={styles.switchThumb} />
+        </span>
+      </label>
+    </div>
+  );
+}
 
-  const handleDeleteAccount = async () => {
-    if (isDeleting) return;
+function GeneralSection() {
+  const [autoDownload, setAutoDownload] = useState(getAutoDownloadMedia);
 
-    setIsDeleting(true);
-    try {
-      const response = await fetch('/api/v1/user/info/delete-account', {
-        method: 'DELETE',
-        credentials: 'include',
-      });
-
-      if (response.redirected) {
-        window.location.href = response.url;
-        return;
-      }
-
-      if (!response.ok) {
-        const payload = await response.json().catch(() => ({}));
-        throw new Error(payload?.message || 'Unable to delete account right now.');
-      }
-
-      window.location.href = '/login';
-    } catch (error) {
-      toast.error(error?.message || 'Unable to delete account right now.');
-    } finally {
-      setIsDeleting(false);
-    }
+  const updatePreference = (key, value, setter) => {
+    setter(value);
+    saveMediaPreference(key, value);
   };
 
   return (
     <div className={styles.generalContainer}>
       <div className={styles.sectionHeader}>
+        <span className={styles.eyebrow}>Media preferences</span>
         <h2>General</h2>
-        <p>Manage your account settings and preferences.</p>
+        <p>Control how shared photos, videos, audio, and files behave on this device.</p>
       </div>
 
-      <div className={styles.dangerZone}>
-        <div className={styles.dangerCopy}>
-          <h4>Delete account</h4>
-          <p>This will permanently remove your account and conversations.</p>
+      <section className={styles.preferenceGroup} aria-labelledby="media-preferences-title">
+        <div className={styles.groupHeader}>
+          <h3 id="media-preferences-title">Photos and videos</h3>
+          <p>These preferences are stored locally in this browser.</p>
         </div>
-        <Button
-          size="sm"
-          variant="danger"
-          onClick={() => setShowDeleteConfirm(true)}
-          className={styles.deleteBtn}
-          aria-label="Delete account"
-        >
-          Delete account
-        </Button>
-      </div>
 
-      {showDeleteConfirm && (
-        <div className={styles.confirmOverlay} role="dialog" aria-modal="true">
-          <div className={styles.confirmBox}>
-            <h4 className={styles.confirmTitle}>Delete account</h4>
-            <p className={styles.confirmText}>
-              Are you sure you want to delete your account? This cannot be undone.
-            </p>
-            <div className={styles.confirmActions}>
-              <button
-                type="button"
-                className={styles.cancelButton}
-                onClick={() => setShowDeleteConfirm(false)}
-              >
-                Cancel
-              </button>
-              <button
-                type="button"
-                className={styles.confirmButton}
-                onClick={() => {
-                  setShowDeleteConfirm(false);
-                  handleDeleteAccount();
-                }}
-                disabled={isDeleting}
-              >
-                {isDeleting ? 'Deleting...' : 'Delete'}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+        <PreferenceSwitch
+          icon={faCloudArrowDown}
+          label="Automatic media download"
+          description="Load media as soon as messages appear. Turn this off to download each item manually."
+          checked={autoDownload}
+          onChange={(value) => updatePreference(MEDIA_AUTO_DOWNLOAD_KEY, value, setAutoDownload)}
+        />
+
+      </section>
+
+      <div className={styles.preferenceNote}>
+        <strong>Manual downloads save bandwidth</strong>
+        <span>Unopened media stays blurred and is not requested from MinIO until you choose to load it.</span>
+      </div>
     </div>
   );
 }
 
-export default MainSection;
+export default GeneralSection;

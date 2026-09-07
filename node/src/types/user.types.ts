@@ -1,7 +1,7 @@
 import { Types } from "mongoose";
 
 export interface ProtectedUserInfo {
-    id: string,
+    _id: Types.ObjectId,
     email: string,
     username: string,
     profile_pic: string,
@@ -35,3 +35,15 @@ export interface InsertUserInfo {
     status: "online" | "offline",
     deleted_account: boolean
 };
+
+export interface DBUserType {
+    email: string;
+    username: string;
+    password: string;
+    profile_pic: string;
+    role: string;
+    joined_at: Date;
+    bio: string;
+    status: "online" | "offline";
+    deleted_account: boolean;
+}

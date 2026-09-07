@@ -6,6 +6,7 @@ import SettingsPage from '@/features/settings/pages/Settings/SettingsPage';
 import ProfileSection from '@/features/settings/pages/Settings/sections/ProfileSection';
 import GeneralSection from '@/features/settings/pages/Settings/sections/GeneralSection';
 import AppearanceSection from '@/features/settings/pages/Settings/sections/AppearanceSection';
+import AccountSection from '@/features/settings/pages/Settings/sections/AccountSection';
 import ProfilePage from '@/features/members/pages/Profile/ProfilePage';
 import NotFoundPage from '@/features/misc/pages/NotFound';
 import { RequireAuth, RequireGuest } from '@/shared/utils/protectRoutes';
@@ -15,13 +16,17 @@ const AppRouter = () => (
     <Routes>
       <Route element={<RequireAuth />}>
         <Route path="/chats" element={<ChatsPage />} />
-        <Route path="/members/:userId" element={<ProfilePage />} />
+        <Route path="/chats/:conversationId" element={<ChatsPage />} />
         <Route path="/settings/*" element={<SettingsPage />}>
           <Route path="profile" element={<ProfileSection />} />
           <Route path="general" element={<GeneralSection />} />
           <Route path="appearance" element={<AppearanceSection />} />
+          <Route path="account" element={<AccountSection />} />
         </Route>
       </Route>
+
+      {/* Public profile - accessible to unauthenticated users too */}
+      <Route path="/members/:userId" element={<ProfilePage />} />
 
       <Route element={<RequireGuest />}>
         <Route path="/login" element={<LoginPage />} />

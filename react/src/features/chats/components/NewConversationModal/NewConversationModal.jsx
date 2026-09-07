@@ -6,7 +6,7 @@ import { useAuth } from '@/shared/state/useAuth';
 import defaultAvatar from '@/shared/assets/images/avatar.png';
 import styles from './NewConversationModal.module.css';
 
-function NewConversationModal({ isOpen, onClose, onSelectUser, existingContacts = [] }) {
+function NewConversationModal({ isOpen, onClose, onSelectUser }) {
   const { user } = useAuth();
   const [users, setUsers] = useState([]);
   const [searchQuery, setSearchQuery] = useState('');
@@ -28,20 +28,11 @@ function NewConversationModal({ isOpen, onClose, onSelectUser, existingContacts 
         const data = await response.json();
         let allUsers = data.members_info || data || [];
         console.log(allUsers)
-        // Get IDs of users we already have conversations with
-        const existingContactIds = new Set();
-        existingContacts.forEach(contact => {
-          if (contact.type === 'pv' && contact.contact_info?._id) {
-            existingContactIds.add(contact.contact_info._id.toString());
-          }
-        });
-
-        // Filter out current user and existing contacts
+        // Filter out the current user only
+        const currentUserId = (user?._id || user?.id)?.toString();
         const availableUsers = allUsers.filter(userItem => {
           const userId = (userItem._id || userItem.id)?.toString();
-          return userId && 
-                 userId !== user?.id?.toString() && 
-                 !existingContactIds.has(userId);
+          return userId && userId !== currentUserId;
         });
 
         setUsers(availableUsers);
@@ -54,7 +45,7 @@ function NewConversationModal({ isOpen, onClose, onSelectUser, existingContacts 
     } finally {
       setIsLoading(false);
     }
-  }, [existingContacts, user]);
+  }, [user]);
 
   useEffect(() => {
     if (isOpen) {

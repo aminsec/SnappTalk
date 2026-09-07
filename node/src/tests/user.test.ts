@@ -27,7 +27,7 @@ describe('Account tests', () => {
     let sampleTakenUsername = "";
     let sampleToken = "";
     let sampleSecondToken = "";
-    
+
     before(async () => {
         //Main user's info to use in tests
         let requestBody = {
@@ -64,10 +64,10 @@ describe('Account tests', () => {
     //Tests
     describe("GET /user/info", () => {
         it("should return user info", async () => {
-            const response = await server 
+            const response = await server
                 .get('/user/info')
                 .set('Cookie', `token=${sampleToken}`);
-            
+
             //Parsing the response
             const resp = response.body;
 
@@ -91,14 +91,14 @@ describe('Account tests', () => {
     });
 
     describe("PUT /user/info/password", () => {
-        //Happy path 
+        //Happy path
         it("should update user password", async () => {
             const requestBody = {
                 old_password: sampleValidPassword,
                 new_password: sampleValidPassword + "New"
             };
 
-            const response = await server 
+            const response = await server
                 .put('/user/info/password')
                 .set('Cookie', `token=${sampleToken}`)
                 .send(requestBody)
@@ -121,12 +121,12 @@ describe('Account tests', () => {
                 new_password: sampleValidEmail + "New"
             };
 
-            const response = await server 
+            const response = await server
                 .put('/user/info/password')
                 .set('Cookie', `token=${sampleToken}`)
                 .send(requestBody)
                 .set('Content-Type', 'application/json');
-            
+
             //Parsing the response
             const resp = response.body;
 
@@ -141,12 +141,12 @@ describe('Account tests', () => {
                 new_password: sampleWeakPassword
             };
 
-            const response = await server 
+            const response = await server
                 .put('/user/info/password')
                 .set('Cookie', `token=${sampleToken}`)
                 .send(requestBody)
                 .set('Content-Type', 'application/json');
-            
+
             //Parsing the response
             const resp = response.body;
 
@@ -161,18 +161,18 @@ describe('Account tests', () => {
                 new_password: "loooooooooooooooooooooooooooooongPassword"
             };
 
-            const response = await server 
+            const response = await server
                 .put('/user/info/password')
                 .set('Cookie', `token=${sampleToken}`)
                 .send(requestBody)
                 .set('Content-Type', 'application/json');
-            
+
             //Parsing the response
             const resp = response.body;
 
             //Expectings
             expect(response.status).to.equal(400);
-            expect(resp).to.have.property('type', 'input_error');            
+            expect(resp).to.have.property('type', 'input_error');
         });
 
         it("should not accept password with less than 6 character", async () => {
@@ -181,18 +181,18 @@ describe('Account tests', () => {
                 new_password: "123" //as short pass
             };
 
-            const response = await server 
+            const response = await server
                 .put('/user/info/password')
                 .set('Cookie', `token=${sampleToken}`)
                 .send(requestBody)
                 .set('Content-Type', 'application/json');
-            
+
             //Parsing the response
             const resp = response.body;
 
             //Expectings
             expect(response.status).to.equal(400);
-            expect(resp).to.have.property('type', 'input_error');            
+            expect(resp).to.have.property('type', 'input_error');
         });
 
         it("should not accept empty password", async () => {
@@ -201,18 +201,18 @@ describe('Account tests', () => {
                 new_password: "" //as short pass
             };
 
-            const response = await server 
+            const response = await server
                 .put('/user/info/password')
                 .set('Cookie', `token=${sampleToken}`)
                 .send(requestBody)
                 .set('Content-Type', 'application/json');
-            
+
             //Parsing the response
             const resp = response.body;
 
             //Expectings
             expect(response.status).to.equal(400);
-            expect(resp).to.have.property('type', 'input_error');  
+            expect(resp).to.have.property('type', 'input_error');
         });
 
         it("should return 302 without token", async () => {
@@ -233,12 +233,12 @@ describe('Account tests', () => {
                 bio: "This is a new bio."
             };
 
-            const response = await server 
+            const response = await server
                 .put('/user/info')
                 .set('Cookie', `token=${sampleToken}`)
                 .send(requestBody)
                 .set('Content-Type', 'application/json');
-            
+
             //Parsing the response
             const resp = response.body;
 
@@ -258,12 +258,12 @@ describe('Account tests', () => {
                 bio: "This is a new bio."
             };
 
-            const response = await server 
+            const response = await server
                 .put('/user/info')
                 .set('Cookie', `token=${sampleToken}`)
                 .send(requestBody)
                 .set('Content-Type', 'application/json');
-            
+
             //Parsing the response
             const resp = response.body;
 
@@ -280,7 +280,7 @@ describe('Account tests', () => {
                 bio: "This is a new bio."
             };
 
-            const response = await server 
+            const response = await server
                 .put('/user/info')
                 .set('Cookie', `token=${sampleToken}`)
                 .send(requestBody)
@@ -302,7 +302,7 @@ describe('Account tests', () => {
                 bio: "This is a new bio."
             };
 
-            const response = await server 
+            const response = await server
                 .put('/user/info')
                 .set('Cookie', `token=${sampleToken}`)
                 .send(requestBody)
@@ -332,7 +332,7 @@ describe('Account tests', () => {
                 content: "iVBORw0KGgoQ5IlyODP+z3L8b8vNkQzFsIRNJVMcEiOdM6ThHlRCn8cVN+Tr9sdXRpb24+CiAgICAgICAgIDx0aWZmOk9yaWVudGF0aW9uPjE8L3RpZmY6T3JpZW50YXRpb24+CiAgICAgIDwvcmRmOkRlc2NyaXB0aW9uPgogICA8L3JkZjpSREY+CjwveDp4bXBtZXRhPgqLxgFpAAAAHElEQVQYGWPk5uP/z4AHMOGRA0uNKoCEEOXhAADYLwE/Q181RAAAAABJRU5ErkJgggo="
             };
 
-            const response = await server 
+            const response = await server
                 .post('/user/info/profile')
                 .set('Cookie', `token=${sampleToken}`)
                 .send(requestBody)
@@ -372,4 +372,4 @@ describe('Account tests', () => {
         //Expectings
         expect(deleteResult.acknowledged).to.equal(true);
     });
-}); 
+});

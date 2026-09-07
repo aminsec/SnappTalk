@@ -80,6 +80,22 @@
   gap: 8px;
 }
 
+.signupLink {
+  margin-top: 24px;
+  text-align: center;
+}
+
+.signupLink a {
+  color: var(--primary-color);
+  font-size: 15px;
+  text-decoration: none;
+  font-weight: 600;
+}
+
+.signupLink a:hover {
+  text-decoration: underline;
+}
+
 .bioCard {
   background: var(--bg-panel);
   border-radius: 16px;

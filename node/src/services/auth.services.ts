@@ -13,7 +13,7 @@ export async function checkUserExistsByEmail(email: string): Promise<[true | fal
         }else{
             return [false, null];
         }
-        
+
     } catch (error) {
         console.log(error);
         const err:ErrorResponse = {message: "A system error occurred", state: "failed", type: "system_error"};
@@ -44,7 +44,7 @@ export async function checkCredentials(email: string, password: string): Promise
 export async function getUserInfoByEmail(email: string): Promise<[ProtectedUserInfo | null,ErrorResponse | null]>{
     try {
         const user: RawUserInfo | null = await User.findOne({email: email}).lean();
-        
+
         if(!user){
             const err: ErrorResponse = {message: "User not found", state: "failed", type: "not_found"};
             return [null, err];
@@ -53,8 +53,8 @@ export async function getUserInfoByEmail(email: string): Promise<[ProtectedUserI
         //White listing user data
         const userData: ProtectedUserInfo = whiteListUserInfo(user);
 
-        return [userData, null]; 
-        
+        return [userData, null];
+
     } catch (error) {
         console.log(error);
         const err:ErrorResponse = {message: "A system error occurred", state: "failed", type: "system_error"};
@@ -86,8 +86,8 @@ export async function createUser(email: string, password: string): Promise<[Prot
             const createdUser = await User.create(userInfoToInsert);
 
             if(createdUser){
-                const userInfo: ProtectedUserInfo = { 
-                    id: createdUser._id.toString(),
+                const userInfo: ProtectedUserInfo = {
+                    _id: createdUser._id,
                     email: createdUser.email,
                     username: createdUser.username,
                     profile_pic: createdUser.profile_pic,
@@ -96,7 +96,7 @@ export async function createUser(email: string, password: string): Promise<[Prot
                     bio: createdUser.bio,
                     status: createdUser.status
                 };
-                
+
                 return [userInfo, null];
 
             }else{
@@ -121,10 +121,10 @@ export async function revokeToken(token: string):  Promise<[Boolean | null, Erro
         const insertedToken = await DeadSession.create({
             token: token
         });
-    
+
         if(insertedToken){
             return [true, null];
-    
+
         }else{
             const err: ErrorResponse = {message: "Couldn't insert token", state: "failed", type: "system_error"};
             return [null, err];

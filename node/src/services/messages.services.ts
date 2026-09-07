@@ -1,14 +1,15 @@
 import { Types } from "mongoose";
-import { Message as MessageModel } from "../models/messages.model";
+import { MessageModel } from "../models/messages.model";
 import { ErrorResponse } from "../types/response.types";
 import { InsertMessage, Message } from "../types/messages.types";
+import { UnreadCount } from "../types/messages.types"
 
-export async function getMessageById(messageId: Types.ObjectId): Promise<[Message | null, ErrorResponse | null]> {
+export async function getMessageById(messageId: Types.ObjectId[]): Promise<[Message[] | null, ErrorResponse | null]> {
     try {
-        const message: Message | null = await MessageModel.findOne({
-            _id: messageId
+        const message: Message[] | null = await MessageModel.find({
+            _id: {$in: messageId}
         }).lean();
-        
+
         return [message, null];
     } catch (error) {
         console.log(error);
@@ -29,14 +30,14 @@ export async function getConversationMessagesByLimitedDate(conversationId: Types
                   deleted_for: {$nin: [userId]}
                 }
               },
-            
+
               {
                 $sort: {
                   created_at: -1,
-                  _id: -1           
+                  _id: -1
                 }
               },
-            
+
               { $skip: offset },
               { $limit: limit },
             {
@@ -66,7 +67,7 @@ export async function getConversationMessagesByLimitedDate(conversationId: Types
           ]);
 
           return [messages, null];
-          
+
     } catch (error) {
         console.log(error);
         const err: ErrorResponse = {message: "A system error occurred", state: "failed", type: "system_error"};
@@ -81,7 +82,7 @@ export async function createNewMessage(data: InsertMessage): Promise<[Types.Obje
             sender: data.sender,
             type: data.type,
             content: data.content,
-            attachments: data.attachments,
+            attachment_key: data.attachment_key,
             seen_by: {[data.sender.toString()]: new Date()},
             edited: false,
             created_at: new Date(),
@@ -113,9 +114,9 @@ export async function seenMessageById(message_id: Types.ObjectId, conversation_i
                 [`seen_by.${userid}`]: new Date()
             }
         });
-    
+
         if(updateResult.matchedCount === 0){
-            const error: ErrorResponse = {state: "failed", message: "Coulnd't find message", type: "not_found"}; 
+            const error: ErrorResponse = {state: "failed", message: "Coulnd't find message", type: "not_found"};
             return [null, error];
         }
 
@@ -128,21 +129,38 @@ export async function seenMessageById(message_id: Types.ObjectId, conversation_i
     }
 };
 
-export async function getUnreadMessagesCount(userId: string, conversationId: Types.ObjectId): Promise<[Number | null, ErrorResponse | null]> {
-    try {
-        const count = await MessageModel.countDocuments({
-          conversation_id: conversationId,
-          sender: { $ne: new Types.ObjectId(userId) },                 
+export async function getUnreadMessagesCount(userId: string, conversationId: Types.ObjectId[]): Promise<[UnreadCount[] | null, ErrorResponse | null]> {
+  try {
+    const result = await MessageModel.aggregate<UnreadCount>([
+      {
+        $match: {
+          conversation_id: { $in: conversationId },
+          sender: { $ne: new Types.ObjectId(userId) },
           [`seen_by.${userId}`]: { $exists: false }
-        });
-    
-        return [count, null];
-    } catch (error) {
-        console.log(error);
-        const err: ErrorResponse = {message: "A system error occurred", state: "failed", type: "system_error"};
-        return [null, err];
-    }
-};
+        }
+      },
+      {
+        $group: {
+          _id: "$conversation_id",
+          unreadMessagesCount: { $sum: 1 }
+        }
+      },
+      {
+        $project: {
+          _id: 0,
+          conversation_id: "$_id",
+          unreadMessagesCount: 1
+        }
+      }
+    ]);
+
+    return [result, null];
+  } catch (error) {
+    console.log(error);
+    const err: ErrorResponse = { message: "A system error occurred", state: "failed", type: "system_error" };
+    return [null, err];
+  }
+}
 
 export async function deleteConversationMessages(conversationId: Types.ObjectId): Promise<[Boolean | null, ErrorResponse | null]> {
     try {
@@ -208,6 +226,20 @@ export async function softDeleteMessage(messageId: Types.ObjectId, userId: Types
         });
 
         return [true, null];
+    } catch (error) {
+        console.log(error);
+        const err: ErrorResponse = {message: "A system error occurred", state: "failed", type: "system_error"};
+        return [null, err];
+    }
+};
+
+export async function getMessageByAttachmentKey(attachment_key: string): Promise<[Message | null, ErrorResponse | null]> {
+    try {
+        const message: Message | null = await MessageModel.findOne({
+            attachment_key: attachment_key
+        }).lean();
+
+        return [message, null];
     } catch (error) {
         console.log(error);
         const err: ErrorResponse = {message: "A system error occurred", state: "failed", type: "system_error"};

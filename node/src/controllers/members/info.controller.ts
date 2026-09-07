@@ -1,4 +1,3 @@
-import { execSync } from "child_process";
 import { getUserInfoById } from "../../services/account.services";
 import { searchMemberByUsername } from "../../services/members.services";
 import { sendResponse, showError } from "../../utils/operations";
@@ -7,13 +6,14 @@ import { Types } from "mongoose";
 
 export async function showMemberInfo(req: Request, resp: Response) {
     const { userid } = req.params;
-    const [memberInfo, error] = await getUserInfoById(new Types.ObjectId(userid));
+    const [memberInfo, error] = await getUserInfoById([new Types.ObjectId(userid)]);
     if(error){
         showError(error, resp);
         return;
     }
 
-    const responseData = {state: "success", member_info: memberInfo};
+    const singleMemberInfo = memberInfo && memberInfo.length > 0 ? memberInfo[0] : null;
+    const responseData = {state: "success", member_info: singleMemberInfo};
     sendResponse(responseData, {}, 200, resp);
 };
 

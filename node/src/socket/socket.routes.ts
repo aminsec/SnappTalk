@@ -43,8 +43,8 @@ export function handleSocketConnection(socket: Socket, io: Server, onlineUsers: 
 
   socket.on("disconnecting", async () => {
     sendUserStatusToRooms(socket, "offline");
-    await setUserStatus(new Types.ObjectId(socket.userInfo.id), "offline");
-    onlineUsers.delete(socket.userInfo.id);
+    await setUserStatus(socket.userInfo._id, "offline");
+    onlineUsers.delete(socket.userInfo._id.toString());
   });
 
 };

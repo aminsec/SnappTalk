@@ -20,7 +20,7 @@ router.put("/", [
   
   check("bio")
   .isString().withMessage("Bio must be a string.")
-  .isLength({ max: 160 }).withMessage("Bio must be at most 160 characters long."),
+  .isLength({ max: 254 }).withMessage("Bio must be at most 160 characters long."),
 
   checkThereIsAnyError
 ], accountInfoController.updateUserInfo);

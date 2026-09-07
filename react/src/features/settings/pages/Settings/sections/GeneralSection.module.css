@@ -1,148 +1,131 @@
 .generalContainer {
-  width: 100%;
+  width: min(760px, 100%);
+  margin: 0 auto;
   color: var(--text-main);
   display: flex;
   flex-direction: column;
-  gap: 20px;
-  align-items: center;
+  gap: 26px;
+  text-align: left;
 }
 
-.sectionHeader {
-  text-align: center;
+.sectionHeader { max-width: 620px; }
+
+.eyebrow {
+  display: block;
+  margin-bottom: 7px;
+  color: var(--btn-color);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
 }
 
 .sectionHeader h2 {
-  font-size: 20px;
-  margin-bottom: 6px;
+  margin: 0 0 8px;
+  font-size: clamp(22px, 3vw, 30px);
+  line-height: 1.2;
+  letter-spacing: -0.02em;
 }
 
-.sectionHeader p {
-  color: var(--text-muted);
-  font-size: 14px;
-}
-
-.dangerZone {
-  width: 100%;
-  margin-top: 6px;
-  padding: 16px;
-  border-radius: 12px;
-  background: rgba(255, 92, 92, 0.08);
-  border: 1px solid rgba(255, 92, 92, 0.25);
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-}
-
-.dangerCopy h4 {
-  margin: 0 0 4px;
-  font-size: 16px;
-  color: var(--text-main);
-}
-
-.dangerCopy p {
+.sectionHeader p,
+.groupHeader p {
   margin: 0;
-  font-size: 13px;
   color: var(--text-muted);
+  font-size: 13px;
+  line-height: 1.6;
 }
 
-.deleteBtn {
-  min-width: 140px;
+.preferenceGroup {
+  overflow: hidden;
+  background: rgba(255, 255, 255, 0.025);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 18px;
 }
 
-.confirmOverlay {
-  animation: fadeIn 0.18s ease-out;
-  position: fixed;
-  inset: 0;
+.groupHeader { padding: 18px 20px 14px; }
+.groupHeader h3 { margin: 0 0 4px; font-size: 15px; }
+
+.preferenceRow {
   display: flex;
   align-items: center;
-  justify-content: center;
-  background: rgba(0, 0, 0, 0.4);
-  backdrop-filter: blur(1px);
-  z-index: 2000;
-  padding: 20px;
+  gap: 14px;
+  padding: 17px 20px;
+  transition: background 160ms ease;
 }
 
-.confirmBox {
-  animation: popIn 0.22s ease-out;
-  width: 100%;
-  max-width: 320px;
-  background: var(--bg-panel);
-  border-radius: 12px;
-  border: 1px solid var(--input-border);
-  padding: 1.25rem;
-  box-shadow: 0 12px 36px rgba(0, 0, 0, 0.25);
+.preferenceRow:hover { background: rgba(255, 255, 255, 0.025); }
+
+.preferenceIcon {
+  width: 42px;
+  height: 42px;
+  flex: 0 0 42px;
+  display: grid;
+  place-items: center;
+  color: #fff;
+  font-size: 16px;
+  background: linear-gradient(145deg, var(--btn-color), var(--btn-hover));
+  border-radius: 13px;
+  box-shadow: 0 7px 18px color-mix(in srgb, var(--btn-color) 24%, transparent);
 }
 
-.confirmTitle {
-  margin: 0 0 0.35rem;
-  font-weight: 700;
-  font-size: 1rem;
-  color: var(--text-main);
-}
-
-.confirmText {
-  margin: 0 0 1rem;
-  font-size: 0.9rem;
-  color: var(--text-muted);
-}
-
-.confirmActions {
+.preferenceCopy {
+  min-width: 0;
+  flex: 1;
   display: flex;
-  justify-content: flex-end;
-  gap: 0.5rem;
+  flex-direction: column;
+  gap: 4px;
 }
 
-@keyframes fadeIn {
-  from { opacity: 0; }
-  to { opacity: 1; }
+.preferenceCopy strong { font-size: 14px; font-weight: 650; }
+.preferenceCopy span { color: var(--text-muted); font-size: 11px; line-height: 1.5; }
+.switch { position: relative; flex: 0 0 auto; cursor: pointer; }
+.switch input { position: absolute; width: 1px; height: 1px; opacity: 0; pointer-events: none; }
+
+.switchTrack {
+  width: 46px;
+  height: 26px;
+  display: block;
+  padding: 3px;
+  background: rgba(255, 255, 255, 0.14);
+  border: 1px solid rgba(255, 255, 255, 0.11);
+  border-radius: 999px;
+  transition: background 180ms ease, border-color 180ms ease;
 }
 
-@keyframes popIn {
-  from { opacity: 0; transform: scale(0.94); }
-  to { opacity: 1; transform: scale(1); }
+.switchThumb {
+  width: 18px;
+  height: 18px;
+  display: block;
+  background: #fff;
+  border-radius: 50%;
+  box-shadow: 0 2px 7px rgba(0, 0, 0, 0.28);
+  transition: transform 180ms cubic-bezier(.22, 1, .36, 1);
 }
 
-@media (prefers-reduced-motion: reduce) {
-  .confirmOverlay,
-  .confirmBox {
-    animation: none !important;
-  }
+.switch input:checked + .switchTrack {
+  background: var(--btn-color);
+  border-color: var(--btn-color);
 }
 
-.cancelButton,
-.confirmButton {
-  padding: 0.45rem 0.9rem;
-  border-radius: 8px;
-  border: 1px solid var(--input-border);
-  background: transparent;
-  color: var(--text-primary);
-  cursor: pointer;
-  transition: background-color 0.2s ease, color 0.2s ease, border-color 0.2s ease;
+.switch input:checked + .switchTrack .switchThumb { transform: translateX(20px); }
+.switch input:focus-visible + .switchTrack { outline: 2px solid var(--btn-color); outline-offset: 3px; }
+
+.preferenceNote {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 14px 16px;
+  background: color-mix(in srgb, var(--btn-color) 7%, transparent);
+  border: 1px solid color-mix(in srgb, var(--btn-color) 18%, transparent);
+  border-radius: 14px;
 }
 
-.cancelButton:hover:not(:disabled) {
-  background: rgba(255, 255, 255, 0.08);
-  border-color: rgba(255, 255, 255, 0.12);
-}
+.preferenceNote strong { font-size: 12px; }
+.preferenceNote span { color: var(--text-muted); font-size: 11px; line-height: 1.5; }
 
-.confirmButton {
-  background: rgba(255, 18, 18, 0.1);
-  border-color: rgba(255, 18, 18, 0.4);
-  color: var(--text-primary);
-}
-
-.confirmButton:hover:not(:disabled) {
-  background: rgba(255, 18, 18, 0.2);
-  border-color: rgba(255, 18, 18, 0.6);
-}
-
-.deleteBtn:hover:not(:disabled) {
-  background-color: #e14a4a;
-}
-
-.cancelButton:disabled,
-.confirmButton:disabled {
-  opacity: 0.6;
-  cursor: not-allowed;
+@media (max-width: 640px) {
+  .generalContainer { gap: 20px; }
+  .preferenceRow { align-items: flex-start; padding: 15px 14px; gap: 11px; }
+  .preferenceIcon { width: 38px; height: 38px; flex-basis: 38px; }
+  .switch { margin-top: 6px; }
 }
