@@ -4,7 +4,6 @@ import { s3Client } from "../config/s3.minio";
 import { DeleteObjectCommand } from "@aws-sdk/client-s3";
 import { Response } from 'express';
 import { ProtectedUserInfo, RawUserInfo } from '../types/user.types';
-import * as fs from 'fs';
 import * as jwt from "jsonwebtoken";
 import { Conversation } from '../types/conversation.types';
 import { Message } from '../types/messages.types';
@@ -35,21 +34,6 @@ export function showError(error: ErrorResponse, resp: Response){
     return;
 };
 
-export function whiteListUserInfo(userData: RawUserInfo): ProtectedUserInfo{
-    const validatedUserData = {
-        _id: userData._id,
-        username: userData.username,
-        email: userData.email,
-        role: userData.role,
-        profile_pic: userData.profile_pic,
-        joined_at: userData.joined_at,
-        bio: userData.bio || "", // Default bio is empty if not provided
-        status: userData.status
-    };
-
-    return validatedUserData;
-};
-
 export function whiteListConversations(conversations: Conversation[]): Conversation[]{
     const validConversations = [];
 
@@ -77,53 +61,6 @@ export function getRandomString(): string {
         result += chars.charAt(Math.floor(Math.random() * chars.length));
     }
     return result;
-};
-
-export async function uploadFile(content: string): Promise<[string | null, ErrorResponse | null]> {
-    // Decoding the base64 to save in buffer
-    const file: Buffer = Buffer.from(content, "base64");
-
-    // Writing the binary into a file in /uploads folder
-    try {
-        // Avoiding using file extention for security reasons
-        const filename: string = getRandomString();
-        const uploadPath = "/up/node/uploads/" + filename;
-        fs.writeFile(uploadPath, file, err => {
-            if(err){
-                throw new Error("System error occurred. Coudln't upload file");
-            }
-        });
-
-        return [filename, null];
-
-    } catch (error) {
-        console.log(error);
-        const err: ErrorResponse = {message: "A system error occurred. Couldn't upload file", state: "failed", type: "system_error"};
-        return [null, err];
-    }
-};
-
-export async function deleteFileFromS3(fileKey: string, bucketName: string): Promise<[Boolean | null, ErrorResponse | null]>  {
-    try {
-        // Preventing deleting default image
-        if(fileKey === "default.png"){
-            return [true, null];
-        }
-
-        await s3Client.send(
-            new DeleteObjectCommand({
-              Bucket: bucketName,
-              Key: fileKey,
-            })
-          );
-
-        return [true, null]
-
-    } catch (error) {
-        console.log(error);
-        const err: ErrorResponse = {message: "A system error occurred", state: "failed", type: "system_error"};
-        return [null, err];
-    }
 };
 
 export function generateJWTToken(userInfo: ProtectedUserInfo): [string | null, ErrorResponse | null] {

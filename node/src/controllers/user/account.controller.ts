@@ -1,11 +1,10 @@
 import { checkUserExistsByUsername, getRawUserInfo, getUserInfoById, revokeUserToken, updateEmail, updatePassword, updateUsername, updateBio, updateProfilePicAddress, setAccountDeleted } from "../../services/account.services";
-import { showError, sendResponse, checkBcrypt, uploadFile, deleteFileFromS3, generateJWTToken } from "../../utils/operations";
+import { showError, sendResponse, checkBcrypt, generateJWTToken } from "../../utils/operations";
 import { Request, Response } from "express";
 import {ErrorResponse } from "../../types/response.types";
 import { checkUserExistsByEmail } from "../../services/auth.services";
 import { Types } from "mongoose";
-import { ProtectedUserInfo } from "../../types/user.types";
-import { uploadMediaToS3 } from "../../services/media.services";
+import { uploadMediaToS3, deleteFileFromS3 } from "../../services/media.services";
 
 export async function showUserInfo(req: Request, resp: Response) {
     const userid = req.userInfo._id;
