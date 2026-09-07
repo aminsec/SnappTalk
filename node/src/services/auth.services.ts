@@ -1,9 +1,10 @@
 import { User } from "../models/users.model";
-import { makeBcryptHash, checkBcrypt, whiteListUserInfo } from "../utils/operations";
+import { makeBcryptHash, checkBcrypt } from "../utils/operations";
 import { checkEmailIsValid } from "../utils/validate";
 import { ProtectedUserInfo, RawUserInfo, InsertUserInfo } from "../types/user.types";
 import { ErrorResponse } from "../types/response.types";
 import { DeadSession } from "../models/dead_sessions.model";
+import { PROTECTED_USER_INFO_FIELDS_TO_SELECT } from "../constants/user";
 
 export async function checkUserExistsByEmail(email: string): Promise<[true | false | null, null |ErrorResponse]>  {
     try {
@@ -43,17 +44,14 @@ export async function checkCredentials(email: string, password: string): Promise
 
 export async function getUserInfoByEmail(email: string): Promise<[ProtectedUserInfo | null,ErrorResponse | null]>{
     try {
-        const user: RawUserInfo | null = await User.findOne({email: email}).lean();
+        const user: RawUserInfo | null = await User.findOne({email: email}).select(PROTECTED_USER_INFO_FIELDS_TO_SELECT).lean();
 
         if(!user){
             const err: ErrorResponse = {message: "User not found", state: "failed", type: "not_found"};
             return [null, err];
         }
 
-        //White listing user data
-        const userData: ProtectedUserInfo = whiteListUserInfo(user);
-
-        return [userData, null];
+        return [user, null];
 
     } catch (error) {
         console.log(error);

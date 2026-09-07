@@ -34,21 +34,6 @@ export function showError(error: ErrorResponse, resp: Response){
     return;
 };
 
-export function whiteListUserInfo(userData: RawUserInfo): ProtectedUserInfo{
-    const validatedUserData = {
-        _id: userData._id,
-        username: userData.username,
-        email: userData.email,
-        role: userData.role,
-        profile_pic: userData.profile_pic,
-        joined_at: userData.joined_at,
-        bio: userData.bio || "", // Default bio is empty if not provided
-        status: userData.status
-    };
-
-    return validatedUserData;
-};
-
 export function whiteListConversations(conversations: Conversation[]): Conversation[]{
     const validConversations = [];
 
@@ -76,29 +61,6 @@ export function getRandomString(): string {
         result += chars.charAt(Math.floor(Math.random() * chars.length));
     }
     return result;
-};
-
-export async function deleteFileFromS3(fileKey: string, bucketName: string): Promise<[Boolean | null, ErrorResponse | null]>  {
-    try {
-        // Preventing deleting default image
-        if(fileKey === "default.png"){
-            return [true, null];
-        }
-
-        await s3Client.send(
-            new DeleteObjectCommand({
-              Bucket: bucketName,
-              Key: fileKey,
-            })
-          );
-
-        return [true, null]
-
-    } catch (error) {
-        console.log(error);
-        const err: ErrorResponse = {message: "A system error occurred", state: "failed", type: "system_error"};
-        return [null, err];
-    }
 };
 
 export function generateJWTToken(userInfo: ProtectedUserInfo): [string | null, ErrorResponse | null] {

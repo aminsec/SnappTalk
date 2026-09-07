@@ -3,7 +3,7 @@ import { DeadSession } from "../models/dead_sessions.model";
 import { User } from "../models/users.model";
 import { ProtectedUserInfo, RawUserInfo } from "../types/user.types";
 import { ErrorResponse } from "../types/response.types";
-import { makeBcryptHash, whiteListUserInfo } from "../utils/operations";
+import { makeBcryptHash } from "../utils/operations";
 import { PROTECTED_USER_INFO_FIELDS_TO_SELECT } from "../constants/user";
 
 export async function getRawUserInfo(userid: Types.ObjectId): Promise<[RawUserInfo | null, ErrorResponse | null]> {
@@ -38,11 +38,9 @@ export async function getUserInfoById(id: Types.ObjectId[]): Promise<[ProtectedU
 
 export async function getUserInfoByUsername(username: string): Promise<[ProtectedUserInfo | null, ErrorResponse | null]> {
     try {
-        const user: RawUserInfo | null = await User.findOne({username: username}).lean();
+        const user: RawUserInfo | null = await User.findOne({username: username}).select(PROTECTED_USER_INFO_FIELDS_TO_SELECT).lean();
         if(user){
-            //White listing user data
-            const userData: ProtectedUserInfo = whiteListUserInfo(user);
-            return [userData, null];
+            return [user, null];
 
         }else{
             const err: ErrorResponse = {message: "User not found", state: "failed", type: "not_found"};
