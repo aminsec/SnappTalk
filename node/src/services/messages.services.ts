@@ -20,53 +20,20 @@ export async function getMessageById(messageId: Types.ObjectId[]): Promise<[Mess
 
 export async function getConversationMessagesByLimitedDate(conversationId: Types.ObjectId, deletedConversationDate: string, limit: number, offset: number, userId: Types.ObjectId): Promise<[Message[] | null, ErrorResponse | null]> {
     try {
-        const messages: Message[] = await MessageModel.aggregate<Message>([
-            {
-                $match: {
-                  conversation_id: conversationId,
-                  created_at: {
-                        $gt: new Date(deletedConversationDate)
-                    },
-                  deleted_for: {$nin: [userId]}
-                }
-              },
-
-              {
-                $sort: {
-                  created_at: -1,
-                  _id: -1
-                }
-              },
-
-              { $skip: offset },
-              { $limit: limit },
-            {
-              $lookup: {
-                from: "messages",
-                localField: "replied_to",
-                foreignField: "_id",
-                as: "replied_to_doc",
-                pipeline: [
-                  // Extracting needed fields
-                  {
-                    $project: {
-                      _id: 1,
-                      type: 1,
-                      content: 1,
-                    }
-                  }
-                ]
-              }
-            },
-            {
-              $addFields: {
-                replied_to: { $first: "$replied_to_doc" } // convert array -> single object. The $first operator returns the first element of the array we created replied_to_doc. If the array is empty, it returns null.
-              }
-            },
-            { $project: { replied_to_doc: 0 } }
-          ]);
-
-          return [messages, null];
+        const messages: Message[] = await MessageModel.find({
+          conversation_id: conversationId,
+          created_at: {
+            $gt: new Date(deletedConversationDate)
+          },
+          deleted_for: {
+            $nin: [userId]
+          }
+        }).sort({ created_at: -1, _id: -1 })
+        .skip(offset)
+        .limit(limit)
+        .populate("replied_to", "_id type content");
+  
+      return [messages, null];
 
     } catch (error) {
         console.log(error);
