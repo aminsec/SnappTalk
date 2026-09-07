@@ -1,5 +1,7 @@
 import * as bcrypt from 'bcrypt';
 import { Resp, ErrorResponse } from '../types/response.types';
+import { s3Client } from "../config/s3.minio";
+import { DeleteObjectCommand } from "@aws-sdk/client-s3";
 import { Response } from 'express';
 import { ProtectedUserInfo, RawUserInfo } from '../types/user.types';
 import * as fs from 'fs';
@@ -101,20 +103,19 @@ export async function uploadFile(content: string): Promise<[string | null, Error
     }
 };
 
-export async function deleteFileFromUploads(filename: string): Promise<[Boolean | null, ErrorResponse | null]>  {
+export async function deleteFileFromS3(fileKey: string, bucketName: string): Promise<[Boolean | null, ErrorResponse | null]>  {
     try {
         // Preventing deleting default image
-        if(filename === "default.png"){
+        if(fileKey === "default.png"){
             return [true, null];
         }
 
-        const filePath = "/up/node/uploads/" + filename;
-        fs.unlink(filePath, error => {
-            if(error){
-                console.log(error);
-                throw new Error("System error occurred. Coudln't upload file");
-            }
-        });
+        await s3Client.send(
+            new DeleteObjectCommand({
+              Bucket: bucketName,
+              Key: fileKey,
+            })
+          );
 
         return [true, null]
 

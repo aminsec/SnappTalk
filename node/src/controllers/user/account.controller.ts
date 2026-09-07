@@ -1,10 +1,11 @@
 import { checkUserExistsByUsername, getRawUserInfo, getUserInfoById, revokeUserToken, updateEmail, updatePassword, updateUsername, updateBio, updateProfilePicAddress, setAccountDeleted } from "../../services/account.services";
-import { showError, sendResponse, checkBcrypt, uploadFile, deleteFileFromUploads, generateJWTToken } from "../../utils/operations";
+import { showError, sendResponse, checkBcrypt, uploadFile, deleteFileFromS3, generateJWTToken } from "../../utils/operations";
 import { Request, Response } from "express";
 import {ErrorResponse } from "../../types/response.types";
 import { checkUserExistsByEmail } from "../../services/auth.services";
 import { Types } from "mongoose";
 import { ProtectedUserInfo } from "../../types/user.types";
+import { uploadMediaToS3 } from "../../services/media.services";
 
 export async function showUserInfo(req: Request, resp: Response) {
     const userid = req.userInfo._id;
@@ -172,29 +173,35 @@ export async function updateUserPassword(req: Request, resp: Response) {
 };
 
 export async function updateUserProfile(req: Request, resp: Response) {
-    const { content } = req.body;
-    const { userInfo } = req;
+    const { file } = req;
+    let { userInfo } = req;
+
+    if(!file) {
+        const error: ErrorResponse = {message: "File is required", state: "Failed", type: "input_error"};
+        showError(error, resp);
+        return;
+    }
 
     //Removing the old profile file, if profile image was not the default "default.png" image
     const userProfilePicAdress = userInfo.profile_pic;
     const profilePicFileName = userProfilePicAdress.split("/").pop() ?? "default.png"; // --> /statics/images/default.png -> default.png
 
-    const [removeResult, error] = await deleteFileFromUploads(profilePicFileName);
+    const [removeResult, error] = await deleteFileFromS3(profilePicFileName, process.env.MINIO_PUBLIC_BUCKET ?? "profilepics");
     if(error){
         showError(error, resp);
         return;
     }
 
     if(removeResult === true){
-        const [updateProfileResult, err] = await uploadFile(content);
+        const [profilePicKey, err] = await uploadMediaToS3(file, process.env.MINIO_PUBLIC_BUCKET ?? "profilepics");
         if(err){
             showError(err, resp);
             return;
         }
 
-        if(updateProfileResult){
+        if(profilePicKey){
             //Updating user profilePic address in db
-            const [updateResult, error] = await updateProfilePicAddress(userInfo._id, updateProfileResult);
+            const [updateResult, error] = await updateProfilePicAddress(userInfo._id, profilePicKey);
             if(error){
                 showError(error, resp);
                 return;
@@ -209,24 +216,16 @@ export async function updateUserProfile(req: Request, resp: Response) {
                 }
 
                 if(revoked === true){
-                    const [userData, err] = await getUserInfoById([userInfo._id]);
-                    if(err){
-                        showError(err, resp);
+                    userInfo.profile_pic = "/statics/images/" + profilePicKey; // Updating userInfo with new profile pic address
+                    const [newToken, error] = generateJWTToken(userInfo);
+                    if(error){
+                        showError(error, resp);
                         return;
                     }
 
-                    if(userData){
-                        userData[0].profile_pic = "/statics/images/" + updateProfileResult; // Updating userInfo with new profile pic address
-                        const [newToken, error] = generateJWTToken(userData[0]);
-                        if(error){
-                            showError(error, resp);
-                            return;
-                        }
-
-                        const responseData = {state: "success", message: "Profile picture updated successfully."};
-                        const responseHeaders = {"Set-Cookie": `token=${newToken}; path=/; sameSite=lax; domain=.snapptalk.io`};
-                        sendResponse(responseData, responseHeaders, 200, resp);
-                    }
+                    const responseData = {state: "success", message: "Profile picture updated successfully."};
+                    const responseHeaders = {"Set-Cookie": `token=${newToken}; path=/; sameSite=lax; domain=.snapptalk.io`};
+                    sendResponse(responseData, responseHeaders, 200, resp);
 
                 }else{
                     const error:ErrorResponse = {state: "failed", message: "Couldn't update profile", type: "system_error"};
