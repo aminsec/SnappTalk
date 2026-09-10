@@ -1,7 +1,9 @@
 import { Request, Response } from "express";
-import { showError, sendResponse, getRandomString } from "../../utils/operations";
-import { insertForgotTokenByEmail } from "../../services/forgot.services";
+import { showError, sendResponse, getRandomString, generateJWTToken } from "../../utils/operations";
+import { checkForgotTokenAndRevoke, insertForgotTokenByEmail } from "../../services/forgot.services";
 import { sendEmail } from "../../providers/email";
+import { ErrorResponse } from "../../types/response.types";
+import crypto from "node:crypto";
 
 export async function requestForgotPasswordLink(req: Request, resp: Response) {
     const { email } = req.body;
@@ -14,7 +16,7 @@ export async function requestForgotPasswordLink(req: Request, resp: Response) {
         showError(insertError, resp);
         return;
     }
-    console.log(result)
+
     if(result === true){
         //sending email if the email was exist 
         const reset_url =  `${protocol}://${hostname}/api/v1/auth/forgot-password/${rawToken}`;
@@ -33,3 +35,30 @@ export async function requestForgotPasswordLink(req: Request, resp: Response) {
         sendResponse(message, {}, 200, resp);
     }
 };
+
+export async function handleForgotPasswordToken(req: Request, resp: Response) {
+    const { token } = req.params;
+    const hashedToken = crypto.createHash("sha256").update(token).digest("hex");
+    
+    const [resetResult, error] = await checkForgotTokenAndRevoke(hashedToken);
+    if(error){
+        showError(error, resp);
+        return;
+    }
+
+    if(resetResult === null){
+        const message: ErrorResponse = {state: "failed", message: "Provided token not found or is expired", type: "input_error"};
+        showError(message, resp);
+        return;
+    }
+
+    //Assigning new token
+    const [jwtToken, err] = generateJWTToken(resetResult);
+    if(err){
+        showError(err, resp);
+        return;
+    }
+
+    const responseHeaders = {"Set-Cookie": `token=${jwtToken}; path=/; sameSite=lax; domain=.snapptalk.io`, "Location": "/chat"};
+    sendResponse({state: "success"}, responseHeaders, 301, resp);
+}

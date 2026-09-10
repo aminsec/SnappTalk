@@ -4,7 +4,7 @@ import { check } from "express-validator";
 import { checkThereIsAnyError } from "../../middlewares/errors";
 import { handleLogout } from "../../controllers/auth/logout.controller";
 import { globalReg } from "../../utils/regex";
-import { requestForgotPasswordLink } from "../../controllers/auth/forgot.controller";
+import { requestForgotPasswordLink, handleForgotPasswordToken } from "../../controllers/auth/forgot.controller";
 const router = express.Router();
 
 router.post("/", [
@@ -27,6 +27,13 @@ router.post("/forgot-password", [
     .withMessage("Invalid email address"),
     checkThereIsAnyError
 ], requestForgotPasswordLink);
+
+router.get("/forgot-password/:token", [
+    check("token")
+    .notEmpty()
+    .withMessage("Invalid token"),
+    checkThereIsAnyError
+], handleForgotPasswordToken);
 
 router.post("/logout", handleLogout);
 

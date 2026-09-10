@@ -15,7 +15,6 @@ export async function sendEmail(to: string, subject: string, templateName: strin
         html,
     });
 
-    console.log(data)
     if (error) {
         console.log(error);
         const errorMessage: ErrorResponse = {state: "failed", message: "Coudn't send email", type: "system_error"};
