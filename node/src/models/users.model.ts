@@ -10,7 +10,9 @@ const userSchema = new Schema<DBUserType>({
     joined_at: { type: Date, required: true },
     bio: { type: String, default: "" },
     status: { type: String, enum: ["online", "offline"], default: "online" },
-    deleted_account: { type: Boolean, default: false }
+    deleted_account: { type: Boolean, default: false },
+    forgot_password_token: {type: String, default: null, unique: true},
+    forgot_password_token_expires_at: {type: Number, default: null}
 });
 
 export const User: Model<DBUserType> = mongoose.model<DBUserType>("User", userSchema);

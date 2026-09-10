@@ -46,4 +46,6 @@ export interface DBUserType {
     bio: string;
     status: "online" | "offline";
     deleted_account: boolean;
-}
+    forgot_password_token: String;
+    forgot_password_token_expires_at: Number;
+};

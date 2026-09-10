@@ -1,13 +1,14 @@
 import * as bcrypt from 'bcrypt';
 import { Resp, ErrorResponse } from '../types/response.types';
-import { s3Client } from "../config/s3.minio";
-import { DeleteObjectCommand } from "@aws-sdk/client-s3";
 import { Response } from 'express';
-import { ProtectedUserInfo, RawUserInfo } from '../types/user.types';
+import { ProtectedUserInfo } from '../types/user.types';
 import * as jwt from "jsonwebtoken";
 import { Conversation } from '../types/conversation.types';
 import { Message } from '../types/messages.types';
 import { Types } from 'mongoose';
+import crypto from "node:crypto";
+import fs from "node:fs/promises";
+import path from "node:path";
 const saltRounds = 10;
 
 // Function to send normall messages
@@ -53,14 +54,11 @@ export function whiteListConversations(conversations: Conversation[]): Conversat
     return validConversations;
 };
 
-export function getRandomString(): string {
-    const length = 25;
-    const chars = 'abcdefghijklmnopqrstuvwxyz';
-    let result = '';
-    for (let i = 0; i < length; i++) {
-        result += chars.charAt(Math.floor(Math.random() * chars.length));
-    }
-    return result;
+export function getRandomString(): [string, string] {
+    const rawToken =  crypto.randomBytes(32).toString("hex");
+    const hashedToken = crypto.createHash("sha256").update(rawToken).digest("hex");
+
+    return [rawToken, hashedToken]
 };
 
 export function generateJWTToken(userInfo: ProtectedUserInfo): [string | null, ErrorResponse | null] {
@@ -100,3 +98,19 @@ export async function filterMessagesDeletedForUser(messages: Message[], userId: 
 
     return filteredMessages;
 };
+
+export async function renderEmailTemplate(templateName: string, variables: Record<string, string>): Promise<string> {
+    const templatePath = path.join(
+        process.cwd(),
+        "src/templates/emails",
+        `${templateName}.html`
+    );
+
+    let template = await fs.readFile(templatePath, "utf8");
+
+    for (const [key, value] of Object.entries(variables)) {
+        template = template.replaceAll(`{{${key}}}`, value);
+    }
+
+    return template;
+}

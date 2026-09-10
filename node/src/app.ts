@@ -26,6 +26,7 @@ app.get('/', (req: Request, res: Response) => {
 });
 
 // Configs
+app.set("trust proxy", 1);
 app.use(limiter);
 app.use(helmet());
 app.use(bodyParser.json({ limit: "5mb" })); // Increasing body size limit
