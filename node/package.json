@@ -24,6 +24,7 @@
     "mongodb": "^6.15.0",
     "mongoose": "^9.9.1",
     "multer": "^2.2.0",
+    "resend": "^6.26.0",
     "sequelize": "^6.37.6",
     "socket.io": "4.8.3",
     "validate.js": "^0.13.1",
