@@ -3,21 +3,38 @@ import { ErrorResponse } from "../types/response.types";
 
 export async function insertForgotTokenByEmail(email: string, hashedToken: string): Promise<[true | false | null, null | ErrorResponse]> {
     try {
-        const insert = await User.updateOne({email: email}, {
-            $set: {
-                forgot_password_token: hashedToken,
-                forgot_password_token_expires_at: new Date(Date.now() + 30 * 60 * 1000) //30 min
-            }
-        });
+        const now = Date.now();
+        const cooldown = now - 30 * 60 * 1000;
 
-        if(insert){
+        const result = await User.updateOne(
+            {
+                email: email,
+                $or: [
+                    {forgot_password_token_requested_at: {
+                        $lt: cooldown
+                    }},
+                    {forgot_password_token_requested_at: {
+                        $exists: false //For docs that does not have this field 
+                    }}
+                ]
+            },
+            {
+                $set: {
+                    forgot_password_token: hashedToken,
+                    forgot_password_token_expires_at: new Date(now + 30 * 60 * 1000),
+                    forgot_password_token_requested_at: new Date(now)
+                }
+            }
+        );
+
+        if (result.matchedCount === 1) {
             return [true, null];
         }
 
         return [false, null];
-        
+
     } catch (error) {
-        console.log(error);
+        console.error(error);
         const err: ErrorResponse = {message: "A system error occurred", state: "failed", type: "system_error"};
         return [null, err];
     }
