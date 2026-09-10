@@ -47,6 +47,6 @@ export interface DBUserType {
     status: "online" | "offline";
     deleted_account: boolean;
     forgot_password_token: String;
-    forgot_password_token_expires_at: Number;
-    forgot_password_token_requested_at: Number;
+    forgot_password_token_expires_at: Date;
+    forgot_password_token_requested_at: Date;
 };
