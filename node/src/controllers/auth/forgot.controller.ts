@@ -5,7 +5,6 @@ import { ErrorResponse } from "../../types/response.types";
 import crypto from "node:crypto";
 import { sendEmailJob } from "../../types/jobs.types";
 import { queueEmail } from "../../producers/email";
-import { sendEmail } from "../../providers/email";
 
 export async function requestForgotPasswordLink(req: Request, resp: Response) {
     const { email } = req.body;
