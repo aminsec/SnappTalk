@@ -7,8 +7,6 @@ import { Conversation } from '../types/conversation.types';
 import { Message } from '../types/messages.types';
 import { Types } from 'mongoose';
 import crypto from "node:crypto";
-import fs from "node:fs/promises";
-import path from "node:path";
 const saltRounds = 10;
 
 // Function to send normall messages
@@ -98,19 +96,3 @@ export async function filterMessagesDeletedForUser(messages: Message[], userId: 
 
     return filteredMessages;
 };
-
-export async function renderEmailTemplate(templateName: string, variables: Record<string, string>): Promise<string> {
-    const templatePath = path.join(
-        process.cwd(),
-        "src/templates/emails",
-        `${templateName}.html`
-    );
-
-    let template = await fs.readFile(templatePath, "utf8");
-
-    for (const [key, value] of Object.entries(variables)) {
-        template = template.replaceAll(`{{${key}}}`, value);
-    }
-
-    return template;
-}
