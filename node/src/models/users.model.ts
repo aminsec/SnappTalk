@@ -11,6 +11,10 @@ const userSchema = new Schema<DBUserType>({
     bio: { type: String, default: "" },
     status: { type: String, enum: ["online", "offline"], default: "online" },
     deleted_account: { type: Boolean, default: false },
+    verified: {type: Boolean, default: false},
+    email_verify_token: {type: String, default: ""},
+    email_verify_token_expires_at: {type: Date},
+    email_verify_token_requested_at: {type: Date},
     forgot_password_token: {type: String, sparse: true, unique: true},
     forgot_password_token_expires_at: {type: Date, default: null},
     forgot_password_token_requested_at: {type: Date}

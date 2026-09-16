@@ -12,16 +12,23 @@ export interface ProtectedUserInfo {
 };
 
 export interface RawUserInfo {
-    _id: Types.ObjectId,
-    email: string,
-    username: string,
-    password: string,
-    profile_pic: string,
-    role: string,
-    joined_at: Date,
-    bio: string,
-    status: "online" | "offline",
-    deleted_account: Boolean
+    _id: Types.ObjectId;
+    email: string;
+    username: string;
+    password: string;
+    profile_pic: string;
+    role: string;
+    joined_at: Date;
+    bio: string;
+    status: "online" | "offline";
+    verified: boolean;
+    deleted_account: boolean;
+    email_verify_token: string;
+    email_verify_token_expires_at: Date;
+    email_verify_token_requested_at: Date;
+    forgot_password_token: string;
+    forgot_password_token_expires_at: Date;
+    forgot_password_token_requested_at: Date;
 };
 
 export interface InsertUserInfo {
@@ -45,8 +52,12 @@ export interface DBUserType {
     joined_at: Date;
     bio: string;
     status: "online" | "offline";
+    verified: boolean;
     deleted_account: boolean;
-    forgot_password_token: String;
+    email_verify_token: string;
+    email_verify_token_expires_at: Date;
+    email_verify_token_requested_at: Date;
+    forgot_password_token: string;
     forgot_password_token_expires_at: Date;
     forgot_password_token_requested_at: Date;
 };
