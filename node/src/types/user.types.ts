@@ -40,7 +40,11 @@ export interface InsertUserInfo {
     joined_at: Date,
     bio: string,
     status: "online" | "offline",
-    deleted_account: boolean
+    deleted_account: boolean,
+    verified: boolean;
+    email_verify_token: string;
+    email_verify_token_expires_at: Date;
+    email_verify_token_requested_at: Date;
 };
 
 export interface DBUserType {

@@ -1,6 +1,5 @@
 import { User } from "../models/users.model";
 import { makeBcryptHash, checkBcrypt } from "../utils/operations";
-// import { checkEmailIsValid } from "../utils/validate";
 import { ProtectedUserInfo, RawUserInfo, InsertUserInfo } from "../types/user.types";
 import { ErrorResponse } from "../types/response.types";
 import { DeadSession } from "../models/dead_sessions.model";
@@ -47,7 +46,7 @@ export async function checkCredentials(email: string, password: string): Promise
 
 export async function getUserInfoByEmail(email: string): Promise<[ProtectedUserInfo | null,ErrorResponse | null]>{
     try {
-        const user: RawUserInfo | null = await User.findOne({email: email}).select(PROTECTED_USER_INFO_FIELDS_TO_SELECT).lean();
+        const user: ProtectedUserInfo | null = await User.findOne({email: email}).select(PROTECTED_USER_INFO_FIELDS_TO_SELECT).lean();
 
         if(!user){
             const err: ErrorResponse = {message: "User not found", state: "failed", type: "not_found"};
@@ -63,9 +62,29 @@ export async function getUserInfoByEmail(email: string): Promise<[ProtectedUserI
     }
 };
 
-export async function createUser(email: string, password: string): Promise<[ProtectedUserInfo | null,ErrorResponse | null]> {
+export async function getRawUserInfoByEmail(email: string): Promise<[RawUserInfo | null, ErrorResponse | null]>{
+    try {
+        const user: RawUserInfo | null = await User.findOne({email: email}).lean();
+
+        if(!user){
+            const err: ErrorResponse = {message: "User not found", state: "failed", type: "not_found"};
+            return [null, err];
+        }
+
+        return [user, null];
+
+    } catch (error) {
+        console.log(error);
+        const err:ErrorResponse = {message: "A system error occurred", state: "failed", type: "system_error"};
+        return [null, err];
+    }
+};
+
+export async function createUser(email: string, password: string, emailVerifyToken: string): Promise<[ProtectedUserInfo | null,ErrorResponse | null]> {
     try {
         const hashedPassword = await makeBcryptHash(password);
+        const now = Date.now();
+
         const userInfoToInsert: InsertUserInfo = {
             email: email,
             password: hashedPassword,
@@ -75,7 +94,11 @@ export async function createUser(email: string, password: string): Promise<[Prot
             joined_at: new Date(),
             bio: "", // Default bio is empty
             status: "online",
-            deleted_account: false
+            deleted_account: false,
+            verified: false,
+            email_verify_token: emailVerifyToken,
+            email_verify_token_expires_at: new Date(now + 30 * 60 * 1000),
+            email_verify_token_requested_at: new Date(now)
         };
 
         const createdUser = await User.create(userInfoToInsert);
