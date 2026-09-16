@@ -1,5 +1,5 @@
 import express from "express";
-import { handleLogin } from "../../controllers/auth/auth.controller";
+import { handleLogin } from "../../controllers/auth/login.controller";
 import { check } from "express-validator";
 import { checkThereIsAnyError } from "../../middlewares/errors";
 import { handleLogout } from "../../controllers/auth/logout.controller";
