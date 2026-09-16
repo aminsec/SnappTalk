@@ -1,5 +1,5 @@
 import express from "express";
-import { handleAuth } from "../../controllers/auth/auth.controller";
+import { handleLogin } from "../../controllers/auth/auth.controller";
 import { check } from "express-validator";
 import { checkThereIsAnyError } from "../../middlewares/errors";
 import { handleLogout } from "../../controllers/auth/logout.controller";
@@ -7,7 +7,7 @@ import { globalReg } from "../../utils/regex";
 import { requestForgotPasswordLink, handleForgotPasswordToken } from "../../controllers/auth/forgot.controller";
 const router = express.Router();
 
-router.post("/", [
+router.post("/login", [
     check("email")
     .isEmail()
     .notEmpty()
@@ -18,7 +18,7 @@ router.post("/", [
     .notEmpty().withMessage("Password is required")
     .matches(globalReg.password).withMessage("Incorrect or weak password"),
     checkThereIsAnyError
-], handleAuth);
+], handleLogin);
 
 router.post("/forgot-password", [
     check("email")
