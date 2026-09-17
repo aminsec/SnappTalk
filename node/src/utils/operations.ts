@@ -51,11 +51,16 @@ export function whiteListConversations(conversations: Conversation[]): Conversat
 };
 
 export function getRandomString(): [string, string] {
-    const rawToken =  crypto.randomBytes(32).toString("hex");
-    const hashedToken = crypto.createHash("sha256").update(rawToken).digest("hex");
+    const bytes = new Uint8Array(32);
+    crypto.getRandomValues(bytes); // Web Crypto API — global, no import needed
+    const rawToken = Buffer.from(bytes).toString("hex");
 
-    return [rawToken, hashedToken]
-};
+    const hasher = new Bun.CryptoHasher("sha256");
+    hasher.update(rawToken);
+    const hashedToken = hasher.digest("hex");
+
+    return [rawToken, hashedToken];
+}
 
 export function generateJWTToken(userInfo: ProtectedUserInfo): [string | null, ErrorResponse | null] {
     try {
