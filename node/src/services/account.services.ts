@@ -175,26 +175,6 @@ export async function updateProfilePicAddress(userid: Types.ObjectId, newProfile
     }
 };
 
-export async function revokeUserToken(token: string): Promise<[true | false | null, null | ErrorResponse]> {
-    try {
-        const revoked = await DeadSession.create({
-            token: token,
-            created_at: new Date()
-        });
-
-        if(revoked){
-            return [true, null];
-        }else{
-            const err: ErrorResponse = {message: "Failed to revoke token", state: "failed", type: "system_error"};
-            return [null, err];
-        }
-
-    } catch (error) {
-        const err: ErrorResponse = {message: "Failed to revoke token", state: "failed", type: "system_error"};
-        return [null, err];
-    }
-};
-
 export async function getUserContacts(userid: string) {
     try {
         const contacts = await User.find({_id: {$ne: new Types.ObjectId(userid)}}).lean();
