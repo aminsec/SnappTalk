@@ -149,7 +149,7 @@ export async function updateUserPassword(req: Request, resp: Response) {
         return;
     }
 
-    const isOldPasswordCorrect: Boolean = await checkBcrypt(old_password, rawUserInfo.password);
+    const isOldPasswordCorrect: Boolean = await Bun.password.verify(old_password, rawUserInfo.password);
     if(isOldPasswordCorrect === true){
         const [updatePasswordResult, err] = await updatePassword(userInfo._id, new_password);
         if(err){

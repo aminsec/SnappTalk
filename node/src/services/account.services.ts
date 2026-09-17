@@ -115,7 +115,7 @@ export async function updateEmail(userid: Types.ObjectId, newEmail: string): Pro
 
 export async function updatePassword(userid: Types.ObjectId, newPassword: string): Promise<[true | false | null, null | ErrorResponse]> {
     try {
-        const newPasswordHash = await makeBcryptHash(newPassword);
+        const newPasswordHash = await Bun.password.hash(newPassword);
         const result = await User.updateOne(
             {_id: userid},
             {$set: {password: newPasswordHash}}
