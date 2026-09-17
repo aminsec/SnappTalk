@@ -6,7 +6,7 @@ import { handleLogout } from "../../controllers/auth/logout.controller";
 import { globalReg } from "../../utils/regex";
 import { requestForgotPasswordLink, handleForgotPasswordToken } from "../../controllers/auth/forgot.controller";
 import { handleSignup } from "../../controllers/auth/signup.controller";
-import { handleEmailVerification } from "../../controllers/auth/email-verification.controller";
+import { handleEmailVerification, handleResendEmailVerification } from "../../controllers/auth/email-verification.controller";
 const router = express.Router();
 
 router.post("/login", [
@@ -48,6 +48,14 @@ router.get("/verify-email/:token", [
     .withMessage("Invalid token"),
     checkThereIsAnyError
 ], handleEmailVerification);
+
+router.post("/verify-email/resend", [
+    check("email")
+    .isEmail()
+    .notEmpty()
+    .withMessage("Invalid email address"),
+    checkThereIsAnyError
+], handleResendEmailVerification);
 
 router.post("/forgot-password", [
     check("email")

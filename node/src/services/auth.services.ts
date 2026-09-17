@@ -168,6 +168,36 @@ export async function verifyEmailToken(token: string): Promise<[ProtectedUserInf
     }
 };
 
+export async function resendEmailVerification(email: string, newHashedToken: string): Promise<[boolean, null] | [null, ErrorResponse]> {
+    try {
+        const user = await User.updateOne(
+            {
+                email: email,
+                verified: false,
+                email_verify_token_requested_at: { $lt: new Date(Date.now() - 15 * 60 * 1000) } //Allowing resend every 15 minutes
+            },
+            {
+                $set: {
+                    email_verify_token: newHashedToken,
+                    email_verify_token_expires_at: new Date(Date.now() + 30 * 60 * 1000),
+                    email_verify_token_requested_at: new Date()
+                }
+            }
+        ).lean();
+
+        if (user.modifiedCount === 0) {
+            return [false, null];
+        }else{
+            return [true, null];
+        }
+        
+    } catch (error) {
+        console.log(error);
+        const err: ErrorResponse = { message: "A system error occurred", state: "failed", type: "system_error" };
+        return [null, err];
+    }
+}
+
 export async function revokeToken(token: string):  Promise<[Boolean | null, ErrorResponse | null]> {
     try {
         const insertedToken = await DeadSession.create({
