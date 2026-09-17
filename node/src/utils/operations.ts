@@ -5,7 +5,6 @@ import * as jwt from "jsonwebtoken";
 import { Conversation } from '../types/conversation.types';
 import { Message } from '../types/messages.types';
 import { Types } from 'mongoose';
-import crypto from "node:crypto";
 
 // Function to send normall messages
 export function sendResponse(data: Resp, headers: any = {}, code:number, resp: Response){

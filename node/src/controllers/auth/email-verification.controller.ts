@@ -1,7 +1,6 @@
 import { Request, Response } from "express";
 import { verifyEmailToken } from "../../services/auth.services";
 import { generateJWTToken, sendResponse, showError } from "../../utils/operations";
-import crypto from "node:crypto";
 import { getRandomString } from "../../utils/operations";
 import { queueEmail } from "../../producers/email";
 import { sendEmailJob } from "../../types/jobs.types";
@@ -10,9 +9,8 @@ import { resendEmailVerification } from "../../services/auth.services";
 export async function handleEmailVerification(req: Request, resp: Response) {
     const { token } = req.params;
 
-    const hashedToken = crypto.createHash("sha256").update(token).digest("hex");
+    const hashedToken = new Bun.CryptoHasher("sha256").update(token).digest("hex")
     const [userInfo, error] = await verifyEmailToken(hashedToken);
-
     if(error){
         showError(error, resp);
         return;
