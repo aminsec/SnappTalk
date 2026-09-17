@@ -23,18 +23,14 @@ export async function checkUserExistsByEmail(email: string): Promise<[true | fal
 
 export async function checkCredentials(email: string, password: string): Promise<[true | false | null, RawUserInfo | null,null |ErrorResponse]> {
     try {
-        const user: RawUserInfo | null = await User.findOne({email: email, deleted_account: false}).lean();
+        const hashPassword = await makeBcryptHash(password);
+        const user: RawUserInfo | null = await User.findOne({email: email, password: hashPassword, verified: true, deleted_account: false}).lean();
+        
         if(user){
-            const isPasswordCorrect = await checkBcrypt(password, user.password)
-            if(isPasswordCorrect === true){
-                return [true, user, null];
-
-            }else{
-                return [false, null, null];
-            }
+            return [true, user, null];
 
         }else{
-           return [false, null, null];
+            return [false, null, null];
         }
 
     } catch (error) {

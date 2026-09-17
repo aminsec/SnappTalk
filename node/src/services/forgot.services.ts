@@ -11,6 +11,7 @@ export async function insertForgotTokenByEmail(email: string, hashedToken: strin
         const result = await User.updateOne(
             {
                 email: email,
+                verified: true,
                 $or: [
                     {forgot_password_token_requested_at: {
                         $lt: cooldown
@@ -45,6 +46,7 @@ export async function insertForgotTokenByEmail(email: string, hashedToken: strin
 export async function checkForgotTokenAndRevoke(token:string): Promise<[ProtectedUserInfo | null, null | ErrorResponse]> {
     try {
         const result = await User.findOneAndUpdate({
+            verified: true,
             forgot_password_token: token,
             forgot_password_token_expires_at: {$gte: new Date()}
         }, {
