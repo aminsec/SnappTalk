@@ -1,5 +1,4 @@
 import { Types } from "mongoose";
-import { DeadSession } from "../models/dead_sessions.model";
 import { User } from "../models/users.model";
 import { ProtectedUserInfo, RawUserInfo } from "../types/user.types";
 import { ErrorResponse } from "../types/response.types";
