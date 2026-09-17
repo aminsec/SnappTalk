@@ -4,7 +4,6 @@ import { handleNewPvConversationEvent, handlePvConversationDelete } from "./even
 import { handleMessageEdit, handleMessageSend, handleSeen, handleMessageDeleteForAll, handleMessageReply, handleMessageDeleteForMe } from "./events/messag.event";
 import { sendUserStatusToRooms } from "../services/socket.services";
 import { setUserStatus } from "../services/account.services";
-import { Types } from "mongoose";
 
 export function handleSocketConnection(socket: Socket, io: Server, onlineUsers: Map<string, string>): void{
 

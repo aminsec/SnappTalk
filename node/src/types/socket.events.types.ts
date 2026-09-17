@@ -1,4 +1,5 @@
 import { MessageTypes } from "./messages.types";
+
 //Every type that ends with EVT means Event Type
 export interface NewPvConversationEVT {
     message_text: string,

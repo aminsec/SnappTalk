@@ -1,5 +1,5 @@
 import { User } from "../models/users.model";
-import { makeBcryptHash, checkBcrypt } from "../utils/operations";
+import { makeBcryptHash } from "../utils/operations";
 import { ProtectedUserInfo, RawUserInfo, InsertUserInfo } from "../types/user.types";
 import { ErrorResponse } from "../types/response.types";
 import { DeadSession } from "../models/dead_sessions.model";
