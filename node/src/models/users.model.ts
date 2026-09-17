@@ -1,5 +1,4 @@
 import mongoose, { Schema, Model } from "mongoose";
-
 import { DBUserType } from "../types/user.types";
 
 const userSchema = new Schema<DBUserType>({
@@ -116,5 +115,4 @@ userSchema.index(
     }
 );
 
-export const User: Model<DBUserType> =
-    mongoose.model<DBUserType>("User", userSchema);
+export const User: Model<DBUserType> = mongoose.model<DBUserType>("User", userSchema);
