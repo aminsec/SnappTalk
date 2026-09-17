@@ -3,7 +3,7 @@ import { User } from "../models/users.model";
 import { ErrorResponse } from "../types/response.types";
 import { ProtectedUserInfo } from "../types/user.types";
 
-export async function insertForgotTokenByEmail(email: string, hashedToken: string): Promise<[true | false | null, null | ErrorResponse]> {
+export async function insertForgotTokenByEmail(email: string, hashedToken: string): Promise<[boolean, null] | [null, ErrorResponse]> {
     try {
         const now = Date.now();
         const cooldown = now - 30 * 60 * 1000;

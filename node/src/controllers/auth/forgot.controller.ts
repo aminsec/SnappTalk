@@ -2,7 +2,6 @@ import { Request, Response } from "express";
 import { showError, sendResponse, getRandomString, generateJWTToken } from "../../utils/operations";
 import { checkForgotTokenAndRevoke, insertForgotTokenByEmail } from "../../services/forgot.services";
 import { ErrorResponse } from "../../types/response.types";
-import crypto from "node:crypto";
 import { sendEmailJob } from "../../types/jobs.types";
 import { queueEmail } from "../../producers/email";
 
@@ -46,7 +45,7 @@ export async function requestForgotPasswordLink(req: Request, resp: Response) {
 
 export async function handleForgotPasswordToken(req: Request, resp: Response) {
     const { token } = req.params;
-    const hashedToken = crypto.createHash("sha256").update(token).digest("hex");
+    const hashedToken = new Bun.CryptoHasher("sha256").update(token).digest("hex");
     
     const [resetResult, error] = await checkForgotTokenAndRevoke(hashedToken);
     if(error){

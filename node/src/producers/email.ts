@@ -2,7 +2,7 @@ import { getRabbitChannel } from "../config/rabitmq";
 import { sendEmailJob } from "../types/jobs.types";
 import { ErrorResponse } from "../types/response.types";
 
-export async function queueEmail(job: sendEmailJob): Promise<[boolean | null, ErrorResponse | null]> {
+export async function queueEmail(job: sendEmailJob): Promise<[boolean, null] | [null, ErrorResponse]> {
     try {
         let emailQueue = "email_queue";
         const EMAIL_DLQ = "email_queue.dlq";
