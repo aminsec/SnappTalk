@@ -1,4 +1,3 @@
-import * as bcrypt from 'bcrypt';
 import { Resp, ErrorResponse } from '../types/response.types';
 import { Response } from 'express';
 import { ProtectedUserInfo } from '../types/user.types';
@@ -6,8 +5,6 @@ import * as jwt from "jsonwebtoken";
 import { Conversation } from '../types/conversation.types';
 import { Message } from '../types/messages.types';
 import { Types } from 'mongoose';
-import crypto from "node:crypto";
-const saltRounds = 10;
 
 // Function to send normall messages
 export function sendResponse(data: Resp, headers: any = {}, code:number, resp: Response){
@@ -53,13 +50,18 @@ export function whiteListConversations(conversations: Conversation[]): Conversat
 };
 
 export function getRandomString(): [string, string] {
-    const rawToken =  crypto.randomBytes(32).toString("hex");
-    const hashedToken = crypto.createHash("sha256").update(rawToken).digest("hex");
+    const bytes = new Uint8Array(32);
+    crypto.getRandomValues(bytes); // Web Crypto API — global, no import needed
+    const rawToken = Buffer.from(bytes).toString("hex");
 
-    return [rawToken, hashedToken]
-};
+    const hasher = new Bun.CryptoHasher("sha256");
+    hasher.update(rawToken);
+    const hashedToken = hasher.digest("hex");
 
-export function generateJWTToken(userInfo: ProtectedUserInfo): [string | null, ErrorResponse | null] {
+    return [rawToken, hashedToken];
+}
+
+export function generateJWTToken(userInfo: ProtectedUserInfo): [string, null] | [null, ErrorResponse] {
     try {
         const userInfoToBeSign = {
             _id: userInfo._id,
@@ -78,15 +80,6 @@ export function generateJWTToken(userInfo: ProtectedUserInfo): [string | null, E
         const err: ErrorResponse = {message: "A system error occurred", state: "failed", type: "system_error"};
         return [null, err];
     }
-};
-
-// Generates salt automatically
-export async function makeBcryptHash(value: string) {
-    return await bcrypt.hash(value, saltRounds);
-};
-
-export async function checkBcrypt(plainText: string, hash: string): Promise<boolean> {
-    return await bcrypt.compare(plainText, hash);
 };
 
 export async function filterMessagesDeletedForUser(messages: Message[], userId: Types.ObjectId): Promise<Message[]> {

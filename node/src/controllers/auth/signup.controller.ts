@@ -8,18 +8,22 @@ import { queueEmail } from "../../producers/email";
 
 export async function handleSignup(req: Request, resp: Response) {
     const { username, email, password } = req.body;
-    const {hostname, protocol} = req;
+    const { hostname, protocol } = req;
 
     const [ emailInfo, error ] = await getRawUserInfoByEmail(email);
+    if(error){
+        showError(error, resp);
+        return;
+    }
 
-    if(emailInfo && emailInfo.verified === true){
+    if(emailInfo.verified === true){
         const message: ErrorResponse = {message: "This email is already taken", state: "failed", type: "input_error"};
         showError(message, resp);
         return;
     }
 
     //Note for frontend: In this case frontend should show a message to user that email is waiting for verification with a resend link
-    if(emailInfo && emailInfo.verified === false){
+    if(emailInfo.verified === false){
         const message: ErrorResponse = {message: "This email is waiting for verification", state: "failed", type: "input_error"};
         showError(message, resp);
         return;

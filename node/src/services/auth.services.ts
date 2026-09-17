@@ -1,11 +1,10 @@
 import { User } from "../models/users.model";
-import { makeBcryptHash } from "../utils/operations";
 import { ProtectedUserInfo, RawUserInfo, InsertUserInfo } from "../types/user.types";
 import { ErrorResponse } from "../types/response.types";
 import { DeadSession } from "../models/dead_sessions.model";
 import { PROTECTED_USER_INFO_FIELDS_TO_SELECT } from "../constants/user";
 
-export async function checkUserExistsByEmail(email: string): Promise<[true | false | null, null |ErrorResponse]>  {
+export async function checkUserExistsByEmail(email: string): Promise<[boolean, null] | [null, ErrorResponse]>  {
     try {
         const user: RawUserInfo | null = await User.findOne({email: email}).lean();
         if(user){
@@ -21,17 +20,21 @@ export async function checkUserExistsByEmail(email: string): Promise<[true | fal
     }
 };
 
-export async function checkCredentials(email: string, password: string): Promise<[true | false | null, RawUserInfo | null,null |ErrorResponse]> {
+export async function checkCredentials(email: string, password: string): Promise<[false, null, null] | [true, RawUserInfo, null] | [null, null, ErrorResponse]> {
     try {
-        const hashPassword = await makeBcryptHash(password);
-        const user: RawUserInfo | null = await User.findOne({email: email, password: hashPassword, verified: true, deleted_account: false}).lean();
-        
-        if(user){
-            return [true, user, null];
+        const user: RawUserInfo | null = await User.findOne({email: email, verified: true, deleted_account: false}).lean();
 
-        }else{
+        if (!user) {
             return [false, null, null];
         }
+
+        const isPasswordValid = await Bun.password.verify(password, user.password);
+
+        if (!isPasswordValid) {
+            return [false, null, null];
+        }
+
+        return [true, user, null];
 
     } catch (error) {
         console.log(error);
@@ -40,7 +43,7 @@ export async function checkCredentials(email: string, password: string): Promise
     }
 };
 
-export async function getUserInfoByEmail(email: string): Promise<[ProtectedUserInfo | null,ErrorResponse | null]>{
+export async function getUserInfoByEmail(email: string): Promise<[ProtectedUserInfo, null] | [null, ErrorResponse]>{
     try {
         const user: ProtectedUserInfo | null = await User.findOne({email: email}).select(PROTECTED_USER_INFO_FIELDS_TO_SELECT).lean();
 
@@ -58,7 +61,7 @@ export async function getUserInfoByEmail(email: string): Promise<[ProtectedUserI
     }
 };
 
-export async function getRawUserInfoByEmail(email: string): Promise<[RawUserInfo | null, ErrorResponse | null]>{
+export async function getRawUserInfoByEmail(email: string): Promise<[RawUserInfo, null] | [null, ErrorResponse]>{
     try {
         const user: RawUserInfo | null = await User.findOne({email: email}).lean();
 
@@ -76,9 +79,9 @@ export async function getRawUserInfoByEmail(email: string): Promise<[RawUserInfo
     }
 };
 
-export async function createUser(email: string, password: string, emailVerifyToken: string): Promise<[ProtectedUserInfo | null,ErrorResponse | null]> {
+export async function createUser(email: string, password: string, emailVerifyToken: string): Promise<[ProtectedUserInfo, null] | [null, ErrorResponse]> {
     try {
-        const hashedPassword = await makeBcryptHash(password);
+        const hashedPassword = await Bun.password.hash(password)
         const now = Date.now();
 
         const userInfoToInsert: InsertUserInfo = {
@@ -194,7 +197,7 @@ export async function resendEmailVerification(email: string, newHashedToken: str
     }
 }
 
-export async function revokeToken(token: string):  Promise<[Boolean | null, ErrorResponse | null]> {
+export async function revokeToken(token: string): Promise<[boolean, null] | [null, ErrorResponse]> {
     try {
         const insertedToken = await DeadSession.create({
             token: token

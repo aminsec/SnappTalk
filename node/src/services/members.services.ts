@@ -3,7 +3,7 @@ import { ErrorResponse } from "../types/response.types";
 import { ProtectedUserInfo, RawUserInfo } from "../types/user.types";
 import { PROTECTED_USER_INFO_FIELDS_TO_SELECT } from "../constants/user";
 
-export async function searchMemberByUsername(username: string): Promise<[ProtectedUserInfo[] | null, ErrorResponse | null]> {
+export async function searchMemberByUsername(username: string): Promise<[ProtectedUserInfo[], null] | [null, ErrorResponse]> {
     try {
         const escapedUsername = username.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"); //escaping special characters in the username to prevent regex injection
         

@@ -1,5 +1,5 @@
 import { checkUserExistsByUsername, getRawUserInfo, getUserInfoById, updateEmail, updatePassword, updateUsername, updateBio, updateProfilePicAddress, setAccountDeleted } from "../../services/account.services";
-import { showError, sendResponse, checkBcrypt, generateJWTToken } from "../../utils/operations";
+import { showError, sendResponse, generateJWTToken } from "../../utils/operations";
 import { Request, Response } from "express";
 import {ErrorResponse } from "../../types/response.types";
 import { checkUserExistsByEmail, revokeToken } from "../../services/auth.services";
@@ -149,7 +149,7 @@ export async function updateUserPassword(req: Request, resp: Response) {
         return;
     }
 
-    const isOldPasswordCorrect: Boolean = await checkBcrypt(old_password, rawUserInfo.password);
+    const isOldPasswordCorrect: Boolean = await Bun.password.verify(old_password, rawUserInfo.password);
     if(isOldPasswordCorrect === true){
         const [updatePasswordResult, err] = await updatePassword(userInfo._id, new_password);
         if(err){

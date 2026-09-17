@@ -2,7 +2,7 @@ import { Socket } from "socket.io";
 import { Conversation as ConversationModel } from "../models/conversatations.model";
 import { ErrorResponse } from "../types/response.types";
 
-export async function connectUserToRooms(socket: Socket): Promise<[true | false | null, ErrorResponse | null]> {
+export async function connectUserToRooms(socket: Socket): Promise<[true, null] | [null, ErrorResponse]> {
     try {
         const userConversations = await ConversationModel.find({members: {$in: [socket.userInfo._id]}}).lean();
         if(userConversations){

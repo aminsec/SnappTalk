@@ -4,7 +4,7 @@ import { randomUUID } from "crypto";
 import { ErrorResponse } from "../types/response.types";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 
-export async function uploadMediaToS3(file: Express.Multer.File, bucketName: string): Promise<[string | null, ErrorResponse | null]> {
+export async function uploadMediaToS3(file: Express.Multer.File, bucketName: string): Promise<[string, null] | [null, ErrorResponse]> {
     //Uploading the file to s3 
     const key = `${randomUUID()}-${file.originalname}`;
 
@@ -25,7 +25,7 @@ export async function uploadMediaToS3(file: Express.Multer.File, bucketName: str
     }
 };
 
-export async function generatePreSignedURL(bucketName: string, fileKey: string): Promise<[string | null, ErrorResponse | null]> {
+export async function generatePreSignedURL(bucketName: string, fileKey: string): Promise<[string, null] | [null, ErrorResponse]> {
     try {
         const command = new GetObjectCommand({
             Bucket: bucketName,
@@ -43,7 +43,7 @@ export async function generatePreSignedURL(bucketName: string, fileKey: string):
     }
 };
 
-export async function deleteFileFromS3(fileKey: string, bucketName: string): Promise<[Boolean | null, ErrorResponse | null]>  {
+export async function deleteFileFromS3(fileKey: string, bucketName: string): Promise<[Boolean, null] | [null, ErrorResponse]>  {
     try {
         // Preventing deleting default image
         if(fileKey === "default.png"){
