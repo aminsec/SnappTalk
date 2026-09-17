@@ -20,7 +20,7 @@ export async function checkUserExistsByEmail(email: string): Promise<[true | fal
     }
 };
 
-export async function checkCredentials(email: string, password: string): Promise<[true | false | null, RawUserInfo | null,null |ErrorResponse]> {
+export async function checkCredentials(email: string, password: string): Promise<[false, null, null] | [true, RawUserInfo , null] | [null, null, ErrorResponse]> {
     try {
         const user: RawUserInfo | null = await User.findOne({email: email, verified: true, deleted_account: false}).lean();
 
