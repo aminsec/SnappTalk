@@ -129,6 +129,45 @@ export async function createUser(email: string, password: string, emailVerifyTok
     }
 };
 
+export async function verifyEmailToken(token: string): Promise<[ProtectedUserInfo, null] | [null, ErrorResponse]> {
+    try {
+        const user = await User.findOneAndUpdate(
+            {
+                email_verify_token: token, 
+                email_verify_token_expires_at: { $gt: new Date() }
+            },
+            {
+                $set: { verified: true, email_verify_token: null, email_verify_token_expires_at: null, email_verify_token_requested_at: null }
+            },
+            { returnDocument: "after" }
+
+        ).select(PROTECTED_USER_INFO_FIELDS_TO_SELECT).lean();
+
+        if (!user) {
+            const error: ErrorResponse = { message: "Invalid or expired token", state: "failed", type: "input_error" };
+            return [null, error];
+        }
+
+        const userInfo: ProtectedUserInfo = {
+            _id: user._id,
+            email: user.email,
+            username: user.username,
+            profile_pic: user.profile_pic,
+            role: user.role,
+            joined_at: user.joined_at,
+            bio: user.bio,
+            status: user.status
+        };
+
+        return [userInfo, null];
+
+    } catch (error) {
+        console.log(error);
+        const err: ErrorResponse = { message: "A system error occurred", state: "failed", type: "system_error" };
+        return [null, err];
+    }
+};
+
 export async function revokeToken(token: string):  Promise<[Boolean | null, ErrorResponse | null]> {
     try {
         const insertedToken = await DeadSession.create({

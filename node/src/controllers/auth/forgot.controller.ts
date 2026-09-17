@@ -39,7 +39,6 @@ export async function requestForgotPasswordLink(req: Request, resp: Response) {
 
     }else{
         //We show success message even if email was not exist
-        console.log("letter not sent")
         const message = {state: "success", message: "Email sent"};
         sendResponse(message, {}, 200, resp);
     }
