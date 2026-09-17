@@ -4,7 +4,7 @@ import { ProtectedUserInfo, RawUserInfo } from "../types/user.types";
 import { ErrorResponse } from "../types/response.types";
 import { PROTECTED_USER_INFO_FIELDS_TO_SELECT } from "../constants/user";
 
-export async function getRawUserInfo(userid: Types.ObjectId): Promise<[RawUserInfo | null, ErrorResponse | null]> {
+export async function getRawUserInfo(userid: Types.ObjectId): Promise<[RawUserInfo, null] | [null, ErrorResponse]> {
     try {
         const user: RawUserInfo | null = await User.findOne({_id: userid}).lean();
         if(user){
@@ -22,7 +22,7 @@ export async function getRawUserInfo(userid: Types.ObjectId): Promise<[RawUserIn
     }
 };
 
-export async function getUserInfoById(id: Types.ObjectId[]): Promise<[ProtectedUserInfo[] | null, ErrorResponse | null]> {
+export async function getUserInfoById(id: Types.ObjectId[]): Promise<[ProtectedUserInfo[], null] | [null, ErrorResponse]> {
     try {
         const user: ProtectedUserInfo[] | null = await User.find({_id: {$in: id}}).select(PROTECTED_USER_INFO_FIELDS_TO_SELECT).lean();
         return [user, null];
@@ -34,7 +34,7 @@ export async function getUserInfoById(id: Types.ObjectId[]): Promise<[ProtectedU
     }
 };
 
-export async function getUserInfoByUsername(username: string): Promise<[ProtectedUserInfo | null, ErrorResponse | null]> {
+export async function getUserInfoByUsername(username: string): Promise<[ProtectedUserInfo, null] | [null, ErrorResponse]> {
     try {
         const user: RawUserInfo | null = await User.findOne({username: username}).select(PROTECTED_USER_INFO_FIELDS_TO_SELECT).lean();
         if(user){
@@ -52,7 +52,7 @@ export async function getUserInfoByUsername(username: string): Promise<[Protecte
     }
 };
 
-export async function checkUserExistsByUsername(username: string): Promise<[true | false | null, null | ErrorResponse]> {
+export async function checkUserExistsByUsername(username: string): Promise<[boolean, null] | [ null, ErrorResponse]> {
     try {
         const userExist: RawUserInfo | null = await User.findOne({
             username: username
@@ -72,7 +72,7 @@ export async function checkUserExistsByUsername(username: string): Promise<[true
     }
 };
 
-export async function updateUsername(userid: Types.ObjectId, newUsername: string): Promise<[true | false | null, null | ErrorResponse]> {
+export async function updateUsername(userid: Types.ObjectId, newUsername: string): Promise<[boolean, null] | [ null, ErrorResponse]> {
     try {
         const result = await User.updateOne(
             {_id: userid},
@@ -81,6 +81,7 @@ export async function updateUsername(userid: Types.ObjectId, newUsername: string
 
         if(result.modifiedCount > 0){
             return [true, null];
+
         }else{
             return [false, null];
         }
@@ -92,7 +93,7 @@ export async function updateUsername(userid: Types.ObjectId, newUsername: string
     }
 };
 
-export async function updateEmail(userid: Types.ObjectId, newEmail: string): Promise<[true | false | null, null | ErrorResponse]> {
+export async function updateEmail(userid: Types.ObjectId, newEmail: string): Promise<[boolean, null] | [null, ErrorResponse]> {
     try {
         const result = await User.updateOne(
             {_id: userid},
@@ -101,6 +102,7 @@ export async function updateEmail(userid: Types.ObjectId, newEmail: string): Pro
 
         if(result.modifiedCount > 0){
             return [true, null];
+
         }else{
             return [false, null];
         }
@@ -112,7 +114,7 @@ export async function updateEmail(userid: Types.ObjectId, newEmail: string): Pro
     }
 };
 
-export async function updatePassword(userid: Types.ObjectId, newPassword: string): Promise<[true | false | null, null | ErrorResponse]> {
+export async function updatePassword(userid: Types.ObjectId, newPassword: string): Promise<[boolean, null] | [null, ErrorResponse]> {
     try {
         const newPasswordHash = await Bun.password.hash(newPassword);
         const result = await User.updateOne(
@@ -133,7 +135,7 @@ export async function updatePassword(userid: Types.ObjectId, newPassword: string
     }
 };
 
-export async function updateBio(userid: Types.ObjectId, newBio: string): Promise<[true | false | null, null | ErrorResponse]> {
+export async function updateBio(userid: Types.ObjectId, newBio: string): Promise<[boolean, null] | [ null, ErrorResponse]> {
     try {
         const result = await User.updateOne(
             {_id: userid},
@@ -153,7 +155,7 @@ export async function updateBio(userid: Types.ObjectId, newBio: string): Promise
     }
 };
 
-export async function updateProfilePicAddress(userid: Types.ObjectId, newProfilePicAddress: string): Promise<[true | false | null, null | ErrorResponse]> {
+export async function updateProfilePicAddress(userid: Types.ObjectId, newProfilePicAddress: string): Promise<[boolean, null] | [null, ErrorResponse]> {
     try {
         const result = await User.updateOne(
             {_id: userid},
@@ -173,18 +175,7 @@ export async function updateProfilePicAddress(userid: Types.ObjectId, newProfile
     }
 };
 
-export async function getUserContacts(userid: string) {
-    try {
-        const contacts = await User.find({_id: {$ne: new Types.ObjectId(userid)}}).lean();
-        return [contacts, null];
-    } catch (error) {
-        console.log(error);
-        const err: ErrorResponse = {message: "A system error occurred", state: "failed", type: "system_error"};
-        return [null, err];
-    }
-};
-
-export async function setUserStatus(userId: Types.ObjectId, status: string): Promise<[Boolean | null, null | ErrorResponse]> {
+export async function setUserStatus(userId: Types.ObjectId, status: string): Promise<[boolean, null] | [null, ErrorResponse]> {
     try {
         await User.updateOne({
             _id: userId
@@ -202,7 +193,7 @@ export async function setUserStatus(userId: Types.ObjectId, status: string): Pro
     }
 };
 
-export async function setAccountDeleted(userId: Types.ObjectId): Promise<[Boolean | null, null | ErrorResponse]> {
+export async function setAccountDeleted(userId: Types.ObjectId): Promise<[boolean, null] | [null, ErrorResponse]> {
     try {
         await User.updateOne({
             _id: userId
