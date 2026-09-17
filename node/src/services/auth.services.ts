@@ -23,16 +23,20 @@ export async function checkUserExistsByEmail(email: string): Promise<[true | fal
 
 export async function checkCredentials(email: string, password: string): Promise<[true | false | null, RawUserInfo | null,null |ErrorResponse]> {
     try {
-        const hashPassword = await makeBcryptHash(password);
-        const user: RawUserInfo | null = await User.findOne({email: email, password: hashPassword, verified: true, deleted_account: false}).lean();
-        
-        if(user){
-            return [true, user, null];
+        const user: RawUserInfo | null = await User.findOne({email: email, verified: true, deleted_account: false}).lean();
 
-        }else{
+        if (!user) {
             return [false, null, null];
         }
 
+        const isPasswordValid = await Bun.password.verify(password, user.password);
+
+        if (!isPasswordValid) {
+            return [false, null, null];
+        }
+
+        return [true, user, null];
+        
     } catch (error) {
         console.log(error);
         const err:ErrorResponse = {message: "A system error occurred", state: "failed", type: "system_error"};
@@ -78,7 +82,7 @@ export async function getRawUserInfoByEmail(email: string): Promise<[RawUserInfo
 
 export async function createUser(email: string, password: string, emailVerifyToken: string): Promise<[ProtectedUserInfo | null,ErrorResponse | null]> {
     try {
-        const hashedPassword = await makeBcryptHash(password);
+        const hashedPassword = await Bun.password.hash(password)
         const now = Date.now();
 
         const userInfoToInsert: InsertUserInfo = {
