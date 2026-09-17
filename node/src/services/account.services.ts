@@ -2,7 +2,6 @@ import { Types } from "mongoose";
 import { User } from "../models/users.model";
 import { ProtectedUserInfo, RawUserInfo } from "../types/user.types";
 import { ErrorResponse } from "../types/response.types";
-import { makeBcryptHash } from "../utils/operations";
 import { PROTECTED_USER_INFO_FIELDS_TO_SELECT } from "../constants/user";
 
 export async function getRawUserInfo(userid: Types.ObjectId): Promise<[RawUserInfo | null, ErrorResponse | null]> {

@@ -1,5 +1,4 @@
 import { User } from "../models/users.model";
-import { makeBcryptHash } from "../utils/operations";
 import { ProtectedUserInfo, RawUserInfo, InsertUserInfo } from "../types/user.types";
 import { ErrorResponse } from "../types/response.types";
 import { DeadSession } from "../models/dead_sessions.model";
@@ -36,7 +35,7 @@ export async function checkCredentials(email: string, password: string): Promise
         }
 
         return [true, user, null];
-        
+
     } catch (error) {
         console.log(error);
         const err:ErrorResponse = {message: "A system error occurred", state: "failed", type: "system_error"};

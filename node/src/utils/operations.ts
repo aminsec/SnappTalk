@@ -1,4 +1,3 @@
-import * as bcrypt from 'bcrypt';
 import { Resp, ErrorResponse } from '../types/response.types';
 import { Response } from 'express';
 import { ProtectedUserInfo } from '../types/user.types';
@@ -7,7 +6,6 @@ import { Conversation } from '../types/conversation.types';
 import { Message } from '../types/messages.types';
 import { Types } from 'mongoose';
 import crypto from "node:crypto";
-const saltRounds = 10;
 
 // Function to send normall messages
 export function sendResponse(data: Resp, headers: any = {}, code:number, resp: Response){
@@ -78,15 +76,6 @@ export function generateJWTToken(userInfo: ProtectedUserInfo): [string | null, E
         const err: ErrorResponse = {message: "A system error occurred", state: "failed", type: "system_error"};
         return [null, err];
     }
-};
-
-// Generates salt automatically
-export async function makeBcryptHash(value: string) {
-    return await bcrypt.hash(value, saltRounds);
-};
-
-export async function checkBcrypt(plainText: string, hash: string): Promise<boolean> {
-    return await bcrypt.compare(plainText, hash);
 };
 
 export async function filterMessagesDeletedForUser(messages: Message[], userId: Types.ObjectId): Promise<Message[]> {
