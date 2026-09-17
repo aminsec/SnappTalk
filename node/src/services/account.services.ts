@@ -1,5 +1,4 @@
 import { Types } from "mongoose";
-import { DeadSession } from "../models/dead_sessions.model";
 import { User } from "../models/users.model";
 import { ProtectedUserInfo, RawUserInfo } from "../types/user.types";
 import { ErrorResponse } from "../types/response.types";
@@ -171,26 +170,6 @@ export async function updateProfilePicAddress(userid: Types.ObjectId, newProfile
     } catch (error) {
         console.log(error);
         const err: ErrorResponse = {message: "A system error occurred", state: "failed", type: "system_error"};
-        return [null, err];
-    }
-};
-
-export async function revokeUserToken(token: string): Promise<[true | false | null, null | ErrorResponse]> {
-    try {
-        const revoked = await DeadSession.create({
-            token: token,
-            createdAt: new Date()
-        });
-
-        if(revoked){
-            return [true, null];
-        }else{
-            const err: ErrorResponse = {message: "Failed to revoke token", state: "failed", type: "system_error"};
-            return [null, err];
-        }
-
-    } catch (error) {
-        const err: ErrorResponse = {message: "Failed to revoke token", state: "failed", type: "system_error"};
         return [null, err];
     }
 };

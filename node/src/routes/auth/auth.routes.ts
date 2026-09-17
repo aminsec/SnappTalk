@@ -1,13 +1,15 @@
 import express from "express";
-import { handleAuth } from "../../controllers/auth/auth.controller";
+import { handleLogin } from "../../controllers/auth/login.controller";
 import { check } from "express-validator";
 import { checkThereIsAnyError } from "../../middlewares/errors";
 import { handleLogout } from "../../controllers/auth/logout.controller";
 import { globalReg } from "../../utils/regex";
 import { requestForgotPasswordLink, handleForgotPasswordToken } from "../../controllers/auth/forgot.controller";
+import { handleSignup } from "../../controllers/auth/signup.controller";
+import { handleEmailVerification, handleResendEmailVerification } from "../../controllers/auth/email-verification.controller";
 const router = express.Router();
 
-router.post("/", [
+router.post("/login", [
     check("email")
     .isEmail()
     .notEmpty()
@@ -18,7 +20,42 @@ router.post("/", [
     .notEmpty().withMessage("Password is required")
     .matches(globalReg.password).withMessage("Incorrect or weak password"),
     checkThereIsAnyError
-], handleAuth);
+], handleLogin);
+
+router.post("/signup", [
+    check("email")
+    .isEmail()
+    .notEmpty()
+    .withMessage("Invalid email address"),
+    
+    check("password")
+    .isString().withMessage("Invalid password value")
+    .notEmpty().withMessage("Password is required")
+    .matches(globalReg.password).withMessage("Incorrect or weak password"),
+
+    check("username")
+    .isString().withMessage("Username must be a string.")
+    .notEmpty().withMessage("Username is required.")
+    .isLength({ min: 5, max: 24 }).withMessage("Username must be 5-24 characters.")
+    .matches(globalReg.username).withMessage("Only a-z, 0-9, and '_' are allowed."),
+
+    checkThereIsAnyError
+], handleSignup);
+
+router.get("/verify-email/:token", [
+    check("token")
+    .notEmpty()
+    .withMessage("Invalid token"),
+    checkThereIsAnyError
+], handleEmailVerification);
+
+router.post("/verify-email/resend", [
+    check("email")
+    .isEmail()
+    .notEmpty()
+    .withMessage("Invalid email address"),
+    checkThereIsAnyError
+], handleResendEmailVerification);
 
 router.post("/forgot-password", [
     check("email")

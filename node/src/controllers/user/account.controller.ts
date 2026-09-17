@@ -1,8 +1,8 @@
-import { checkUserExistsByUsername, getRawUserInfo, getUserInfoById, revokeUserToken, updateEmail, updatePassword, updateUsername, updateBio, updateProfilePicAddress, setAccountDeleted } from "../../services/account.services";
+import { checkUserExistsByUsername, getRawUserInfo, getUserInfoById, updateEmail, updatePassword, updateUsername, updateBio, updateProfilePicAddress, setAccountDeleted } from "../../services/account.services";
 import { showError, sendResponse, checkBcrypt, generateJWTToken } from "../../utils/operations";
 import { Request, Response } from "express";
 import {ErrorResponse } from "../../types/response.types";
-import { checkUserExistsByEmail } from "../../services/auth.services";
+import { checkUserExistsByEmail, revokeToken } from "../../services/auth.services";
 import { Types } from "mongoose";
 import { uploadMediaToS3, deleteFileFromS3 } from "../../services/media.services";
 
@@ -98,7 +98,7 @@ export async function updateUserInfo(req: Request, resp: Response) {
     if(emailUpdated === true && usernameUpdated === true && bioUpdated === true){
 
         //Adding user current session to dead_sessions and assigning new token
-        const [revoked, err] = await revokeUserToken(req.cookies.token);
+        const [revoked, err] = await revokeToken(req.cookies.token);
         if(err){
             showError(err, resp);
             return;
@@ -208,7 +208,7 @@ export async function updateUserProfile(req: Request, resp: Response) {
 
             if(updateResult === true){
                 //Assigning new token
-                const [revoked, err] = await revokeUserToken(req.cookies.token);
+                const [revoked, err] = await revokeToken(req.cookies.token);
                 if(err){
                     showError(err, resp);
                     return;
@@ -268,7 +268,7 @@ export async function deleteUserAccount(req: Request, resp: Response) {
         return;
     }
 
-    const [revokeResult, revokeError] = await revokeUserToken(req.cookies.token);
+    const [revokeResult, revokeError] = await revokeToken(req.cookies.token);
     if(revokeError){
         showError(revokeError, resp);
         return;

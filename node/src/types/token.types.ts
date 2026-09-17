@@ -1,4 +1,4 @@
 export interface DBDeadSessionsType {
     token: string;
-    createdAt: Date;
+    created_at: Date;
 };
