@@ -179,7 +179,7 @@ export async function revokeUserToken(token: string): Promise<[true | false | nu
     try {
         const revoked = await DeadSession.create({
             token: token,
-            createdAt: new Date()
+            created_at: new Date()
         });
 
         if(revoked){

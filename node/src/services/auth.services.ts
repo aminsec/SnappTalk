@@ -88,11 +88,11 @@ export async function createUser(email: string, password: string, emailVerifyTok
         const userInfoToInsert: InsertUserInfo = {
             email: email,
             password: hashedPassword,
-            username: Date.now().toString(),
+            username: email.split("@")[0],
             profile_pic: '/statics/images/default.png',
             role: "user",
             joined_at: new Date(),
-            bio: "", // Default bio is empty
+            bio: "",
             status: "online",
             deleted_account: false,
             verified: false,
