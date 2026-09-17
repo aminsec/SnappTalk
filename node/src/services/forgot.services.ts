@@ -43,7 +43,7 @@ export async function insertForgotTokenByEmail(email: string, hashedToken: strin
     }
 };
 
-export async function checkForgotTokenAndRevoke(token:string): Promise<[ProtectedUserInfo | null, null | ErrorResponse]> {
+export async function checkForgotTokenAndRevoke(token: string): Promise<[ProtectedUserInfo, null] | [null, ErrorResponse] | [null, null]> {
     try {
         const result = await User.findOneAndUpdate({
             verified: true,

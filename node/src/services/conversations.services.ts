@@ -5,7 +5,7 @@ import { ProtectedUserInfo } from "../types/user.types";
 import { Types } from "mongoose";
 import { deleteConversationMessages } from "./messages.services";
 
-export async function getUserConversations(userInfo: ProtectedUserInfo): Promise<[Conversation[] | null, ErrorResponse | null]> {
+export async function getUserConversations(userInfo: ProtectedUserInfo): Promise<[Conversation[], null] | [null, ErrorResponse]> {
     try {
         const conversations: Conversation[] = await ConversationModel.find(
             {members:
@@ -22,7 +22,7 @@ export async function getUserConversations(userInfo: ProtectedUserInfo): Promise
     }
 };
 
-export async function checkIsThereConversation(firstUserId: Types.ObjectId, secondUserId: Types.ObjectId): Promise<[Types.ObjectId | null, null | ErrorResponse]> {
+export async function checkIsThereConversation(firstUserId: Types.ObjectId, secondUserId: Types.ObjectId): Promise<[Types.ObjectId, null] | [null, ErrorResponse] | [null, null]> {
     try {
         const conversation: Conversation | null = await ConversationModel.findOne(
             {
@@ -47,7 +47,7 @@ export async function checkIsThereConversation(firstUserId: Types.ObjectId, seco
     }
 };
 
-export async function createNewPvConversation(firstUserId: Types.ObjectId, secondUserId: Types.ObjectId, lastMessageId: Types.ObjectId): Promise<[Types.ObjectId | null, ErrorResponse | null]> {
+export async function createNewPvConversation(firstUserId: Types.ObjectId, secondUserId: Types.ObjectId, lastMessageId: Types.ObjectId): Promise<[Types.ObjectId, null] | [null, ErrorResponse]> {
     try {
         const conversation = await ConversationModel.create({
             group_name: null,
@@ -79,7 +79,7 @@ export async function createNewPvConversation(firstUserId: Types.ObjectId, secon
     }
 };
 
-export async function updateConversationLastMessageId(conversationId: Types.ObjectId, lastMessageId: Types.ObjectId, side: "one" | "both", userId?: Types.ObjectId,): Promise<[true | false | null, ErrorResponse | null]> {
+export async function updateConversationLastMessageId(conversationId: Types.ObjectId, lastMessageId: Types.ObjectId, side: "one" | "both", userId?: Types.ObjectId,): Promise<[true, null] | [null, ErrorResponse]> {
     try {
         let result;
 
@@ -89,12 +89,11 @@ export async function updateConversationLastMessageId(conversationId: Types.Obje
                 return [null, err];
             }
 
-            console.log(conversationId, lastMessageId, userId);
             result = await ConversationModel.updateOne(
                 {_id: conversationId},
                 {$set: {[`last_message_id.${userId.toString()}`]: lastMessageId}}
             );
-            console.log("update result:", result);
+
         } else if (side === "both") {
             result = await ConversationModel.updateOne(
                 {_id: conversationId},
@@ -135,7 +134,7 @@ export async function updateConversationLastMessageId(conversationId: Types.Obje
     }
 };
 
-export async function softDeleteConversation(userInfo: ProtectedUserInfo, conversationId: Types.ObjectId): Promise<[Boolean | null, null | ErrorResponse]> {
+export async function softDeleteConversation(userInfo: ProtectedUserInfo, conversationId: Types.ObjectId): Promise<[Boolean, null] | [null, ErrorResponse]> {
     try {
         await ConversationModel.updateOne({
             _id: conversationId
@@ -153,7 +152,7 @@ export async function softDeleteConversation(userInfo: ProtectedUserInfo, conver
     }
 };
 
-export async function hardDeleteConversation(conversationId: Types.ObjectId): Promise<[Boolean | null, null | ErrorResponse]> {
+export async function hardDeleteConversation(conversationId: Types.ObjectId): Promise<[Boolean, null] | [null, ErrorResponse]> {
     try {
         //Deleting conversation all messages
         const [messageDeleteResult, error] = await deleteConversationMessages(conversationId);
@@ -173,7 +172,7 @@ export async function hardDeleteConversation(conversationId: Types.ObjectId): Pr
     }
 };
 
-export async function getConversationById(convId: Types.ObjectId): Promise<[Conversation | null, ErrorResponse | null]> {
+export async function getConversationById(convId: Types.ObjectId): Promise<[Conversation, null] | [null, ErrorResponse] | [null, null]> {
     try {
         const conversation: Conversation | null = await ConversationModel.findOne({
             _id: convId

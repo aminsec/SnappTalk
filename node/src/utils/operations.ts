@@ -61,7 +61,7 @@ export function getRandomString(): [string, string] {
     return [rawToken, hashedToken];
 }
 
-export function generateJWTToken(userInfo: ProtectedUserInfo): [string | null, ErrorResponse | null] {
+export function generateJWTToken(userInfo: ProtectedUserInfo): [string, null] | [null, ErrorResponse] {
     try {
         const userInfoToBeSign = {
             _id: userInfo._id,

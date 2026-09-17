@@ -6,7 +6,7 @@ import * as jwt from "jsonwebtoken";
 import { ProtectedUserInfo } from "../types/user.types";
 import { DeadSession } from "../models/dead_sessions.model";
 
-export async function checkUserHasAccessToConversation(conversationId: Types.ObjectId, userId: string): Promise<[Conversation | null, ErrorResponse | null]> {
+export async function checkUserHasAccessToConversation(conversationId: Types.ObjectId, userId: string): Promise<[Conversation, null] | [null, ErrorResponse]> {
     try {
         const conversation: Conversation | null = await ConversationModel.findOne({
             _id: conversationId,
