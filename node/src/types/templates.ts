@@ -1,0 +1,1 @@
+export type EmailTemplate = "forgot-password" | "email-verification" | "welcome";

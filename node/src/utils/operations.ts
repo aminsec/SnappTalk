@@ -5,6 +5,8 @@ import * as jwt from "jsonwebtoken";
 import { Conversation } from '../types/conversation.types';
 import { Message } from '../types/messages.types';
 import { Types } from 'mongoose';
+import path from "node:path";
+import fs from "node:fs/promises";
 
 // Function to send normall messages
 export function sendResponse(data: Resp, headers: any = {}, code:number, resp: Response){
@@ -88,4 +90,20 @@ export async function filterMessagesDeletedForUser(messages: Message[], userId: 
     });
 
     return filteredMessages;
+};
+
+export async function renderEmailTemplate(templateName: string, variables: Record<string, string>): Promise<string> {
+    const templatePath = path.join(
+        process.cwd(),
+        "src/templates/emails",
+        `${templateName}.html`
+    );
+
+    let template = await fs.readFile(templatePath, "utf8");
+
+    for (const [key, value] of Object.entries(variables)) {
+        template = template.replaceAll(`{{${key}}}`, value);
+    }
+
+    return template;
 };
