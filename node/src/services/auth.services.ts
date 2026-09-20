@@ -50,7 +50,6 @@ export async function getRawUserInfoByEmail(email: string): Promise<[RawUserInfo
         const user: RawUserInfo | null = await User.findOne({email: email, deleted_account: false}).lean();
 
         if(!user){
-            //const err: ErrorResponse = {message: "User not found", state: "failed", type: "not_found"};
             return [null, null];
         }
 
