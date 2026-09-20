@@ -30,7 +30,10 @@ const AppRouter = () => (
       <Route path="/members/:userId" element={<ProfilePage />} />
 
       <Route element={<RequireGuest />}>
-        <Route path="/login" element={<LoginPage />} />
+        <Route path="/login" element={<LoginPage initialStep="login" />} />
+        <Route path="/signup" element={<LoginPage initialStep="signup" />} />
+        <Route path="/forgot-password" element={<LoginPage initialStep="forgot" />} />
+        <Route path="/forgetpassword" element={<Navigate to="/forgot-password" replace />} />
         <Route path="/" element={<Navigate to="/login" replace />} />
       </Route>
 

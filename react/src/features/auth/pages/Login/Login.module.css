@@ -140,6 +140,80 @@ body {
 .back-btn:hover {
     background: var(--bg-panel);
     color: var(--text-main);
+.formFade {
+    opacity: 0;
+    transition: opacity 0.2s ease;
+}
+
+.linkRow {
+    display: flex;
+    justify-content: flex-end;
+    width: 100%;
+    margin-top: -4px;
+    margin-bottom: 4px;
+}
+
+.formLink {
+    background: none;
+    border: none;
+    padding: 0;
+    font-size: 13px;
+    color: var(--chat-accent, #55aaf4);
+    cursor: pointer;
+    text-decoration: none;
+    transition: color 0.15s ease;
+}
+
+.formLink:hover {
+    color: var(--chat-accent-hover, #7bc2ff);
+    text-decoration: underline;
+}
+
+.toggleAuth {
+    margin-top: 14px;
+    margin-bottom: 6px;
+    font-size: 13px;
+    color: var(--text-muted);
+    text-align: center;
+}
+
+.linkButton {
+    background: none;
+    border: none;
+    padding: 0;
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--chat-accent, #55aaf4);
+    cursor: pointer;
+    text-decoration: underline;
+    transition: color 0.15s ease;
+}
+
+.linkButton:hover {
+    color: var(--chat-accent-hover, #7bc2ff);
+}
+
+.backRow {
+    display: flex;
+    justify-content: center;
+    margin-top: 12px;
+}
+
+.backLink {
+    background: none;
+    border: none;
+    padding: 4px 8px;
+    font-size: 13px;
+    color: var(--text-muted);
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    transition: color 0.15s ease;
+}
+
+.backLink:hover {
+    color: var(--text-main);
 }
 
 /* Responsive Design */
