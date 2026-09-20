@@ -23,6 +23,7 @@ export interface RawUserInfo {
     status: "online" | "offline";
     verified: boolean;
     deleted_account: boolean;
+    deleted_at: Date;
     email_verify_token: string;
     email_verify_token_expires_at: Date;
     email_verify_token_requested_at: Date;
@@ -58,6 +59,7 @@ export interface DBUserType {
     status: "online" | "offline";
     verified: boolean;
     deleted_account: boolean;
+    deleted_at: Date;
     email_verify_token: string;
     email_verify_token_expires_at: Date;
     email_verify_token_requested_at: Date;

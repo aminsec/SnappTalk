@@ -1,1 +1,1 @@
-export type EmailTemplate = "forgot-password" | "email-verification" | "welcome";
+export type EmailTemplate = "forgot-password" | "verify-email" | "welcome";
