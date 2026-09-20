@@ -17,14 +17,14 @@ export async function handleSignup(req: Request, resp: Response) {
         return;
     }
 
-    if(emailInfo.verified === true){
+    if(emailInfo && emailInfo.verified === true){
         const message: ErrorResponse = {message: "This email is already taken", state: "failed", type: "input_error"};
         showError(message, resp);
         return;
     }
 
     //Note for frontend: In this case frontend should show a message to user that email is waiting for verification with a resend link
-    if(emailInfo.verified === false){
+    if(emailInfo && emailInfo.verified === false){
         const message: ErrorResponse = {message: "This email is waiting for verification", state: "failed", type: "input_error"};
         showError(message, resp);
         return;
@@ -43,7 +43,7 @@ export async function handleSignup(req: Request, resp: Response) {
     }
 
     const [ rawToken, hashedToken ] = getRandomString();
-    const verifyUrl = `${protocol}://${hostname}/api/v1/auth/forgot-password/${rawToken}`;
+    const verifyUrl = `${protocol}://${hostname}/api/v1/auth/verify-email/${rawToken}`;
 
     const [ createUserResult, createError ] = await createUser(email, password, hashedToken);
     if(createError){

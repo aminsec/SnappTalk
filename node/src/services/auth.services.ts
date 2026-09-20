@@ -45,13 +45,13 @@ export async function getUserInfoByEmail(email: string): Promise<[ProtectedUserI
     }
 };
 
-export async function getRawUserInfoByEmail(email: string): Promise<[RawUserInfo, null] | [null, ErrorResponse]>{
+export async function getRawUserInfoByEmail(email: string): Promise<[RawUserInfo, null] | [null, ErrorResponse] | [null, null]>{
     try {
         const user: RawUserInfo | null = await User.findOne({email: email, deleted_account: false}).lean();
 
         if(!user){
-            const err: ErrorResponse = {message: "User not found", state: "failed", type: "not_found"};
-            return [null, err];
+            //const err: ErrorResponse = {message: "User not found", state: "failed", type: "not_found"};
+            return [null, null];
         }
 
         return [user, null];
