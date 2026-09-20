@@ -5,13 +5,11 @@ const userSchema = new Schema<DBUserType>({
     email: {
         type: String,
         required: true,
-        unique: true
     },
 
     username: {
         type: String,
         required: true,
-        unique: true
     },
 
     password: {
@@ -50,6 +48,11 @@ const userSchema = new Schema<DBUserType>({
         default: false
     },
 
+    deleted_at: {
+        type: Date,
+        default: null
+    },
+
     verified: {
         type: Boolean,
         default: false
@@ -82,6 +85,26 @@ const userSchema = new Schema<DBUserType>({
         type: Date
     }
 });
+
+userSchema.index(
+    { username: 1 },
+    {
+        unique: true,
+        partialFilterExpression: {
+            deleted_account: false
+        }
+    }
+);
+
+userSchema.index(
+    { email: 1 },
+    {
+        unique: true,
+        partialFilterExpression: {
+            deleted_account: false
+        }
+    }
+);
 
 // Unique index only for documents that have a string token
 userSchema.index(
