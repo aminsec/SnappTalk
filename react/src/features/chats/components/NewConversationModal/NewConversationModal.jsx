@@ -14,11 +14,26 @@ function NewConversationModal({ isOpen, onClose, onSelectUser }) {
   const [error, setError] = useState(null);
 
   const fetchAvailableUsers = useCallback(async (query = '') => {
+    const trimmed = query.trim();
+    if (!trimmed) {
+      setUsers([]);
+      setIsLoading(false);
+      setError(null);
+      return;
+    }
+
+    if (!/^[a-zA-Z0-9_]+$/.test(trimmed)) {
+      setError('Username can only contain letters, numbers, and underscores.');
+      setUsers([]);
+      setIsLoading(false);
+      return;
+    }
+
     setIsLoading(true);
     setError(null);
 
     try {
-      const searchTerm = encodeURIComponent(query.trim() || '*');
+      const searchTerm = encodeURIComponent(trimmed);
       const response = await fetch(`/api/v1/members/${searchTerm}/search`, {
         method: 'GET',
         credentials: 'include',
@@ -26,48 +41,43 @@ function NewConversationModal({ isOpen, onClose, onSelectUser }) {
 
       if (response.ok) {
         const data = await response.json();
-        let allUsers = data.members_info || data || [];
-        console.log(allUsers)
-        // Filter out the current user only
+        const allUsers = data.members_info || data || [];
         const currentUserId = (user?._id || user?.id)?.toString();
-        const availableUsers = allUsers.filter(userItem => {
+        const availableUsers = allUsers.filter((userItem) => {
           const userId = (userItem._id || userItem.id)?.toString();
           return userId && userId !== currentUserId;
         });
 
         setUsers(availableUsers);
       } else {
-        setError('');
+        const payload = await response.json().catch(() => ({}));
+        setError(payload?.message || 'Unable to find users.');
+        setUsers([]);
       }
     } catch (err) {
       console.error('Error fetching users:', err);
       setError('Something went wrong. Please try again.');
+      setUsers([]);
     } finally {
       setIsLoading(false);
     }
   }, [user]);
 
   useEffect(() => {
-    if (isOpen) {
-      fetchAvailableUsers(searchQuery);
-    } else {
-      // Reset state when modal closes
+    if (!isOpen) {
       setSearchQuery('');
       setUsers([]);
       setError(null);
+      setIsLoading(false);
+      return;
     }
-  }, [isOpen, searchQuery, fetchAvailableUsers]);
 
-  const filteredUsers = useMemo(() => {
-    if (!searchQuery.trim()) return users;
-    
-    const query = searchQuery.toLowerCase();
-    return users.filter((userItem) => {
-      const username = userItem.username?.toLowerCase() || '';
-      const email = userItem.email?.toLowerCase() || '';
-      return username.includes(query) || email.includes(query);
-    });
-  }, [searchQuery, users]);
+    const timer = setTimeout(() => {
+      fetchAvailableUsers(searchQuery);
+    }, 300);
+
+    return () => clearTimeout(timer);
+  }, [isOpen, searchQuery, fetchAvailableUsers]);
 
   const handleUserSelect = useCallback((selectedUser) => {
     if (onSelectUser) {
@@ -128,18 +138,18 @@ function NewConversationModal({ isOpen, onClose, onSelectUser }) {
           )}
 
           <div className={styles.usersList}>
-            {filteredUsers.length === 0 ? (
+            {users.length === 0 ? (
               <div className={styles.emptyState}>
                 <p>
                   {isLoading
                     ? 'Searching users...'
                     : searchQuery.trim()
                     ? 'No users found matching your search.'
-                    : 'No users available.'}
+                    : 'Type a username to find people on SnappTalk.'}
                 </p>
               </div>
             ) : (
-              filteredUsers.map((userItem) => (
+              users.map((userItem) => (
                 <div
                   key={userItem._id || userItem.id}
                   className={styles.userItem}
