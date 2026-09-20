@@ -2189,6 +2189,15 @@
     background: transparent !important;
 }
 
+.charWarning {
+    font-size: 11px;
+    font-weight: 500;
+    color: var(--text-muted);
+    font-variant-numeric: tabular-nums;
+    margin-top: 2px;
+    align-self: flex-end;
+}
+
 /* Action buttons */
 .actionButton {
     width: 38px;

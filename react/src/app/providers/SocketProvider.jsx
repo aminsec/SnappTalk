@@ -23,26 +23,16 @@ const SocketProvider = ({ children }) => {
     }
 
     const handleConnect = () => {
-      setStatus('connected');
-      socket.emit(SOCKET_EVENTS.AUTH, {}, (ack) => {
-        if (ack?.ok) {
-          setStatus('authenticated');
-        } else if (ack?.error) {
-          setStatus('auth_error');
-        }
-      });
+      setStatus('authenticated');
+    };
+
+    const handleConnectError = (err) => {
+      console.warn('[socket] connection error:', err);
+      setStatus('auth_error');
     };
 
     const handleDisconnect = () => {
       setStatus('disconnected');
-    };
-
-    const handleAuthOk = () => {
-      setStatus('authenticated');
-    };
-
-    const handleAuthError = () => {
-      setStatus('auth_error');
     };
 
     const handleNewPvConversation = (payload) => {
@@ -62,17 +52,15 @@ const SocketProvider = ({ children }) => {
     };
 
     socket.on('connect', handleConnect);
+    socket.on('connect_error', handleConnectError);
     socket.on('disconnect', handleDisconnect);
-    socket.on(SOCKET_EVENTS.AUTH_OK, handleAuthOk);
-    socket.on(SOCKET_EVENTS.AUTH_ERROR, handleAuthError);
     socket.on('new_pv_conversation', handleNewPvConversation);
     socket.onAny(handleAnyEvent);
 
     return () => {
       socket.off('connect', handleConnect);
+      socket.off('connect_error', handleConnectError);
       socket.off('disconnect', handleDisconnect);
-      socket.off(SOCKET_EVENTS.AUTH_OK, handleAuthOk);
-      socket.off(SOCKET_EVENTS.AUTH_ERROR, handleAuthError);
       socket.off('new_pv_conversation', handleNewPvConversation);
       socket.offAny(handleAnyEvent);
     };

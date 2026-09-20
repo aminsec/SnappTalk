@@ -6633,6 +6633,7 @@ function ChatsPage() {
                 className={styles.messageTextarea}
                 placeholder={editingMessage ? 'Edit message...' : 'Type a message...'}
                 value={messageInput}
+                maxLength={MAX_MESSAGE_LENGTH}
                 onChange={(e) => setMessageInput(e.target.value)}
                 rows={1}
                 onKeyDown={(e) => {
@@ -6654,6 +6655,11 @@ function ChatsPage() {
                   }
                 }}
               />
+              {messageInput.length >= 200 && (
+                <span className={styles.charWarning}>
+                  {messageInput.length}/{MAX_MESSAGE_LENGTH}
+                </span>
+              )}
             </div>
 
             {/* Right Actions */}
