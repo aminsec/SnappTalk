@@ -907,8 +907,13 @@
 .mediaWithReply .mediaImageButton,
 .mediaWithReply .messageMedia,
 .mediaWithReply .mediaResolvingCard,
+.mediaWithReply .mediaManualPreview,
 .mediaWithReply .videoPlayer {
-    border-radius: 13px 13px 7px 7px;
+    border-radius: 12px 12px 2px 2px;
+}
+
+.mediaWithReply .mediaImageWrap::after {
+    border-radius: 0 0 2px 2px;
 }
 
 .received.mediaWithCaption {
@@ -939,8 +944,31 @@
 .mediaWithCaption .mediaImageWrap,
 .mediaWithCaption .mediaImageButton,
 .mediaWithCaption .messageMedia,
+.mediaWithCaption .mediaResolvingCard,
+.mediaWithCaption .mediaManualPreview {
+    border-radius: var(--chat-bubble-radius, 18px) var(--chat-bubble-radius, 18px) 0 0;
+}
+
+.mediaWithCaption .mediaImageWrap::after {
+    border-radius: 0;
+}
+
+/* Captioned visual shells escape the 3px bubble padding to sit flush against bubble edges */
+.mediaWithCaption .mediaImageWrap,
+.mediaWithCaption .mediaManualPreview,
 .mediaWithCaption .mediaResolvingCard {
-    border-radius: 15px 15px 9px 9px;
+    width: calc(100% + 6px);
+    max-width: none;
+    margin: -3px -3px 0;
+}
+
+/* Combo: Captioned + Reply follows the 15px reply silhouette instead of 18px */
+.mediaWithCaption.mediaWithReply .mediaImageWrap,
+.mediaWithCaption.mediaWithReply .mediaImageButton,
+.mediaWithCaption.mediaWithReply .messageMedia,
+.mediaWithCaption.mediaWithReply .mediaResolvingCard,
+.mediaWithCaption.mediaWithReply .mediaManualPreview {
+    border-radius: 15px 15px 0 0;
 }
 
 .mediaWithCaption .mediaDocumentWrap {
@@ -1465,7 +1493,7 @@
     max-width: 100%;
     margin: 0;
     background: rgba(0, 0, 0, 0.16);
-    border-radius: 15px;
+    border-radius: 16px;
 }
 
 .messageMediaImage {
@@ -1482,10 +1510,10 @@
     min-width: 0;
     min-height: 0;
     max-width: min(390px, 72vw);
-    max-height: 340px;
+    max-height: 440px;
     object-fit: contain;
     background: transparent;
-    border-radius: 0;
+    border-radius: inherit;
 }
 
 .messageMediaSticker {
@@ -1532,7 +1560,7 @@
     z-index: 1;
     height: 72px;
     background: linear-gradient(transparent, rgba(3, 7, 12, 0.48));
-    border-radius: 0 0 15px 15px;
+    border-radius: 0 0 16px 16px;
     pointer-events: none;
 }
 
@@ -1541,6 +1569,7 @@
     width: 100%;
     height: 100%;
     margin: 0;
+    border-radius: inherit;
 }
 
 .mediaImageWrap .messageMediaSticker {
@@ -1548,13 +1577,18 @@
     height: 100%;
 }
 
-/* GIFs are content-first media, so they should not inherit the photo frame. */
+/* GIFs are content-first media; follow the bubble silhouette */
 .mediaImageWrap:has(.messageMediaGif) {
     width: fit-content;
     max-width: 100%;
     aspect-ratio: auto;
-    border-radius: 0;
+    border-radius: var(--chat-bubble-radius, 18px) var(--chat-bubble-radius, 18px) 5px var(--chat-bubble-radius, 18px);
+    overflow: hidden;
     isolation: auto;
+}
+
+.received .mediaImageWrap:has(.messageMediaGif) {
+    border-radius: var(--chat-bubble-radius, 18px) var(--chat-bubble-radius, 18px) var(--chat-bubble-radius, 18px) 5px;
 }
 
 .mediaImageWrap:has(.messageMediaGif)::after {
@@ -1565,8 +1599,8 @@
     width: auto;
     height: auto;
     max-width: 100%;
-    overflow: visible;
-    border-radius: 0;
+    overflow: hidden;
+    border-radius: inherit;
 }
 
 .mediaImageWrap:has(.messageMediaGif) .messageMediaGif {
@@ -1575,9 +1609,27 @@
     min-width: 0;
     height: auto;
     min-height: 0;
-    max-height: 340px;
-    border-radius: 0;
+    max-height: 440px;
+    border-radius: inherit;
     background: transparent;
+}
+
+.mediaWithCaption .mediaImageWrap:has(.messageMediaGif),
+.mediaWithCaption .mediaImageWrap:has(.messageMediaGif) .mediaImageButton,
+.mediaWithCaption .mediaImageWrap:has(.messageMediaGif) .messageMediaGif {
+    border-radius: var(--chat-bubble-radius, 18px) var(--chat-bubble-radius, 18px) 0 0;
+}
+
+.mediaWithCaption.mediaWithReply .mediaImageWrap:has(.messageMediaGif),
+.mediaWithCaption.mediaWithReply .mediaImageWrap:has(.messageMediaGif) .mediaImageButton,
+.mediaWithCaption.mediaWithReply .mediaImageWrap:has(.messageMediaGif) .messageMediaGif {
+    border-radius: 15px 15px 0 0;
+}
+
+.mediaWithReply:not(.mediaWithCaption) .mediaImageWrap:has(.messageMediaGif),
+.mediaWithReply:not(.mediaWithCaption) .mediaImageWrap:has(.messageMediaGif) .mediaImageButton,
+.mediaWithReply:not(.mediaWithCaption) .mediaImageWrap:has(.messageMediaGif) .messageMediaGif {
+    border-radius: 12px 12px 2px 2px;
 }
 
 .mediaWithReply:not(.mediaWithCaption):has(.messageMediaGif) {
