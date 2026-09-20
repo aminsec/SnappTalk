@@ -58,7 +58,7 @@ function LoginPage() {
     setIsSubmitting(true);
 
     try {
-      const response = await fetch('/api/v1/auth/', {
+      const response = await fetch('/api/v1/auth/login', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

@@ -4400,17 +4400,18 @@ function ChatsPage() {
     }
 
     try {
-      // Try to fetch user info - adjust endpoint if needed
-      const response = await fetch(`/api/v1/user/info/${senderIdStr}`, {
+      const cacheBuster = `cb=${Date.now()}`;
+      const response = await fetch(`/api/v1/members/${senderIdStr}/info?${cacheBuster}`, {
         method: 'GET',
         credentials: 'include',
       });
 
       if (response.ok) {
         const data = await response.json();
+        const member = data.member_info || data.userInfo || {};
         const senderInfo = {
-          username: data.userInfo?.username || 'Unknown',
-          profile_pic: data.userInfo?.profile_pic || null,
+          username: member.username || 'Unknown',
+          profile_pic: member.profile_pic || null,
         };
         
         // Update cache
