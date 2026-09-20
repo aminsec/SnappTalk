@@ -196,10 +196,15 @@ export async function setUserStatus(userId: Types.ObjectId, status: string): Pro
 export async function setAccountDeleted(userId: Types.ObjectId): Promise<[boolean, null] | [null, ErrorResponse]> {
     try {
         await User.updateOne({
-            _id: userId
+            _id: userId,
+            deleted_account: false
         }, {
             $set: {
-                deleted_account: true
+                deleted_account: true,
+                deleted_at: new Date(),
+                username: "Deleted Account",
+                email: "deleted",
+                profile_pic: "/statics/images/default.png",
             }
         });
 
