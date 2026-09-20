@@ -191,55 +191,37 @@ export async function updateUserProfile(req: Request, resp: Response) {
         return;
     }
 
-    if(removeResult === true){
-        const [profilePicKey, err] = await uploadMediaToS3(file, process.env.MINIO_PUBLIC_BUCKET ?? "profilepics");
+    const [profilePicKey, err] = await uploadMediaToS3(file, process.env.MINIO_PUBLIC_BUCKET ?? "profilepics");
+    if(err){
+        showError(err, resp);
+        return;
+    }
+
+    //Updating user profilePic address in db
+    const [updateResult, updateError] = await updateProfilePicAddress(userInfo._id, profilePicKey);
+    if(updateError){
+        showError(updateError, resp);
+        return;
+    }
+
+    if(updateResult === true){
+        //Assigning new token
+        const [revoked, err] = await revokeToken(req.cookies.token);
         if(err){
             showError(err, resp);
             return;
         }
 
-        if(profilePicKey){
-            //Updating user profilePic address in db
-            const [updateResult, error] = await updateProfilePicAddress(userInfo._id, profilePicKey);
-            if(error){
-                showError(error, resp);
-                return;
-            }
-
-            if(updateResult === true){
-                //Assigning new token
-                const [revoked, err] = await revokeToken(req.cookies.token);
-                if(err){
-                    showError(err, resp);
-                    return;
-                }
-
-                if(revoked === true){
-                    userInfo.profile_pic = "/statics/images/" + profilePicKey; // Updating userInfo with new profile pic address
-                    const [newToken, error] = generateJWTToken(userInfo);
-                    if(error){
-                        showError(error, resp);
-                        return;
-                    }
-
-                    const responseData = {state: "success", message: "Profile picture updated successfully."};
-                    const responseHeaders = {"Set-Cookie": `token=${newToken}; path=/; sameSite=lax; domain=.snapptalk.io`};
-                    sendResponse(responseData, responseHeaders, 200, resp);
-
-                }else{
-                    const error:ErrorResponse = {state: "failed", message: "Couldn't update profile", type: "system_error"};
-                    showError(error, resp);
-                }
-
-            }else{
-                const error:ErrorResponse = {state: "failed", message: "Couldn't update profile", type: "system_error"};
-                showError(error, resp);
-            }
-
-        }else{
-            const error:ErrorResponse = {state: "failed", message: "Couldn't upload profile", type: "system_error"};
+        userInfo.profile_pic = "/statics/images/" + profilePicKey; // Updating userInfo with new profile pic address
+        const [newToken, error] = generateJWTToken(userInfo);
+        if(error){
             showError(error, resp);
+            return;
         }
+
+        const responseData = {state: "success", message: "Profile picture updated successfully."};
+        const responseHeaders = {"Set-Cookie": `token=${newToken}; path=/; sameSite=lax; domain=.snapptalk.io`};
+        sendResponse(responseData, responseHeaders, 200, resp);
 
     }else{
         const error:ErrorResponse = {state: "failed", message: "Couldn't update profile", type: "system_error"};

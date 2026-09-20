@@ -43,7 +43,7 @@ export async function generatePreSignedURL(bucketName: string, fileKey: string):
     }
 };
 
-export async function deleteFileFromS3(fileKey: string, bucketName: string): Promise<[Boolean, null] | [null, ErrorResponse]>  {
+export async function deleteFileFromS3(fileKey: string, bucketName: string): Promise<[true, null] | [null, ErrorResponse]>  {
     try {
         // Preventing deleting default image
         if(fileKey === "default.png"){

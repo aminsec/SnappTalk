@@ -197,7 +197,7 @@ export async function resendEmailVerification(email: string, newHashedToken: str
     }
 }
 
-export async function revokeToken(token: string): Promise<[boolean, null] | [null, ErrorResponse]> {
+export async function revokeToken(token: string): Promise<[true, null] | [null, ErrorResponse]> {
     try {
         const insertedToken = await DeadSession.create({
             token: token
