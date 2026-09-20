@@ -3,8 +3,9 @@ import { createUser, getRawUserInfoByEmail } from "../../services/auth.services"
 import { getRandomString, sendResponse, showError } from "../../utils/operations";
 import { ErrorResponse } from "../../types/response.types";
 import { checkUserExistsByUsername } from "../../services/account.services";
-import { sendEmailJob } from "../../types/jobs.types";
-import { queueEmail } from "../../producers/email";
+import { sendEmailMessage } from "../../types/brokers.messages.types";
+import { queueMessage } from "../../producers/email";
+import { EMAIL_QUEUE } from "../../constants/queue";
 
 export async function handleSignup(req: Request, resp: Response) {
     const { username, email, password } = req.body;
@@ -31,7 +32,6 @@ export async function handleSignup(req: Request, resp: Response) {
 
     const [ usernameExist, err ] = await checkUserExistsByUsername(username);
     if(err){
-        console.log("sdfsdf")
         showError(err, resp);
         return;
     }
@@ -52,14 +52,14 @@ export async function handleSignup(req: Request, resp: Response) {
     }
     
     //Queueing email
-    const verifyEmailJob: sendEmailJob = {
+    const verifyEmailJob: sendEmailMessage = {
         to: email,
         subject: "Welcome To SnappTalk",
         template: "verify-email",
         parameters: {"VERIFY_URL": verifyUrl},
     };
 
-    const [ _ , queueError] = await queueEmail(verifyEmailJob);
+    const [ _ , queueError] = await queueMessage(EMAIL_QUEUE, verifyEmailJob);
     if(queueError){
         showError(queueError, resp);
         return;

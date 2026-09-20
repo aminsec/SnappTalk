@@ -2,9 +2,10 @@ import { Request, Response } from "express";
 import { verifyEmailToken } from "../../services/auth.services";
 import { generateJWTToken, sendResponse, showError } from "../../utils/operations";
 import { getRandomString } from "../../utils/operations";
-import { queueEmail } from "../../producers/email";
-import { sendEmailJob } from "../../types/jobs.types";
+import { queueMessage } from "../../producers/email";
+import { sendEmailMessage } from "../../types/brokers.messages.types";
 import { resendEmailVerification } from "../../services/auth.services";
+import { EMAIL_QUEUE } from "../../constants/queue";
 
 export async function handleEmailVerification(req: Request, resp: Response) {
     const { token } = req.params;
@@ -46,14 +47,14 @@ export async function handleResendEmailVerification(req: Request, resp: Response
     }
 
     //Queueing email
-    const verifyEmailJob: sendEmailJob = {
+    const verifyEmailJob: sendEmailMessage = {
         to: email,
         subject: "Welcome To SnappTalk",
         template: "verify-email",
         parameters: {"VERIFY_URL": verifyUrl},
     };
 
-    const [ _ , queueError] = await queueEmail(verifyEmailJob);
+    const [ _ , queueError] = await queueMessage(EMAIL_QUEUE, verifyEmailJob);
     if(queueError){
         showError(queueError, resp);
         return;

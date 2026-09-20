@@ -2,8 +2,9 @@ import { Request, Response } from "express";
 import { showError, sendResponse, getRandomString, generateJWTToken } from "../../utils/operations";
 import { checkForgotTokenAndRevoke, insertForgotTokenByEmail } from "../../services/forgot.services";
 import { ErrorResponse } from "../../types/response.types";
-import { sendEmailJob } from "../../types/jobs.types";
-import { queueEmail } from "../../producers/email";
+import { sendEmailMessage } from "../../types/brokers.messages.types";
+import { queueMessage } from "../../producers/email";
+import { EMAIL_QUEUE } from "../../constants/queue";
 
 export async function requestForgotPasswordLink(req: Request, resp: Response) {
     const { email } = req.body;
@@ -20,14 +21,14 @@ export async function requestForgotPasswordLink(req: Request, resp: Response) {
     if(result === true){
         //Queueing email if the email was exist 
         const resetUrl =  `${protocol}://${hostname}/api/v1/auth/forgot-password/${rawToken}`;
-        const forgotPassEmailJob: sendEmailJob = {
+        const forgotPassEmailJob: sendEmailMessage = {
             to: email,
             subject: "Forgot Password",
             template: "forgot-password",
             parameters: {"RESET_URL": resetUrl},
         };
 
-        const [ _ , error] = await queueEmail(forgotPassEmailJob);
+        const [ _ , error] = await queueMessage(EMAIL_QUEUE, forgotPassEmailJob);
         if(error){
             showError(error, resp);
             return;

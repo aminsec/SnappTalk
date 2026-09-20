@@ -1,29 +1,25 @@
 import { getRabbitChannel } from "../config/rabitmq";
-import { sendEmailJob } from "../types/jobs.types";
 import { ErrorResponse } from "../types/response.types";
 
-export async function queueEmail(job: sendEmailJob): Promise<[boolean, null] | [null, ErrorResponse]> {
+export async function queueMessage(queue: string, message: any): Promise<[boolean, null] | [null, ErrorResponse]> {
     try {
-        let emailQueue = "email_queue";
-        const EMAIL_DLQ = "email_queue.dlq";
-
         const channel = getRabbitChannel();
-        await channel.assertQueue(emailQueue, { durable: true, arguments: {
+        await channel.assertQueue(queue, { durable: true, arguments: {
             "x-queue-type": "quorum",
             "x-delivery-limit": 3,
             "x-dead-letter-exchange": "",
-            "x-dead-letter-routing-key": EMAIL_DLQ,
+            "x-dead-letter-routing-key": `${queue}.dlq`,
         }});
     
-        channel.sendToQueue(emailQueue, Buffer.from(JSON.stringify(job)), {
+        channel.sendToQueue(queue, Buffer.from(JSON.stringify(message)), {
             persistent: true, // survive broker restart
         });
     
         return [true, null];
 
     } catch (error) {
-        console.error("Error queueing email job:", error);
-        const err: ErrorResponse = {message: "Failed to queue email", state: "failed", type: "system_error",};
+        console.error(`Error queueing message to ${queue}:`, error);
+        const err: ErrorResponse = {message: `Failed to queue message to ${queue}`, state: "failed", type: "system_error",};
         return [null, err];
     }
 };
