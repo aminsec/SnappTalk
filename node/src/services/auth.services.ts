@@ -4,22 +4,6 @@ import { ErrorResponse } from "../types/response.types";
 import { DeadSession } from "../models/dead_sessions.model";
 import { PROTECTED_USER_INFO_FIELDS_TO_SELECT } from "../constants/user";
 
-export async function checkUserExistsByEmail(email: string): Promise<[boolean, null] | [null, ErrorResponse]>  {
-    try {
-        const user: RawUserInfo | null = await User.findOne({email: email}).lean();
-        if(user){
-            return [true, null];
-        }else{
-            return [false, null];
-        }
-
-    } catch (error) {
-        console.log(error);
-        const err:ErrorResponse = {message: "A system error occurred", state: "failed", type: "system_error"};
-        return [null, err];
-    }
-};
-
 export async function checkCredentials(email: string, password: string): Promise<[false, null, null] | [true, RawUserInfo, null] | [null, null, ErrorResponse]> {
     try {
         const user: RawUserInfo | null = await User.findOne({email: email, verified: true, deleted_account: false}).lean();
@@ -45,7 +29,7 @@ export async function checkCredentials(email: string, password: string): Promise
 
 export async function getUserInfoByEmail(email: string): Promise<[ProtectedUserInfo, null] | [null, ErrorResponse]>{
     try {
-        const user: ProtectedUserInfo | null = await User.findOne({email: email}).select(PROTECTED_USER_INFO_FIELDS_TO_SELECT).lean();
+        const user: ProtectedUserInfo | null = await User.findOne({email: email, deleted_account: false}).select(PROTECTED_USER_INFO_FIELDS_TO_SELECT).lean();
 
         if(!user){
             const err: ErrorResponse = {message: "User not found", state: "failed", type: "not_found"};
@@ -63,7 +47,7 @@ export async function getUserInfoByEmail(email: string): Promise<[ProtectedUserI
 
 export async function getRawUserInfoByEmail(email: string): Promise<[RawUserInfo, null] | [null, ErrorResponse]>{
     try {
-        const user: RawUserInfo | null = await User.findOne({email: email}).lean();
+        const user: RawUserInfo | null = await User.findOne({email: email, deleted_account: false}).lean();
 
         if(!user){
             const err: ErrorResponse = {message: "User not found", state: "failed", type: "not_found"};

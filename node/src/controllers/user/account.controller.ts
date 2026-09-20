@@ -2,7 +2,7 @@ import { checkUserExistsByUsername, getRawUserInfo, getUserInfoById, updateEmail
 import { showError, sendResponse, generateJWTToken } from "../../utils/operations";
 import { Request, Response } from "express";
 import {ErrorResponse } from "../../types/response.types";
-import { checkUserExistsByEmail, revokeToken } from "../../services/auth.services";
+import { getUserInfoByEmail, revokeToken } from "../../services/auth.services";
 import { Types } from "mongoose";
 import { uploadMediaToS3, deleteFileFromS3 } from "../../services/media.services";
 
@@ -50,13 +50,13 @@ export async function updateUserInfo(req: Request, resp: Response) {
     //Checking email
     if(email !== userInfo.email){
         //Checking if email exists
-        const [emailExists, err] = await checkUserExistsByEmail(email);
+        const [emailExists, err] = await getUserInfoByEmail(email);
         if(err){
             showError(err, resp);
             return;
         }
 
-        if(emailExists === true){
+        if(emailExists){
             const error:ErrorResponse = {state: "failed", message: "This email already exists", type: "input_error"};
             showError(error, resp);
             return;
@@ -232,25 +232,13 @@ export async function updateUserProfile(req: Request, resp: Response) {
 export async function deleteUserAccount(req: Request, resp: Response) {
     const { userInfo } = req;
 
-    const [ usernameUpdateResult, error ] = await updateUsername(userInfo._id, "Deleted Account");
+    const [ deleteResult , error] = await setAccountDeleted(userInfo._id);
     if(error){
         showError(error, resp);
         return;
     }
 
-    const [ profilePicUpdateResult, err ] = await updateProfilePicAddress(userInfo._id, "deleted_account.png");
-    if(err){
-        showError(err, resp);
-        return;
-    }
-
-    const [ statusResult, Error] = await setAccountDeleted(userInfo._id);
-    if(Error){
-        showError(Error, resp);
-        return;
-    }
-
-    const [revokeResult, revokeError] = await revokeToken(req.cookies.token);
+    const [revoked, revokeError] = await revokeToken(req.cookies.token); // Revoking current token
     if(revokeError){
         showError(revokeError, resp);
         return;
