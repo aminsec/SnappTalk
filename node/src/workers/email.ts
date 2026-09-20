@@ -1,9 +1,7 @@
 import { getRabbitChannel } from "../config/rabitmq";
-import { sendEmailJob } from "../types/jobs.types";
+import { sendEmailMessage } from "../types/brokers.messages.types";
 import { sendEmail } from "../providers/email";
-
-const EMAIL_QUEUE = "email_queue";
-const EMAIL_DLQ = "email_queue.dlq";
+import { EMAIL_QUEUE, EMAIL_DLQ } from "../constants/queue";
 
 export async function startEmailConsumer(): Promise<void> {
   const channel = getRabbitChannel();
@@ -20,7 +18,7 @@ export async function startEmailConsumer(): Promise<void> {
   channel.consume(EMAIL_QUEUE, async (msg) => {
     if (!msg) return;
   
-    const job: sendEmailJob = JSON.parse(msg.content.toString());
+    const job: sendEmailMessage = JSON.parse(msg.content.toString());
   
     try {
       const [result, error] = await sendEmail(job.to, job.subject, job.template, job.parameters);
