@@ -928,6 +928,7 @@
 .mediaWithCaption .mediaImageWrap,
 .mediaWithCaption .mediaImageButton,
 .mediaWithCaption .messageMediaImage,
+.mediaWithCaption .messageMediaGif,
 .mediaWithCaption .mediaResolvingCard,
 .mediaWithCaption .mediaManualPreview,
 .mediaWithCaption .videoPlayer {
@@ -1012,23 +1013,36 @@
     font-size: 10px;
 }
 
-/* Captioned GIFs should size the bubble from the GIF itself, not from the
-   fixed photo frame used by regular images. */
+/* Captioned GIFs: size the bubble from the GIF or caption, and ensure the GIF
+   fits flush in the background box without gaps or misalignments. */
 .mediaWithCaption:has(.messageMediaGif) {
     width: fit-content;
     max-width: min(390px, 72vw);
 }
 
-.mediaWithCaption:has(.messageMediaGif) .mediaImageWrap {
-    width: fit-content;
-    max-width: 100%;
-    aspect-ratio: auto;
+.mediaWithCaption:has(.messageMediaGif) .mediaImageWrap,
+.mediaWithCaption .mediaImageWrap:has(.messageMediaGif) {
+    width: calc(100% + 6px);
+    max-width: none;
+    margin: -3px -3px 0;
 }
 
-.mediaWithCaption:has(.messageMediaGif) .mediaImageButton {
-    width: auto;
-    height: auto;
+.mediaWithCaption:has(.messageMediaGif) .mediaImageButton,
+.mediaWithCaption .mediaImageWrap:has(.messageMediaGif) .mediaImageButton {
+    width: 100%;
+    height: 100%;
     max-width: 100%;
+    display: block;
+}
+
+.mediaWithCaption:has(.messageMediaGif) .messageMediaGif,
+.mediaWithCaption .mediaImageWrap:has(.messageMediaGif) .messageMediaGif {
+    width: 100%;
+    height: 100%;
+    max-width: 100%;
+    max-height: 440px;
+    object-fit: cover;
+    display: block;
 }
 
 .mediaWithCaption:has(.messageMediaGif) .mediaCaptionBlock {

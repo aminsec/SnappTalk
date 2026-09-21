@@ -138,7 +138,7 @@ export const MessageBubble: React.FC<MessageBubbleProps> = React.memo(({
       ? (hasMediaCaption
         ? { aspectRatio: lockedBoxRatio }
         : { width: lockedBoxWidth, maxWidth: 'min(100%, 76vw)', aspectRatio: lockedBoxRatio })
-      : resolvedMessageType === 'gif' || !hasMediaCaption
+      : !hasMediaCaption
         ? { width: lockedBoxWidth, maxWidth: '100%', aspectRatio: lockedBoxRatio }
         : { aspectRatio: lockedBoxRatio };
   const hasReplyMedia = isMedia && Boolean(replyPreview);
@@ -487,9 +487,12 @@ export const MessageBubble: React.FC<MessageBubbleProps> = React.memo(({
           {isMediaReady && !isDocument && !['video', 'voice', 'audio'].includes(resolvedMessageType) && (
             <div
               className={styles.mediaImageWrap}
-              style={lockApplies && resolvedMessageType === 'image'
+              style={lockApplies && ['image', 'gif'].includes(resolvedMessageType)
                 ? (hasMediaCaption
-                  ? { aspectRatio: lockedBoxRatio }
+                  ? {
+                      aspectRatio: lockedBoxRatio,
+                      minWidth: lockedBoxWidth ? `min(${lockedBoxWidth}, min(390px, 72vw))` : undefined,
+                    }
                   : { width: lockedBoxWidth, aspectRatio: lockedBoxRatio })
                 : undefined}
             >
@@ -515,7 +518,7 @@ export const MessageBubble: React.FC<MessageBubbleProps> = React.memo(({
                       ? styles.messageMediaGif
                       : styles.messageMediaImage
                 }`}
-                style={lockApplies && resolvedMessageType === 'gif'
+                style={lockApplies && resolvedMessageType === 'gif' && !hasMediaCaption
                   ? { width: lockedBoxWidth, aspectRatio: lockedBoxRatio, maxHeight: 'none' }
                   : undefined}
                 onError={(e) => {
