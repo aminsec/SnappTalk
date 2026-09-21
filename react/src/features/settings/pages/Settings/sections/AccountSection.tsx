@@ -2,7 +2,6 @@ import React, { useState, useMemo, useEffect } from 'react';
 import toast from 'react-hot-toast';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import {
-  faShieldHalved,
   faKey,
   faLock,
   faEye,
@@ -15,7 +14,6 @@ import {
   faClock,
   faCircleCheck,
   faIdBadge,
-  faPalette,
   faCircleExclamation,
   faXmark,
 } from '@fortawesome/free-solid-svg-icons';
@@ -375,14 +373,6 @@ const AccountSection: React.FC = () => {
               <h3 className={styles.username}>
                 {user?.username ? `@${user.username}` : 'SnappTalk User'}
               </h3>
-              <span className={styles.badgeProtected}>
-                <FontAwesomeIcon icon={faShieldHalved} className={styles.badgeIcon} />
-                Secured
-              </span>
-              <span className={styles.themeBadge}>
-                <FontAwesomeIcon icon={faPalette} className={styles.themeIcon} />
-                {resolvedWallpaper.label}
-              </span>
             </div>
             <p className={styles.userEmail}>{user?.email || 'No email registered'}</p>
           </div>

@@ -308,7 +308,6 @@ export default function ProfileSection(): React.ReactElement {
                 <span className={styles.pulseDot} />
                 Active
               </span>
-              <span className={styles.badgeRole}>{user?.role || 'Member'}</span>
             </div>
             <p className={styles.heroEmail}>{user?.email || 'No email attached'}</p>
 
