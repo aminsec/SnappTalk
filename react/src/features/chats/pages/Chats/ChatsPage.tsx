@@ -1,39 +1,20 @@
 import React, { useState, useEffect, useRef, useLayoutEffect } from 'react';
 import { useCallback, useMemo } from 'react';
-import { createPortal } from 'react-dom';
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
-import EmojiPicker, { Theme } from 'emoji-picker-react';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import {
   faSearch,
   faEllipsisVertical,
-  faTimes,
   faAddressBook,
-  faPlus,
-  faFile as faFileSolid,
-  faLocationDot,
   faTrash,
   faPen,
-  faCheck,
-  faXmark,
   faReply,
-  faClock,
   faCircleExclamation,
-  faMicrophone,
-  faStop,
   faArrowLeft,
   faArrowDown,
   faBars,
   faDownload,
-  faPaperclip,
-  faImage,
-  faVideo,
-  faMusic,
-  faCompactDisc,
-  faFileLines,
-  faPaperPlane,
 } from '@fortawesome/free-solid-svg-icons';
-import { faFaceSmile } from '@fortawesome/free-regular-svg-icons';
 import { Sidebar, MobileMenu, Input, ProfileAvatar } from '@/shared/components';
 import { useAuth } from '@/shared/state/useAuth';
 import toast from 'react-hot-toast';
@@ -41,7 +22,6 @@ import { useSocket } from '@/shared/state/useSocket';
 import { SOCKET_EVENTS } from '@/shared/state/socketEvents';
 import sentIcon from "@/shared/assets/icons/sent.svg";
 import seenIcon from "@/shared/assets/icons/seen.svg";
-import sendIcon from "@/shared/assets/icons/sendIcon.svg";
 import {
   monoIcons,
   GIPHY_API_KEY,
@@ -52,11 +32,8 @@ import {
   MAX_MESSAGE_LENGTH,
   createOptimisticId,
   convertISOtoLocal,
-  formatFileSize,
   truncateMessage,
-  formatDuration,
   getMessagePreviewText,
-  isEmojiOnlyMessage,
   getConversationId,
   getMessageId,
   getMediaStateKey,
@@ -64,40 +41,22 @@ import {
   getMessageMediaUrl,
   getMessageDownloadUrl,
   getSenderId,
-  getSeenByMap,
-  hasSeenByOtherUser,
   resolveMessageSeen,
   normalizeMessage,
   uploadMediaFile,
   getBackendMessageType,
   getMediaTypeFromFile,
   isAudioFile,
-  getMediaTypeFromMime,
-  getFileNameFromAttachmentKey,
   getMessageFileName,
   buildReplyPreview,
-  getFileExtension,
   mediaUrlCache,
-  getPresignedUrlExpiry,
   resolveAttachmentUrl,
-  MEDIA_PREVIEW_RANGE_END,
   getRenderableMediaType,
   resolveAttachmentPreview,
-  VISUAL_MEDIA_TYPES,
   waitForVisualMediaReady,
-  sniffImageDimensions,
-  sniffVideoDimensions,
   sniffMediaDimensions,
-  MEDIA_BOX_CAPS,
-  getLockedMediaBox,
+  formatDateSeparator,
 } from '../../utils/chatHelpers';
-import {
-  MediaDimensions,
-  LockedMediaBox,
-  PendingEditState,
-  ViewerMedia,
-  DownloadProgressRingProps,
-} from '../../types/chatPage.types';
 
 import { wallpapers, WALLPAPER_STORAGE_KEY } from '@/shared/utils/wallpapers';
 import {
@@ -110,24 +69,16 @@ import {
   MEDIA_AUTO_DOWNLOAD_KEY,
 } from '@/shared/utils/mediaPreferences';
 import NewConversationModal from '../../components/NewConversationModal/NewConversationModal';
-import { AudioPlayer, VideoPlayer } from '../../components/MediaContent';
+import { MessageBubble } from '../../components/MessageBubble';
+import { MediaViewerModal } from '../../components/MediaViewerModal';
+import { PendingMediaComposer } from '../../components/PendingMediaComposer';
+import { ChatInputBar } from '../../components/ChatInputBar';
+import {
+  DeleteConversationModal,
+  DeleteLastMessageAlertModal,
+  DeleteMessageModal,
+} from '../../components/DeleteConfirmModals';
 import styles from './Chat.module.css';
-
-const DownloadProgressRing: React.FC<DownloadProgressRingProps> = ({ progress = 0, active = false, compact = false }) => {
-  const safeProgress = Math.max(0, Math.min(100, Number(progress) || 0));
-  return (
-    <span
-      className={`${styles.downloadProgressRing} ${compact ? styles.downloadProgressRingCompact : ''}`}
-      style={{ '--download-progress': `${safeProgress * 3.6}deg` } as React.CSSProperties}
-      aria-hidden="true"
-    >
-      <span className={styles.downloadProgressRingInner}>
-        <FontAwesomeIcon icon={active ? faXmark : faDownload} className={styles.downloadProgressCancel} />
-        <span className={styles.downloadProgressPercent}>{Math.round(safeProgress)}%</span>
-      </span>
-    </span>
-  );
-};
 
 function ChatsPage() {
   const location = useLocation();
@@ -246,7 +197,6 @@ function ChatsPage() {
   const statusOfflineTimersRef = useRef({});
   const longPressTimeoutRef = useRef(null);
   const longPressTriggeredRef = useRef(false);
-  const [isSwitching, setIsSwitching] = useState(false);
   const messageContextMenuRef = useRef(null);
   const conversationAliasRef = useRef(new Map());
   const previousSelectedChatIdRef = useRef(null);
@@ -3824,47 +3774,6 @@ function ChatsPage() {
     return sortedChats;
   }, [activeTab, sortedChats]);
 
-  // Fetch sender info for group messages
-  const fetchSenderInfo = useCallback(async (senderId) => {
-    if (!senderId) return null;
-    
-    const senderIdStr = senderId.toString();
-    
-    // Check cache first
-    if (senderInfoCache[senderIdStr]) {
-      return senderInfoCache[senderIdStr];
-    }
-
-    try {
-      const cacheBuster = `cb=${Date.now()}`;
-      const response = await fetch(`/api/v1/members/${senderIdStr}/info?${cacheBuster}`, {
-        method: 'GET',
-        credentials: 'include',
-      });
-
-      if (response.ok) {
-        const data = await response.json();
-        const member = data.member_info || data.userInfo || {};
-        const senderInfo = {
-          username: member.username || 'Unknown',
-          profile_pic: member.profile_pic || null,
-        };
-        
-        // Update cache
-        setSenderInfoCache((prev) => ({
-          ...prev,
-          [senderIdStr]: senderInfo,
-        }));
-        
-        return senderInfo;
-      }
-    } catch (error) {
-      console.error('Failed to fetch sender info:', error);
-    }
-
-    return null;
-  }, [senderInfoCache]);
-
   // Handle new conversation modal
   const handleNewConversation = useCallback(() => {
     setIsNewConversationModalOpen(true);
@@ -4782,9 +4691,6 @@ function ChatsPage() {
   }, []);
 
   const activeMediaItems = giphyGifs;
-  const selectedPendingMedia = pendingMediaItems.find(
-    (item) => item.id === selectedPendingMediaId
-  ) || pendingMediaItems[0] || null;
 
   useEffect(() => {
     if (!mediaViewer) return undefined;
@@ -4851,12 +4757,6 @@ function ChatsPage() {
       return !isMine && !senderInfoCache[senderIdStr];
     });
   const shouldHoldGroupMessages = isActiveGroup && missingSenderInfo;
-  // Helper to format date like "28 July"
-  const formatDateSeparator = (dateString) => {
-    if (!dateString) return "";
-    const date = new Date(dateString);
-    return date.toLocaleDateString('en-US', { day: 'numeric', month: 'long' });
-  };
 
   return (
     <div
@@ -5221,541 +5121,77 @@ function ChatsPage() {
               )}
               <div className={styles.messagesWrapper}>
               {!shouldHoldGroupMessages && visibleMessages.map((message, index) => {
-                  // --- START NEW DATE SEPARATOR LOGIC ---
-                  const currentMsgDate = message.created_at || message.when;
-                  const prevMsgDate = index > 0 ? (visibleMessages[index - 1].created_at || visibleMessages[index - 1].when) : null;
-                  
-                  // Check if the day changed
-                  const currentDateObj = new Date(currentMsgDate).toDateString();
-                  const prevDateObj = prevMsgDate ? new Date(prevMsgDate).toDateString() : null;
-                  const showDateSeparator = !prevDateObj || currentDateObj !== prevDateObj;
+                const currentMsgDate = message.created_at || message.when;
+                const prevMsgDate = index > 0 ? (visibleMessages[index - 1].created_at || visibleMessages[index - 1].when) : null;
+                const currentDateObj = new Date(currentMsgDate).toDateString();
+                const prevDateObj = prevMsgDate ? new Date(prevMsgDate).toDateString() : null;
+                const showDateSeparator = !prevDateObj || currentDateObj !== prevDateObj;
 
-                  // --- EXISTING VARIABLE LOGIC (Keep exactly as you have it) ---
-                  // The backend user object uses `_id` (MongoDB ObjectId), not `id`.
-                  // Reading `user?.id` here yielded `undefined`, which combined with
-                  // absent optional fields (e.g. message.sender_id) caused
-                  // `undefined === undefined` to be true for EVERY message,
-                  // so every bubble rendered as "sent". Use `_id` with an `id` fallback.
-                  const userId = user?._id || user?.id;
-                  const messageSenderId = getSenderId(message)?.toString();
-                  // Only compare when we have a real sender id, to avoid the
-                  // `undefined === undefined` false-positive.
-                  const currentUserId = userId?.toString() || userId;
-                  const isMyMessage = Boolean(messageSenderId && currentUserId) &&
-                    messageSenderId === currentUserId;
-                  const messageId = message._id || message.id || `msg-${index}`;
-                  const mediaStateKey = getMediaStateKey(message);
-                  const messageContent = message.content || message.text || '';
-                  const messageTime = message.when || message.timestamp || message.created_at;
-                  const isPrivateChat = selectedChat?.type === 'pv';
-                  const isGroupChat = selectedChat?.type === 'group';
-                  const replyReference = message.reply_to
-                    || message.replyTo
-                    || message.reply_to_message
-                    || message.replied_to;
-                  const replyTargetId = getReplyMessageId(replyReference)?.toString();
-                  const replyTarget = replyTargetId
-                    ? messages.find((candidate) => getMessageId(candidate)?.toString() === replyTargetId)
-                    : null;
-                  const replyPreview = buildReplyPreview(replyTarget || replyReference);
-                  const resolvedMediaUrl = resolvedMediaUrls[mediaStateKey] || '';
-                  // Once a manual/automatic download finishes, render its
-                  // retained blob instead of continuing to show a preview URL.
-                  const mediaUrl = resolvedMediaUrl
-                    || (message?.attachment_key
-                      ? getMessageDownloadUrl(message)
-                      : getMessageMediaUrl(message));
-                  const messageType = message.type || (mediaUrl ? 'file' : 'text');
-                  const resolvedMessageType = getRenderableMediaType({
-                    ...message,
-                    type: messageType,
-                  });
-                  const isMediaReady = Boolean(mediaUrl);
-                  const isMedia = Boolean(mediaUrl || message?.attachment_key);
-                  const isManualMediaLoading = Boolean(manualMediaLoading[mediaStateKey]);
-                  const mediaPreviewUrl = mediaPreviewUrls[mediaStateKey] || '';
-                  const isAudioMedia = ['voice', 'audio'].includes(resolvedMessageType);
-                  const isVisualMedia = VISUAL_MEDIA_TYPES.includes(resolvedMessageType);
-                  const downloadProgress = mediaDownloadProgress[mediaStateKey];
-                  const hasDownloadProgress = typeof downloadProgress === 'number';
-                  // Telegram-style media box locking: the blurred preview and
-                  // the loaded media share one box derived from the sniffed
-                  // intrinsic size, so downloading never shifts the layout.
-                  const lockedMediaBox = getLockedMediaBox(
-                    mediaDimensions[mediaStateKey],
-                    resolvedMessageType
-                  );
-                  const lockApplies = Boolean(lockedMediaBox)
-                    && ['image', 'gif', 'video'].includes(resolvedMessageType);
-                  const lockedBoxWidth = lockedMediaBox ? `${lockedMediaBox.width}px` : undefined;
-                  const lockedBoxRatio = lockedMediaBox?.aspectRatio;
-                  const showMediaDownloadPreview = Boolean(
-                    message?.attachment_key
-                    && !mediaUrl
-                    && isVisualMedia
-                  );
-                  const showAudioDownloadButton = Boolean(
-                    message?.attachment_key
-                    && !mediaUrl
-                    && isAudioMedia
-                  );
-                  const hasMediaCaption = isMedia && Boolean(messageContent.trim());
-                  // GIFs render at a fixed media width even when captioned, so
-                  // the preview card must always take the locked width. Photos
-                  // stretch with the caption block, so only the ratio is locked
-                  // when a caption is present (CSS keeps width: 100%). The
-                  // maxWidth mirrors the loaded media's own CSS clamp (the video
-                  // player clamps at min(100%, 76vw)) so both states clamp
-                  // identically on narrow screens.
-                  const lockedPreviewStyle = !lockApplies
-                    ? undefined
-                    : resolvedMessageType === 'video'
-                      ? { width: lockedBoxWidth, maxWidth: 'min(100%, 76vw)', aspectRatio: lockedBoxRatio }
-                      : resolvedMessageType === 'gif' || !hasMediaCaption
-                        ? { width: lockedBoxWidth, maxWidth: '100%', aspectRatio: lockedBoxRatio }
-                        : { aspectRatio: lockedBoxRatio };
-                  const hasReplyMedia = isMedia && Boolean(replyPreview);
-                  const showMediaFooter = isMedia && !hasMediaCaption;
-                  const isDocument = resolvedMessageType === 'document'
-                    || resolvedMessageType === 'file'
-                    || (messageType === 'document');
-                  const isVisualManualPreview = showMediaDownloadPreview
-                    && !isDocument
-                    && isVisualMedia;
-                  const isMediaOnly = isMedia && !messageContent.trim() && !replyPreview;
-                  const isEmojiOnly = isEmojiOnlyMessage(messageContent);
-                  const shouldUseEmojiOnlyStyle = isEmojiOnly && !replyPreview && !isMedia;
-                  const replyPreviewText = truncateMessage(
-                    getMessagePreviewText(replyPreview),
-                    80
-                  );
-                  const senderIdStr = messageSenderId;
-                  const senderInfo = !isMyMessage && isGroupChat ? senderInfoCache[senderIdStr] : null;
-                  const shouldShowSenderMeta = !isMyMessage && isGroupChat;
-                  const senderName = shouldShowSenderMeta
-                    ? (senderInfo?.username
-                        || message.sender_username
-                        || message.sender_name
-                        || message.sender_info?.username
-                        || 'Member')
-                    : null;
-                  const senderAvatar = shouldShowSenderMeta
-                    ? (senderInfo?.profile_pic || message.sender_info?.profile_pic || null)
-                    : null;
-                  const isGifMessage = resolvedMessageType === 'gif';
-                  const deliveryStatus = isMyMessage && (isPrivateChat || isGifMessage)
-                    ? (message?.status || 'sent')
-                    : null;
-                  // Upload progress for this media message (0..100) while it's being uploaded
-                  const uploadProgressValue = mediaUploadProgress[messageId];
-                  const isUploadingMedia = isMyMessage
-                    && typeof uploadProgressValue === 'number'
-                    && uploadProgressValue < 100;
-                  const messageRenderKey = message?.client_id || messageId;
-                  const messageAnimKey = (message?.client_id || messageId)?.toString();
+                const messageSenderId = getSenderId(message)?.toString();
+                const messageId = message._id || message.id || `msg-${index}`;
+                const mediaStateKey = getMediaStateKey(message);
+                const replyReference = message.reply_to
+                  || message.replyTo
+                  || message.reply_to_message
+                  || message.replied_to;
+                const replyTargetId = getReplyMessageId(replyReference)?.toString();
+                const replyTarget = replyTargetId
+                  ? messages.find((candidate) => getMessageId(candidate)?.toString() === replyTargetId)
+                  : null;
+                const replyPreview = buildReplyPreview(replyTarget || replyReference);
+                const messageRenderKey = message?.client_id || messageId;
+                const messageAnimKey = (message?.client_id || messageId)?.toString();
+                const isEntering = Boolean(
+                  (messageAnimKey && animatedMessageIdsRef.current.has(messageAnimKey))
+                  || messageAnimKey === lastAnimatedMessageId
+                );
 
-                  // Reusable footer (time + seen) — rendered inside media cards for media messages.
-                  const messageFooterMarkup = (
-                    <>
-                      {message?.edited && (
-                        <span className={styles.editedBadge}>edited</span>
-                      )}
-                      <span className={styles.timestamp}>
-                        {convertISOtoLocal(messageTime)}
-                      </span>
-                      {isMyMessage && (isPrivateChat || isGifMessage) && (
-                        <span className={styles.seenIcon}>
-                          {deliveryStatus === 'pending' && (
-                            <span className={styles.deliveryClock} title="Sending">
-                              <span className={styles.deliveryClockFace} />
-                              <span className={styles.deliveryClockHandShort} />
-                              <span className={styles.deliveryClockHandLong} />
-                            </span>
-                          )}
-                          {deliveryStatus === 'error' && (
-                            <button
-                              type="button"
-                              className={styles.deliveryErrorButton}
-                              onClick={() => handleResendMessage(message)}
-                              title="Message failed. Click to resend."
-                            >
-                              <FontAwesomeIcon icon={faCircleExclamation} />
-                            </button>
-                          )}
-                          {deliveryStatus === 'sent' && (
-                            <img
-                              src={message?.seen ? seenIcon : sentIcon}
-                              alt={message?.seen ? "Seen" : "Sent"}
-                              className={styles.seenIconImage}
-                            />
-                          )}
-                        </span>
-                      )}
-                    </>
-                  );
-                  
-                  // --- RETURN JSX ---
-                  return (
-                    <React.Fragment key={messageRenderKey}>
-                      {/* Render Date Separator if day changed */}
-                      {showDateSeparator && (
-                        <div className={styles.dateSeparator}>
-                          <span className={styles.dateSeparatorText}>
-                            {formatDateSeparator(currentMsgDate)}
-                          </span>
-                        </div>
-                      )}
-
-                      <div
-                        className={`${
-                          styles.messageWrapper
-                        } ${
-                          isMyMessage ? styles.messageWrapperSent : styles.messageWrapperReceived
-                        } ${
-                          !isMyMessage && isGroupChat ? styles.messageWrapperGroup : ''
-                        } ${
-                          (messageAnimKey && animatedMessageIdsRef.current.has(messageAnimKey))
-                            || messageAnimKey === lastAnimatedMessageId
-                            ? styles.messageEnter
-                            : ''
-                        }`}
-                        ref={(el) => {
-                          const id = messageId?.toString();
-                          if (!id) return;
-                          if (el) {
-                            messageRefs.current.set(id, el);
-                          } else {
-                            messageRefs.current.delete(id);
-                          }
-                        }}
-                        onContextMenu={(e) => {
-                          e.preventDefault();
-                          setMessageContextMenu({
-                            x: e.clientX,
-                            y: e.clientY,
-                            message,
-                            isMyMessage,
-                          });
-                        }}
-                        onDoubleClick={() => handleReplyToMessage(message)}
-                      >
-                        {shouldShowSenderMeta && (
-                          <div className={styles.messageAvatar}>
-                            <button
-                              type="button"
-                              className={styles.profileAvatarButton}
-                              onClick={() => {
-                                if (senderIdStr) {
-                                  navigate(`/members/${senderIdStr}`);
-                                }
-                              }}
-                            >
-                              <ProfileAvatar
-                                src={senderAvatar}
-                                size={36}
-                                alt={senderName || 'Member'}
-                                borderWidth={0}
-                              />
-                            </button>
-                          </div>
-                        )}
-                        <div
-                          className={`${styles.message} ${isMyMessage ? styles.sent : styles.received} ${
-                            shouldUseEmojiOnlyStyle ? styles.emojiOnly : ''
-                          } ${isMediaOnly ? styles.mediaOnly : ''} ${hasMediaCaption ? styles.mediaWithCaption : ''} ${hasReplyMedia ? styles.mediaWithReply : ''} ${isVisualManualPreview ? styles.mediaWithManualPreview : ''}`}
-                          data-message-type={isMyMessage ? 'sent' : 'received'}
-                        >
-                          {replyPreview && (
-                            <div
-                              className={styles.replyPreview}
-                              role="button"
-                              tabIndex={0}
-                              onClick={() => scrollToMessage(replyPreview?.messageId || replyPreview?.message_id)}
-                              onKeyDown={(event) => {
-                                if (event.key === 'Enter') {
-                                  scrollToMessage(replyPreview?.messageId || replyPreview?.message_id);
-                                }
-                              }}
-                            >
-                              <div className={styles.replyPreviewLine} />
-                              <div className={styles.replyPreviewContent}>
-                                <div className={styles.replyPreviewHeader}>
-                                  <span className={styles.replyPreviewLabel}>
-                                    {(() => {
-                                      const replySenderId = getSenderId(replyPreview)?.toString();
-                                      const currentUserId = (user?._id || user?.id)?.toString();
-                                      if (replySenderId && currentUserId && replySenderId === currentUserId) return 'You';
-                                      if (selectedChat?.type === 'pv') {
-                                        return selectedChat?.contact_info?.username || 'User';
-                                      }
-                                      return replyPreview?.sender_info?.username
-                                        || replyPreview?.sender_name
-                                        || replyPreview?.sender_username
-                                        || replyPreview?.sender
-                                        || 'Member';
-                                    })()}
-                                  </span>
-                                </div>
-                                <p className={styles.replyPreviewText}>
-                                  {replyPreviewText}
-                                </p>
-                              </div>
-                            </div>
-                          )}
-                          {shouldShowSenderMeta && (
-                            <div className={styles.messageSenderName}>
-                              <button
-                                type="button"
-                                className={styles.profileLinkInline}
-                                onClick={() => {
-                                  const senderId = messageSenderId;
-                                  if (senderId) {
-                                    navigate(`/members/${senderId}`);
-                                  }
-                                }}
-                              >
-                                {senderName}
-                              </button>
-                            </div>
-                          )}
-                          {isUploadingMedia && !isGifMessage && (
-                            <div className={styles.mediaUploadOverlay}>
-                              <button
-                                type="button"
-                                className={styles.mediaUploadCircle}
-                                onClick={(event) => {
-                                  event.stopPropagation();
-                                  handleCancelMediaUpload(messageId);
-                                }}
-                                aria-label={`Cancel upload of ${getMessageFileName(message) || 'media'}`}
-                                title="Cancel upload"
-                                style={{
-                                  background: `conic-gradient(var(--btn-color) ${uploadProgressValue * 3.6}deg, rgba(255,255,255,0.25) 0deg)`,
-                                }}
-                              >
-                                <div className={styles.mediaUploadCircleInner}>
-                                  <FontAwesomeIcon icon={faXmark} className={styles.mediaUploadCancelIcon} />
-                                  <span className={styles.mediaUploadPercent}>
-                                    {Math.round(uploadProgressValue)}%
-                                  </span>
-                                </div>
-                              </button>
-                            </div>
-                          )}
-                          {showMediaDownloadPreview && !isDocument && (
-                            <button
-                              type="button"
-                              className={`${styles.mediaManualPreview} ${
-                                resolvedMessageType === 'video'
-                                  ? styles.mediaManualPreviewVideo
-                                  : styles.mediaManualPreviewVisual
-                              } ${
-                                isManualMediaLoading ? styles.mediaManualPreviewLoading : ''
-                              }`}
-                              style={lockedPreviewStyle}
-                              onClick={() => loadMediaMessage(message)}
-                              aria-label={isManualMediaLoading
-                                ? `Cancel ${resolvedMessageType} download`
-                                : hasDownloadProgress
-                                  ? `Resume ${resolvedMessageType} download`
-                                  : `Download ${resolvedMessageType} media`}
-                            >
-                              {mediaPreviewUrl && resolvedMessageType === 'video' && (
-                                <video
-                                  className={styles.mediaManualPreviewMedia}
-                                  src={mediaPreviewUrl}
-                                  muted
-                                  playsInline
-                                  preload="metadata"
-                                  aria-hidden="true"
-                                />
-                              )}
-                              {mediaPreviewUrl && resolvedMessageType !== 'video' && (
-                                <img
-                                  className={styles.mediaManualPreviewMedia}
-                                  src={mediaPreviewUrl}
-                                  alt=""
-                                  aria-hidden="true"
-                                />
-                              )}
-                              <span className={styles.mediaManualBlur} aria-hidden="true" />
-                              <span className={styles.mediaManualAction}>
-                                <span className={styles.mediaManualIcon}>
-                                  {hasDownloadProgress || isManualMediaLoading ? (
-                                    <DownloadProgressRing
-                                      progress={downloadProgress || 0}
-                                      active={isManualMediaLoading}
-                                    />
-                                  ) : isManualMediaLoading ? (
-                                    <span className={styles.mediaManualSpinner} />
-                                  ) : (
-                                    <FontAwesomeIcon icon={resolvedMessageType === 'video' ? faVideo : faImage} />
-                                  )}
-                                </span>
-                                {!isManualMediaLoading && !hasDownloadProgress && (
-                                  <>
-                                    <strong>
-                                      Download {resolvedMessageType === 'video' ? 'video' : 'media'}
-                                    </strong>
-                                    <small>Tap to load</small>
-                                  </>
-                                )}
-                              </span>
-                              {isMediaOnly && (
-                                <span className={styles.mediaManualFooter}>
-                                  {messageFooterMarkup}
-                                </span>
-                              )}
-                            </button>
-                          )}
-                          {isMediaReady && (resolvedMessageType === 'video') && (
-                            <VideoPlayer
-                              src={mediaUrl}
-                              mimeType={message?.mime_type || 'video/mp4'}
-                              footer={showMediaFooter ? messageFooterMarkup : undefined}
-                              style={lockApplies && resolvedMessageType === 'video'
-                                ? { width: lockedBoxWidth, aspectRatio: lockedBoxRatio }
-                                : undefined}
-                            />
-                          )}
-                          {isMedia && isAudioMedia && (
-                            <AudioPlayer
-                              src={mediaUrl}
-                              fileName={getMessageFileName(message)}
-                              isVoice={resolvedMessageType === 'voice'}
-                              accent={isMyMessage ? 'rgba(255,255,255,0.82)' : 'var(--chat-accent)'}
-                              footer={showMediaFooter ? messageFooterMarkup : undefined}
-                              onDownload={showAudioDownloadButton
-                                ? () => loadMediaMessage(message)
-                                : undefined}
-                              isDownloading={isManualMediaLoading}
-                              downloadProgress={downloadProgress}
-                            />
-                          )}
-                          {isDocument && (
-                            <div className={styles.mediaDocumentWrap}>
-                              <button
-                                type="button"
-                                className={styles.fileAttachment}
-                                onClick={() => handleDownloadMessage(message)}
-                                aria-label={isManualMediaLoading
-                                  ? `Cancel download of ${getMessageFileName(message) || 'attachment'}`
-                                  : hasDownloadProgress
-                                    ? `Resume download of ${getMessageFileName(message) || 'attachment'}`
-                                    : `Download ${getMessageFileName(message) || 'attachment'}`}
-                              >
-                                <span className={styles.fileAttachmentIcon}>
-                                  <span>{getFileExtension(getMessageFileName(message))}</span>
-                                  <FontAwesomeIcon icon={faFileSolid} />
-                                </span>
-                                <span className={styles.fileAttachmentInfo}>
-                                  <span className={styles.fileAttachmentName}>
-                                    {getMessageFileName(message) || 'Attachment'}
-                                  </span>
-                                  <span className={styles.fileAttachmentSize}>
-                                    {message?.file_size ? formatFileSize(message.file_size) : 'Document'}
-                                  </span>
-                                </span>
-                                <span className={styles.fileAttachmentDownload}>
-                                  {hasDownloadProgress || isManualMediaLoading ? (
-                                    <DownloadProgressRing
-                                      progress={downloadProgress || 0}
-                                      active={isManualMediaLoading}
-                                      compact
-                                    />
-                                  ) : (
-                                    <FontAwesomeIcon icon={faDownload} />
-                                  )}
-                                </span>
-                              </button>
-                              {showMediaFooter && (
-                                <div className={styles.mediaDocumentFooter}>
-                                  {messageFooterMarkup}
-                                </div>
-                              )}
-                            </div>
-                          )}
-                          {isMediaReady && !isDocument && !['video', 'voice', 'audio'].includes(resolvedMessageType) && (
-                            <div
-                              className={styles.mediaImageWrap}
-                              style={lockApplies && resolvedMessageType === 'image'
-                                ? (hasMediaCaption
-                                  ? { aspectRatio: lockedBoxRatio }
-                                  : { width: lockedBoxWidth, aspectRatio: lockedBoxRatio })
-                                : undefined}
-                            >
-                              <button
-                                type="button"
-                                className={styles.mediaImageButton}
-                                onClick={() => {
-                                  setMediaViewer({
-                                    url: mediaUrl,
-                                    message,
-                                    type: resolvedMessageType,
-                                  });
-                                }}
-                                aria-label="Open media viewer"
-                              >
-                                <img
-                                  src={mediaUrl}
-                                  alt={getMessageFileName(message) || resolvedMessageType}
-                                  className={`${styles.messageMedia} ${
-                                  resolvedMessageType === 'sticker'
-                                    ? styles.messageMediaSticker
-                                    : resolvedMessageType === 'gif'
-                                      ? styles.messageMediaGif
-                                      : styles.messageMediaImage
-                                }`}
-                                style={lockApplies && resolvedMessageType === 'gif'
-                                  ? { width: lockedBoxWidth, aspectRatio: lockedBoxRatio, maxHeight: 'none' }
-                                  : undefined}
-                                onError={(e) => {
-                                    (e.target as HTMLElement).style.display = 'none';
-                                  }}
-                                />
-                              </button>
-                              {!['sticker', 'gif'].includes(resolvedMessageType) && (
-                                <button
-                                  type="button"
-                                  className={styles.mediaQuickDownload}
-                                  onClick={(event) => {
-                                    event.stopPropagation();
-                                    handleDownloadMessage(message);
-                                  }}
-                                  aria-label="Download media"
-                                >
-                                  <FontAwesomeIcon icon={faDownload} />
-                                </button>
-                              )}
-                              {showMediaFooter && (
-                                <div className={styles.mediaImageFooter}>
-                                  {messageFooterMarkup}
-                                </div>
-                              )}
-                            </div>
-                          )}
-                          {hasMediaCaption ? (
-                            <div className={styles.mediaCaptionBlock}>
-                              <p dir="auto" className={styles.mediaCaptionText}>{messageContent}</p>
-                              <div className={`${styles.messageFooter} ${styles.mediaCaptionFooter}`}>
-                                {messageFooterMarkup}
-                              </div>
-                            </div>
-                          ) : (
-                            messageContent.trim() && (
-                              <p dir="auto" className={styles.messageText}>{messageContent}</p>
-                            )
-                          )}
-                          {!isMedia && !hasMediaCaption && (
-                            <div className={styles.messageFooter}>
-                              {messageFooterMarkup}
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                    </React.Fragment>
-                  );
-                })}
+                return (
+                  <MessageBubble
+                    key={messageRenderKey}
+                    message={message}
+                    index={index}
+                    user={user}
+                    selectedChat={selectedChat}
+                    showDateSeparator={showDateSeparator}
+                    dateSeparatorText={formatDateSeparator(currentMsgDate)}
+                    isEntering={isEntering}
+                    replyPreview={replyPreview}
+                    senderInfo={messageSenderId ? senderInfoCache[messageSenderId] : null}
+                    resolvedMediaUrl={resolvedMediaUrls[mediaStateKey]}
+                    mediaPreviewUrl={mediaPreviewUrls[mediaStateKey]}
+                    isManualMediaLoading={Boolean(manualMediaLoading[mediaStateKey])}
+                    downloadProgress={mediaDownloadProgress[mediaStateKey]}
+                    uploadProgress={mediaUploadProgress[messageId]}
+                    mediaDimensions={mediaDimensions[mediaStateKey]}
+                    onSetRef={(el) => {
+                      const id = messageId?.toString();
+                      if (!id) return;
+                      if (el) {
+                        messageRefs.current.set(id, el);
+                      } else {
+                        messageRefs.current.delete(id);
+                      }
+                    }}
+                    onContextMenu={(e, msg, isMine) => {
+                      setMessageContextMenu({
+                        x: e.clientX,
+                        y: e.clientY,
+                        message: msg,
+                        isMyMessage: isMine,
+                      });
+                    }}
+                    onDoubleClick={handleReplyToMessage}
+                    onMemberClick={(memberId) => navigate(`/members/${memberId}`)}
+                    onScrollToMessage={scrollToMessage}
+                    onResendMessage={handleResendMessage}
+                    onCancelMediaUpload={handleCancelMediaUpload}
+                    onLoadMediaMessage={loadMediaMessage}
+                    onDownloadMessage={handleDownloadMessage}
+                    onOpenMediaViewer={setMediaViewer}
+                  />
+                );
+              })}
                 <div ref={messagesEndRef} />
               </div>
             </div>
@@ -5772,479 +5208,59 @@ function ChatsPage() {
               </button>
             )}
   
-            {mediaViewer && createPortal(
-              <div
-                className={styles.mediaViewerBackdrop}
-                role="dialog"
-                aria-modal="true"
-                aria-label="Media viewer"
-                onMouseDown={(event) => {
-                  if (event.target === event.currentTarget) setMediaViewer(null);
-                }}
-              >
-                <div className={styles.mediaViewerToolbar}>
-                  <span>{getMessageFileName(mediaViewer.message) || (mediaViewer.type === 'gif' ? 'GIF' : 'Photo')}</span>
-                  <div>
-                    <button
-                      type="button"
-                      onClick={() => handleDownloadMessage(mediaViewer.message)}
-                      aria-label="Download media"
-                    >
-                      <FontAwesomeIcon icon={faDownload} />
-                    </button>
-                    <button type="button" onClick={() => setMediaViewer(null)} aria-label="Close media viewer">
-                      <FontAwesomeIcon icon={faXmark} />
-                    </button>
-                  </div>
-                </div>
-                <img src={mediaViewer.url} alt={getMessageFileName(mediaViewer.message) || 'Shared media'} />
-              </div>,
-              document.body
-            )}
-
-            {pendingMediaItems.length > 0 && selectedPendingMedia && (
-              <div
-                className={styles.mediaUploadBackdrop}
-                role="dialog"
-                aria-modal="true"
-                aria-labelledby="media-upload-title"
-                onMouseDown={(event) => {
-                  if (event.target === event.currentTarget) closePendingMedia();
-                }}
-              >
-                <section className={styles.mediaUploadDialog}>
-                  <header className={styles.mediaUploadHeader}>
-                    <div>
-                      <h2 id="media-upload-title">Send media</h2>
-                      <p>{pendingMediaItems.length} of {MAX_MEDIA_BATCH} selected · 20 MB maximum each</p>
-                    </div>
-                    <button
-                      type="button"
-                      className={styles.mediaUploadClose}
-                      onClick={closePendingMedia}
-                      aria-label="Close media preview"
-                    >
-                      <FontAwesomeIcon icon={faXmark} />
-                    </button>
-                  </header>
-
-                  <div className={styles.mediaUploadPreview}>
-                    {selectedPendingMedia.type === 'image' && (
-                      <img src={selectedPendingMedia.previewUrl} alt={selectedPendingMedia.file.name} />
-                    )}
-                    {selectedPendingMedia.type === 'video' && (
-                      <video src={selectedPendingMedia.previewUrl} controls preload="metadata" />
-                    )}
-                    {(selectedPendingMedia.type === 'voice' || selectedPendingMedia.type === 'file') && (
-                      <div className={styles.mediaFilePreview}>
-                        <span className={styles.mediaFilePreviewIcon}>
-                          <FontAwesomeIcon
-                            icon={selectedPendingMedia.type === 'voice' ? faMusic : faFileLines}
-                          />
-                        </span>
-                        <strong>{selectedPendingMedia.file.name}</strong>
-                        <span>{formatFileSize(selectedPendingMedia.file.size)}</span>
-                      </div>
-                    )}
-                    <button
-                      type="button"
-                      className={styles.mediaPreviewRemove}
-                      onClick={() => removePendingMedia(selectedPendingMedia.id)}
-                      aria-label={`Remove ${selectedPendingMedia.file.name}`}
-                    >
-                      <FontAwesomeIcon icon={faTrash} />
-                    </button>
-                  </div>
-
-                  <div className={styles.mediaThumbnailRail} aria-label="Selected files">
-                    {pendingMediaItems.map((item) => (
-                      <button
-                        key={item.id}
-                        type="button"
-                        className={`${styles.mediaThumbnail} ${
-                          item.id === selectedPendingMedia.id ? styles.mediaThumbnailActive : ''
-                        }`}
-                        onClick={() => setSelectedPendingMediaId(item.id)}
-                        aria-label={`Preview ${item.file.name}${item.caption ? ' (has caption)' : ''}`}
-                      >
-                        {item.type === 'image' && <img src={item.previewUrl} alt="" />}
-                        {item.type === 'video' && (
-                          <>
-                            <video src={item.previewUrl} muted preload="metadata" />
-                            <FontAwesomeIcon icon={faVideo} />
-                          </>
-                        )}
-                        {(item.type === 'voice' || item.type === 'file') && (
-                          <FontAwesomeIcon icon={item.type === 'voice' ? faMusic : faFileLines} />
-                        )}
-                        {Boolean(item.caption?.trim()) && (
-                          <span className={styles.mediaThumbnailCaptioned} aria-hidden="true" />
-                        )}
-                      </button>
-                    ))}
-                    {pendingMediaItems.length < MAX_MEDIA_BATCH && (
-                      <button
-                        type="button"
-                        className={`${styles.mediaThumbnail} ${styles.mediaThumbnailAdd}`}
-                        onClick={() => openAttachmentPicker('file-upload')}
-                        aria-label="Add more files"
-                      >
-                        <FontAwesomeIcon icon={faPlus} />
-                      </button>
-                    )}
-                  </div>
-
-                  <div className={styles.mediaUploadComposer}>
-                    <div className={styles.mediaCaptionField}>
-                      <textarea
-                        value={selectedPendingMedia.caption || ''}
-                        onChange={(event) => updatePendingMediaCaption(
-                          selectedPendingMedia.id,
-                          event.target.value.slice(0, MAX_MESSAGE_LENGTH)
-                        )}
-                        onKeyDown={(event) => {
-                          if (event.key === 'Enter' && !event.shiftKey) {
-                            event.preventDefault();
-                            handleSendPendingMedia();
-                          }
-                        }}
-                        rows={1}
-                        placeholder={
-                          pendingMediaItems.length > 1
-                            ? `Add a caption to ${getMessageFileName(selectedPendingMedia.file) || 'this file'}...`
-                            : 'Add a caption...'
-                        }
-                        aria-label={`Caption for ${getMessageFileName(selectedPendingMedia.file) || 'selected media'}`}
-                      />
-                      <span>{(selectedPendingMedia.caption || '').length}/{MAX_MESSAGE_LENGTH}</span>
-                    </div>
-                    <button
-                      type="button"
-                      className={styles.mediaSendButton}
-                      onClick={handleSendPendingMedia}
-                      aria-label={`Send ${pendingMediaItems.length} selected ${pendingMediaItems.length === 1 ? 'file' : 'files'}`}
-                    >
-                      <FontAwesomeIcon icon={faPaperPlane} />
-                    </button>
-                  </div>
-                </section>
-              </div>
-            )}
-
-            <div className={styles.inputBar}>
-            <input
-              id="media-upload"
-              type="file"
-              multiple
-              accept="image/*,video/*"
-              hidden
-              onChange={handleFileChange}
-              title="Maximum file size is 20 MB"
+            <MediaViewerModal
+              media={mediaViewer}
+              onClose={() => setMediaViewer(null)}
+              onDownload={handleDownloadMessage}
             />
-            <input
-              id="file-upload"
-              type="file"
-              multiple
-              hidden
-              onChange={handleFileChange}
-              title="Maximum file size is 20 MB"
+
+            <PendingMediaComposer
+              items={pendingMediaItems}
+              selectedId={selectedPendingMediaId}
+              onSelectId={setSelectedPendingMediaId}
+              onRemove={removePendingMedia}
+              onUpdateCaption={updatePendingMediaCaption}
+              onSend={handleSendPendingMedia}
+              onClose={closePendingMedia}
+              onAddMore={() => openAttachmentPicker('file-upload')}
             />
-            <input
-              id="audio-upload"
-              type="file"
-              multiple
-              accept="audio/*,.aac,.flac,.m4a,.mp3,.ogg,.opus,.wav,.weba,.wma"
-              hidden
-              onChange={handleFileChange}
-              title="Maximum file size is 20 MB"
+
+            <ChatInputBar
+              onFileChange={handleFileChange}
+              isOptionsMenuOpen={isOptionsMenuOpen}
+              optionsMenuRef={optionsMenuRef}
+              onOptionsMenuToggle={handleOptionsMenuToggle}
+              onUploadMediaClick={handleUploadMediaClick}
+              onUploadFileClick={handleUploadFileClick}
+              onUploadMusicClick={handleUploadMusicClick}
+              onSendLocationClick={handleSendLocationClick}
+              replyingToMessage={replyingToMessage}
+              onCancelReply={() => setReplyingToMessage(null)}
+              user={user}
+              selectedChat={selectedChat}
+              messageInput={messageInput}
+              onMessageInputChange={setMessageInput}
+              editingMessage={editingMessage}
+              onEditSubmit={handleEditSubmit}
+              onEditCancel={handleEditCancel}
+              onSendMessage={handleSendMessage}
+              isMediaPickerOpen={isMediaPickerOpen}
+              mediaPickerRef={mediaPickerRef}
+              onToggleMediaPicker={() => setIsMediaPickerOpen((prev) => !prev)}
+              mediaTab={mediaTab}
+              onTabChange={setMediaTab}
+              gifQuery={gifQuery}
+              onGifQueryChange={setGifQuery}
+              giphyError={giphyError}
+              isGiphyLoading={isGiphyLoading}
+              activeMediaItems={activeMediaItems}
+              onSendMedia={handleSendMedia}
+              onEmojiClick={(emoji) => setMessageInput((prev) => prev + emoji)}
+              isRecording={isRecording}
+              recordingDuration={recordingDuration}
+              onStartRecording={startRecording}
+              onStopRecording={stopRecording}
             />
-            
-            {/* Left Actions */}
-            <div className={styles.inputActionsLeft}>
-              <div className={styles.optionsMenuContainer} ref={optionsMenuRef}>
-                <button
-                  type="button"
-                  className={`${styles.actionButton} ${isOptionsMenuOpen ? styles.attachmentButtonActive : ''}`}
-                  onClick={handleOptionsMenuToggle}
-                  aria-label="Attach media or file"
-                  aria-expanded={isOptionsMenuOpen}
-                >
-                  <FontAwesomeIcon icon={faPaperclip} />
-                </button>
-                {isOptionsMenuOpen && (
-                  <div className={styles.optionsMenu}>
-                    <button
-                      type="button"
-                      className={`${styles.optionsMenuItem} ${styles.attachmentMenuItem}`}
-                      onClick={handleUploadMediaClick}
-                    >
-                      <span className={`${styles.attachmentMenuIcon} ${styles.attachmentMenuIconMedia}`}>
-                        <FontAwesomeIcon icon={faImage} />
-                      </span>
-                      <span>
-                        <strong>Photo or video</strong>
-                        <small>Share from your library</small>
-                      </span>
-                    </button>
-                    <button
-                      type="button"
-                      className={`${styles.optionsMenuItem} ${styles.attachmentMenuItem}`}
-                      onClick={handleUploadFileClick}
-                    >
-                      <span className={`${styles.attachmentMenuIcon} ${styles.attachmentMenuIconFile}`}>
-                        <FontAwesomeIcon icon={faFileSolid} />
-                      </span>
-                      <span>
-                        <strong>File</strong>
-                        <small>Send any file up to 20 MB</small>
-                      </span>
-                    </button>
-                    <button
-                      type="button"
-                      className={`${styles.optionsMenuItem} ${styles.attachmentMenuItem}`}
-                      onClick={handleUploadMusicClick}
-                    >
-                      <span className={`${styles.attachmentMenuIcon} ${styles.attachmentMenuIconMusic}`}>
-                        <FontAwesomeIcon icon={faCompactDisc} />
-                      </span>
-                      <span>
-                        <strong>Music</strong>
-                        <small>Share an audio file up to 20 MB</small>
-                      </span>
-                    </button>
-                    <button
-                      type="button"
-                      className={`${styles.optionsMenuItem} ${styles.attachmentMenuItem}`}
-                      onClick={handleSendLocationClick}
-                    >
-                      <span className={`${styles.attachmentMenuIcon} ${styles.attachmentMenuIconLocation}`}>
-                        <FontAwesomeIcon icon={faLocationDot} />
-                      </span>
-                      <span>
-                        <strong>Location</strong>
-                        <small>Share your current position</small>
-                      </span>
-                    </button>
-                  </div>
-                )}
-              </div>
-            </div>
-
-            {/* Composer (textarea + reply bar) */}
-            <div className={styles.composer}>
-              {replyingToMessage && (
-                <div className={styles.replyBar}>
-                  <div className={styles.replyBarIndicator} />
-                  <div className={styles.replyBarContent}>
-                    <div className={styles.replyBarHeader}>
-                      <span className={styles.replyBarLabel}>
-                        {(() => {
-                          const senderId = getSenderId(replyingToMessage)?.toString();
-                          const currentUserId = (user?._id || user?.id)?.toString();
-                          if (senderId && currentUserId && senderId === currentUserId) return 'You';
-                          if (selectedChat?.type === 'pv') {
-                            return selectedChat?.contact_info?.username || 'User';
-                          }
-                          return replyingToMessage?.sender_info?.username
-                            || replyingToMessage?.sender_name
-                            || replyingToMessage?.sender_username
-                            || 'Member';
-                        })()}
-                      </span>
-                      {replyingToMessage?.type && replyingToMessage?.type !== 'text' && (
-                        <span className={styles.replyBarType}>
-                          {replyingToMessage.type === 'image' ? '📷 Photo' :
-                          replyingToMessage.type === 'video' ? '🎥 Video' :
-                          replyingToMessage.type === 'gif' ? '🎬 GIF' :
-                          replyingToMessage.type === 'sticker' ? '🎨 Sticker' :
-                          replyingToMessage.type === 'voice' ? '🎤 Voice' :
-                          replyingToMessage.type === 'audio' ? '🎵 Audio' :
-                          '📎 File'}
-                        </span>
-                      )}
-                    </div>
-                    <p className={styles.replyBarText}>
-                      {truncateMessage(getMessagePreviewText(replyingToMessage), 80)}
-                    </p>
-                  </div>
-                  <button
-                    type="button"
-                    className={styles.replyBarClose}
-                    onClick={() => setReplyingToMessage(null)}
-                    aria-label="Cancel reply"
-                  >
-                    <FontAwesomeIcon icon={faXmark} />
-                  </button>
-                </div>
-              )}
-              <textarea
-                className={styles.messageTextarea}
-                placeholder={editingMessage ? 'Edit message...' : 'Type a message...'}
-                value={messageInput}
-                maxLength={MAX_MESSAGE_LENGTH}
-                onChange={(e) => setMessageInput(e.target.value)}
-                rows={1}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter' && !e.shiftKey) {
-                    e.preventDefault();
-                    if (editingMessage) {
-                      if (messageInput.trim().length <= MAX_MESSAGE_LENGTH) {
-                        handleEditSubmit();
-                      }
-                    } else {
-                      if (messageInput.trim().length <= MAX_MESSAGE_LENGTH) {
-                        handleSendMessage();
-                      }
-                    }
-                  }
-                  if (e.key === 'Escape' && editingMessage) {
-                    e.preventDefault();
-                    handleEditCancel();
-                  }
-                }}
-              />
-              {messageInput.length >= 200 && (
-                <span className={styles.charWarning}>
-                  {messageInput.length}/{MAX_MESSAGE_LENGTH}
-                </span>
-              )}
-            </div>
-
-            {/* Right Actions */}
-            <div className={styles.inputActionsRight}>
-              {/* Emoji Button */}
-              <div className={styles.mediaPickerWrapper} ref={mediaPickerRef}>
-                <button
-                  type="button"
-                  className={styles.actionButton}
-                  onClick={() => setIsMediaPickerOpen((prev) => !prev)}
-                  aria-label="Open emojis and GIFs"
-                >
-                  <FontAwesomeIcon icon={faFaceSmile} />
-                </button>
-                {isMediaPickerOpen && (
-                  <div className={styles.mediaPicker}>
-                    <div className={styles.mediaTabs}>
-                      <button
-                        type="button"
-                        className={`${styles.mediaTab} ${mediaTab === 'emoji' ? styles.mediaTabActive : ''}`}
-                        onClick={() => setMediaTab('emoji')}
-                      >
-                        Emoji
-                      </button>
-                      <button
-                        type="button"
-                        className={`${styles.mediaTab} ${mediaTab === 'gifs' ? styles.mediaTabActive : ''}`}
-                        onClick={() => setMediaTab('gifs')}
-                      >
-                        GIFs
-                      </button>
-
-                    </div>
-                    {mediaTab === 'emoji' && (
-                      <div className={styles.emojiPane}>
-                        <EmojiPicker
-                          className={styles.emojiPicker}
-                          open
-                          theme={Theme.AUTO}
-                          onEmojiClick={(emojiData) => {
-                            setMessageInput((prev) => prev + emojiData.emoji);
-                          }}
-                        />
-                      </div>
-                    )}
-                    {mediaTab !== 'emoji' && (
-                      <>
-                        {mediaTab === 'gifs' && (
-                          <div className={styles.mediaSearch}>
-                            <input
-                              type="text"
-                              placeholder="Search GIFs"
-                              value={gifQuery}
-                              onChange={(event) => setGifQuery(event.target.value)}
-                            />
-                          </div>
-                        )}
-                        {giphyError && mediaTab === 'gifs' && (
-                          <p className={styles.mediaError}>{giphyError}</p>
-                        )}
-                        {isGiphyLoading && mediaTab === 'gifs' && (
-                          <p className={styles.mediaLoading}>Loading GIFs...</p>
-                        )}
-                        {!isGiphyLoading && !giphyError && mediaTab === 'gifs' && activeMediaItems.length === 0 && (
-                          <p className={styles.mediaEmpty}>No GIFs found.</p>
-                        )}
-                        <div className={styles.mediaGrid}>
-                          {activeMediaItems.map((item) => (
-                            <button
-                              key={item.id}
-                              type="button"
-                              className={styles.mediaItem}
-                              onClick={() => handleSendMedia(item)}
-                            >
-                              <img src={item.preview || item.url} alt={item.name} />
-                            </button>
-                          ))}
-                        </div>
-                      </>
-                    )}
-                  </div>
-                )}
-              </div>
-
-              {/* Recording Indicator */}
-              {isRecording && (
-                <div className={styles.recordingIndicator}>
-                  <span className={styles.recordingDot} />
-                  <span className={styles.recordingTime}>{formatDuration(recordingDuration)}</span>
-                </div>
-              )}
-
-              {/* Edit Mode Buttons */}
-              {editingMessage && (
-                <>
-                  <button
-                    type="button"
-                    className={`${styles.actionButton} ${styles.editCancelButton}`}
-                    onClick={handleEditCancel}
-                    aria-label="Cancel edit"
-                  >
-                    <FontAwesomeIcon icon={faXmark} />
-                  </button>
-                  <button
-                    type="button"
-                    className={`${styles.actionButton} ${styles.editSaveButton}`}
-                    onClick={handleEditSubmit}
-                    aria-label="Save edit"
-                    disabled={messageInput.trim().length > MAX_MESSAGE_LENGTH}
-                  >
-                    <FontAwesomeIcon icon={faCheck} />
-                  </button>
-                </>
-              )}
-
-              {/* Record/Send Button */}
-              {!editingMessage && (
-                <div className={`${styles.sendButtonWrapper} ${isSwitching ? (messageInput.trim() ? 'switching-in' : 'switching-out') : ''}`}>
-                  <button
-                    type="button"
-                    className={`${styles.actionButton} ${styles.primaryButton} ${isRecording ? styles.recordingActive : ''} ${messageInput.trim() ? styles.hasText : ''}`}
-                    onClick={isRecording ? stopRecording : (messageInput.trim() ? handleSendMessage : startRecording)}
-                    disabled={!isRecording && messageInput.trim().length > MAX_MESSAGE_LENGTH}
-                    aria-label={isRecording ? 'Stop recording' : (messageInput.trim() ? 'Send message' : 'Record voice')}
-                  >
-                    {isRecording ? (
-                      <FontAwesomeIcon icon={faStop} />
-                    ) : messageInput.trim() ? (
-                      <img src={sendIcon} alt="Send" className={styles.sendIcon} />
-                    ) : (
-                      <FontAwesomeIcon icon={faMicrophone} />
-                    )}
-                  </button>
-                </div>
-              )}
-            </div>
-          </div>
 
             {messageContextMenu && (
               <div
@@ -6345,109 +5361,29 @@ function ChatsPage() {
             </button>
           </div>
         )}
-        {deleteConfirm.open && (
-          <div className={styles.confirmOverlay} role="dialog" aria-modal="true">
-            <div className={styles.confirmBox}>
-              <p className={styles.confirmTitle}>Delete conversation?</p>
-              <p className={styles.confirmText}>
-                Choose whether to delete just for you or for everyone.
-              </p>
-              <div className={styles.confirmActions}>
-                <label className={styles.deleteCheckbox}>
-                  <input
-                    type="checkbox"
-                    checked={deleteForEveryone}
-                    onChange={(event) => setDeleteForEveryone(event.target.checked)}
-                    disabled={isDeletingConversation}
-                  />
-                  <span>
-                    {deleteTargetName ? `Delete for ${deleteTargetName}` : 'Delete for contact'}
-                  </span>
-                </label>
-                <div className={styles.confirmButtons}>
-                  <button
-                    type="button"
-                    className={styles.cancelButton}
-                    onClick={() => setDeleteConfirm({ open: false, conversationId: null })}
-                    disabled={isDeletingConversation}
-                  >
-                    Cancel
-                  </button>
-                  <button
-                    type="button"
-                    className={styles.confirmButton}
-                    onClick={() => handleDeleteConversation(deleteForEveryone ? 'all' : 'me')}
-                    disabled={isDeletingConversation}
-                  >
-                    {isDeletingConversation ? 'Deleting...' : 'Delete'}
-                  </button>
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
-        {deleteLastMessageAlert.open && (
-          <div className={styles.confirmOverlay} role="dialog" aria-modal="true">
-            <div className={styles.confirmBox}>
-              <p className={styles.confirmTitle}>Attention</p>
-              <p className={styles.confirmText}>
-                By deleting this message the conversation will be gone
-              </p>
-              <div className={styles.confirmButtons}>
-                <button
-                  type="button"
-                  className={styles.cancelButton}
-                  onClick={handleCancelDeleteLastMessage}
-                >
-                  Cancel
-                </button>
-                <button
-                  type="button"
-                  className={styles.confirmButton}
-                  onClick={handleConfirmDeleteLastMessage}
-                >
-                  Anyway
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
-        {messageDeleteConfirm.open && (
-          <div className={styles.confirmOverlay} role="dialog" aria-modal="true">
-            <div className={styles.confirmBox}>
-              <p className={styles.confirmTitle}>Delete message?</p>
-              <p className={styles.confirmText}>
-                Choose whether to delete this message just for you or for everyone.
-              </p>
-              <div className={styles.confirmActions}>
-                <label className={styles.deleteCheckbox}>
-                  <input
-                    type="checkbox"
-                    checked={deleteMessageForEveryone}
-                    onChange={(event) => setDeleteMessageForEveryone(event.target.checked)}
-                  />
-                  <span>Delete for everyone</span>
-                </label>
-                <div className={styles.confirmButtons}>
-                  <button
-                    type="button"
-                    className={styles.cancelButton}
-                    onClick={handleCancelDeleteMessage}
-                  >
-                    Cancel
-                  </button>
-                  <button
-                    type="button"
-                    className={styles.confirmButton}
-                    onClick={handleConfirmDeleteMessage}
-                  >
-                    Delete
-                  </button>
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
+        <DeleteConversationModal
+          isOpen={deleteConfirm.open}
+          targetName={deleteTargetName}
+          deleteForEveryone={deleteForEveryone}
+          onToggleDeleteForEveryone={setDeleteForEveryone}
+          isDeleting={isDeletingConversation}
+          onConfirm={() => handleDeleteConversation(deleteForEveryone ? 'all' : 'me')}
+          onCancel={() => setDeleteConfirm({ open: false, conversationId: null })}
+        />
+
+        <DeleteLastMessageAlertModal
+          isOpen={deleteLastMessageAlert.open}
+          onConfirm={handleConfirmDeleteLastMessage}
+          onCancel={handleCancelDeleteLastMessage}
+        />
+
+        <DeleteMessageModal
+          isOpen={messageDeleteConfirm.open}
+          deleteForEveryone={deleteMessageForEveryone}
+          onToggleDeleteForEveryone={setDeleteMessageForEveryone}
+          onConfirm={handleConfirmDeleteMessage}
+          onCancel={handleCancelDeleteMessage}
+        />
       </main>
   
       <NewConversationModal

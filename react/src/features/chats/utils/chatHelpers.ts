@@ -17,7 +17,7 @@ import {
   MediaCacheEntry,
   ReplyPreview,
 } from '../types/chatPage.types';
-import { Message, Conversation, MessageType } from '@/shared/types/chat.types';
+import { MessageType } from '@/shared/types/chat.types';
 
 // Constants
 export const monoIcons = [
@@ -636,4 +636,12 @@ export const getLockedMediaBox = (
     aspectRatio: `${dimensions.width} / ${dimensions.height}`,
   };
 };
+
+export const formatDateSeparator = (dateString?: string | number | Date | null): string => {
+  if (!dateString) return '';
+  const date = new Date(dateString);
+  if (isNaN(date.getTime())) return '';
+  return date.toLocaleDateString('en-US', { day: 'numeric', month: 'long' });
+};
+
 

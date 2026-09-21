@@ -47,7 +47,6 @@ const AudioPlayer: React.FC<AudioPlayerProps> = ({
   const [currentTime, setCurrentTime] = useState<number>(0);
   const [isLoading, setIsLoading] = useState<boolean>(Boolean(src));
   const [isError, setIsError] = useState<boolean>(false);
-  const [isSeeking, setIsSeeking] = useState<boolean>(false);
   const seekRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
@@ -89,7 +88,7 @@ const AudioPlayer: React.FC<AudioPlayerProps> = ({
     const onPlay = () => setIsPlaying(true);
     const onPause = () => setIsPlaying(false);
     const onTimeUpdate = () => {
-      if (!isSeeking && audio.duration) {
+      if (audio.duration) {
         setCurrentTime(audio.currentTime);
         setProgress(audio.currentTime / audio.duration);
       }
@@ -127,7 +126,7 @@ const AudioPlayer: React.FC<AudioPlayerProps> = ({
       audio.removeEventListener('error', onError);
       audio.removeEventListener('ended', onEnded);
     };
-  }, [isSeeking]);
+  }, []);
 
   const progressPercent = Number((progress * 100).toFixed(2));
 

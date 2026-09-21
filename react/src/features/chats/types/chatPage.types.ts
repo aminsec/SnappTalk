@@ -41,8 +41,17 @@ export interface PendingEditState {
 export interface ViewerMedia {
   url: string;
   type: string;
+  message?: any;
   fileName?: string;
   caption?: string;
+}
+
+export interface PendingMediaItem {
+  id: string;
+  file: File;
+  type: string;
+  previewUrl: string;
+  caption: string;
 }
 
 export interface DownloadProgressRingProps {
