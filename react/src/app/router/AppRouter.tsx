@@ -1,0 +1,47 @@
+import React from 'react';
+import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+
+import LoginPage, { LOGIN_STEPS } from '@/features/auth/pages/Login/LoginPage';
+import ChatsPage from '@/features/chats/pages/Chats/ChatsPage';
+import SettingsPage from '@/features/settings/pages/Settings/SettingsPage';
+import ProfileSection from '@/features/settings/pages/Settings/sections/ProfileSection';
+import GeneralSection from '@/features/settings/pages/Settings/sections/GeneralSection';
+import AppearanceSection from '@/features/settings/pages/Settings/sections/AppearanceSection';
+import AccountSection from '@/features/settings/pages/Settings/sections/AccountSection';
+import ProfilePage from '@/features/members/pages/Profile/ProfilePage';
+import NotFoundPage from '@/features/misc/pages/NotFound';
+import { RequireAuth, RequireGuest } from '@/shared/utils/protectRoutes';
+
+const AppRouter: React.FC = () => (
+  <BrowserRouter>
+    <Routes>
+      <Route element={<RequireAuth />}>
+        <Route path="/chats" element={<ChatsPage />} />
+        <Route path="/chats/:conversationId" element={<ChatsPage />} />
+        <Route path="/chat" element={<Navigate to="/chats" replace />} />
+        <Route path="/settings/*" element={<SettingsPage />}>
+          <Route path="profile" element={<ProfileSection />} />
+          <Route path="general" element={<GeneralSection />} />
+          <Route path="appearance" element={<AppearanceSection />} />
+          <Route path="account" element={<AccountSection />} />
+        </Route>
+      </Route>
+
+      {/* Public profile - accessible to unauthenticated users too */}
+      <Route path="/members/:userId" element={<ProfilePage />} />
+
+      <Route element={<RequireGuest />}>
+        <Route path="/login" element={<LoginPage initialStep={LOGIN_STEPS.LOGIN} />} />
+        <Route path="/signup" element={<LoginPage initialStep={LOGIN_STEPS.SIGNUP} />} />
+        <Route path="/forgot-password" element={<LoginPage initialStep={LOGIN_STEPS.FORGOT} />} />
+        <Route path="/forgetpassword" element={<Navigate to="/forgot-password" replace />} />
+        <Route path="/" element={<Navigate to="/login" replace />} />
+      </Route>
+
+      <Route path="*" element={<NotFoundPage />} />
+    </Routes>
+  </BrowserRouter>
+);
+
+export default AppRouter;
+
