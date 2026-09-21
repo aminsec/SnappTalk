@@ -22,8 +22,6 @@ export const LOGIN_STEPS = {
 
 export type LoginStep = (typeof LOGIN_STEPS)[keyof typeof LOGIN_STEPS];
 
-const DEBUG_PASSWORD = '123!@#qweQ';
-
 export interface LoginPageProps {
   initialStep?: LoginStep;
 }
@@ -269,42 +267,7 @@ const LoginPage: React.FC<LoginPageProps> = ({ initialStep = LOGIN_STEPS.LOGIN }
     }
   };
 
-  // 5. Handle Debug Login
-  const handleDebugLogin = async (email: string) => {
-    setFormValues((prev) => ({
-      ...prev,
-      email,
-      password: DEBUG_PASSWORD,
-    }));
-
-    if (isSubmitting) return;
-    setIsSubmitting(true);
-
-    try {
-      const response = await fetch('/api/v1/auth/login', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ email, password: DEBUG_PASSWORD }),
-      });
-
-      const payload = await response.json().catch(() => ({}));
-
-      if (!response.ok) {
-        throw new Error(payload?.message || 'Unable to login with those credentials.');
-      }
-
-      await refreshUser();
-      navigate('/chats', { replace: true });
-    } catch (error: unknown) {
-      toast.error(error instanceof Error ? error.message : 'Debug login failed.');
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
-
-  // 6. Handle Legacy Username Step 2 Submit
+  // 5. Handle Legacy Username Step 2 Submit
   const handleUsernameSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
 
@@ -439,39 +402,6 @@ const LoginPage: React.FC<LoginPageProps> = ({ initialStep = LOGIN_STEPS.LOGIN }
                     Sign up
                   </button>
                 </p>
-
-                <div className={styles.debugLogin}>
-                  <p className={styles.debugLabel}>Debug logins</p>
-                  <div className={styles.debugButtons}>
-                    <Button
-                      type="button"
-                      size="sm"
-                      fullWidth
-                      className={styles.debugButton}
-                      onClick={() => handleDebugLogin('aminsec@gmail.com')}
-                    >
-                      Login with aminsec
-                    </Button>
-                    <Button
-                      type="button"
-                      size="sm"
-                      fullWidth
-                      className={styles.debugButton}
-                      onClick={() => handleDebugLogin('snow@gmail.com')}
-                    >
-                      Login with snow
-                    </Button>
-                    <Button
-                      type="button"
-                      size="sm"
-                      fullWidth
-                      className={styles.debugButton}
-                      onClick={() => handleDebugLogin('blackhole@gmail.com')}
-                    >
-                      Login with blackhole
-                    </Button>
-                  </div>
-                </div>
               </form>
             </>
           )}
