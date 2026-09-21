@@ -62,7 +62,7 @@ export async function getRawUserInfoByEmail(email: string): Promise<[RawUserInfo
     }
 };
 
-export async function createUser(email: string, password: string, emailVerifyToken: string): Promise<[ProtectedUserInfo, null] | [null, ErrorResponse]> {
+export async function createUser(email: string, username: string, password: string, emailVerifyToken: string): Promise<[ProtectedUserInfo, null] | [null, ErrorResponse]> {
     try {
         const hashedPassword = await Bun.password.hash(password)
         const now = Date.now();
@@ -70,7 +70,7 @@ export async function createUser(email: string, password: string, emailVerifyTok
         const userInfoToInsert: InsertUserInfo = {
             email: email,
             password: hashedPassword,
-            username: email.split("@")[0],
+            username: username ? username : email.split("@")[0],
             profile_pic: '/statics/images/default.png',
             role: "user",
             joined_at: new Date(),

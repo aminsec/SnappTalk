@@ -45,7 +45,7 @@ export async function handleSignup(req: Request, resp: Response) {
     const [ rawToken, hashedToken ] = getRandomString();
     const verifyUrl = `${protocol}://${hostname}/api/v1/auth/verify-email/${rawToken}`;
 
-    const [ createUserResult, createError ] = await createUser(email, password, hashedToken);
+    const [ createUserResult, createError ] = await createUser(email, username, password, hashedToken);
     if(createError){
         showError(createError, resp);
         return;
