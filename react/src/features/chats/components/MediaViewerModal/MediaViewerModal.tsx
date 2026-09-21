@@ -19,7 +19,9 @@ export const MediaViewerModal: React.FC<MediaViewerModalProps> = ({
 }) => {
   if (!media) return null;
 
-  const title = getMessageFileName(media.message) || (media.type === 'gif' ? 'GIF' : 'Photo');
+  const title =
+    getMessageFileName(media.message)
+    || (media.type === 'gif' ? 'GIF' : media.type === 'video' ? 'Video' : 'Photo');
 
   return createPortal(
     <div
@@ -46,7 +48,17 @@ export const MediaViewerModal: React.FC<MediaViewerModalProps> = ({
           </button>
         </div>
       </div>
-      <img src={media.url} alt={title || 'Shared media'} />
+      {media.type === 'video' ? (
+        <video
+          src={media.url}
+          controls
+          autoPlay
+          playsInline
+          className={styles.mediaViewerVideo}
+        />
+      ) : (
+        <img src={media.url} alt={title || 'Shared media'} />
+      )}
     </div>,
     document.body
   );

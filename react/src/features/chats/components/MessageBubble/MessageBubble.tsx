@@ -7,6 +7,7 @@ import {
   faImage,
   faFile as faFileSolid,
   faDownload,
+  faExpand,
 } from '@fortawesome/free-solid-svg-icons';
 import { ProfileAvatar } from '@/shared/components';
 import sentIcon from "@/shared/assets/icons/sent.svg";
@@ -57,6 +58,7 @@ export interface MessageBubbleProps {
   onLoadMediaMessage: (message: any) => void;
   onDownloadMessage: (message: any) => void;
   onOpenMediaViewer: (media: { url: string; message: any; type: string }) => void;
+  onRememberMediaDimensions?: (dims: MediaDimensions) => void;
 }
 
 export const MessageBubble: React.FC<MessageBubbleProps> = React.memo(({
@@ -85,6 +87,7 @@ export const MessageBubble: React.FC<MessageBubbleProps> = React.memo(({
   onLoadMediaMessage,
   onDownloadMessage,
   onOpenMediaViewer,
+  onRememberMediaDimensions,
 }) => {
   const userId = user?._id || user?.id;
   const messageSenderId = getSenderId(message)?.toString();
@@ -120,6 +123,7 @@ export const MessageBubble: React.FC<MessageBubbleProps> = React.memo(({
     && ['image', 'gif', 'video'].includes(resolvedMessageType);
   const lockedBoxWidth = lockedMediaBox ? `${lockedMediaBox.width}px` : undefined;
   const lockedBoxRatio = lockedMediaBox?.aspectRatio;
+  const hasReachedMaxSize = Boolean(lockedMediaBox?.hasReachedMaxSize);
   const showMediaDownloadPreview = Boolean(
     message?.attachment_key
     && !mediaUrl
@@ -133,14 +137,22 @@ export const MessageBubble: React.FC<MessageBubbleProps> = React.memo(({
   const hasMediaCaption = isMedia && Boolean(messageContent.trim());
 
   const lockedPreviewStyle = !lockApplies
-    ? undefined
+    ? (hasMediaCaption
+      ? { aspectRatio: resolvedMessageType === 'video' ? '16 / 10' : '4 / 3' }
+      : undefined)
     : resolvedMessageType === 'video'
       ? (hasMediaCaption
-        ? { aspectRatio: lockedBoxRatio }
+        ? {
+            aspectRatio: lockedBoxRatio,
+            minWidth: lockedBoxWidth ? `min(${lockedBoxWidth}, min(390px, 76vw))` : undefined,
+          }
         : { width: lockedBoxWidth, maxWidth: 'min(100%, 76vw)', aspectRatio: lockedBoxRatio })
       : !hasMediaCaption
         ? { width: lockedBoxWidth, maxWidth: '100%', aspectRatio: lockedBoxRatio }
-        : { aspectRatio: lockedBoxRatio };
+        : {
+            aspectRatio: lockedBoxRatio,
+            minWidth: lockedBoxWidth ? `min(${lockedBoxWidth}, min(390px, 72vw))` : undefined,
+          };
   const hasReplyMedia = isMedia && Boolean(replyPreview);
   const showMediaFooter = isMedia && !hasMediaCaption;
   const isDocument = resolvedMessageType === 'document'
@@ -421,10 +433,24 @@ export const MessageBubble: React.FC<MessageBubbleProps> = React.memo(({
               footer={showMediaFooter ? messageFooterMarkup : undefined}
               style={lockApplies && resolvedMessageType === 'video'
                 ? (hasMediaCaption
-                  ? { aspectRatio: lockedBoxRatio }
+                  ? {
+                      aspectRatio: lockedBoxRatio,
+                      minWidth: lockedBoxWidth ? `min(${lockedBoxWidth}, min(390px, 76vw))` : undefined,
+                    }
                   : { width: lockedBoxWidth, aspectRatio: lockedBoxRatio })
-                : undefined}
+                : (hasMediaCaption
+                  ? { aspectRatio: '16 / 10' }
+                  : undefined)}
               className={styles.videoPlayer}
+              hasReachedMaxSize={hasReachedMaxSize}
+              onDimensionsLoaded={onRememberMediaDimensions}
+              onOpenFullscreen={() => {
+                onOpenMediaViewer({
+                  url: mediaUrl,
+                  message,
+                  type: 'video',
+                });
+              }}
             />
           )}
           {isMedia && isAudioMedia && (
@@ -494,7 +520,9 @@ export const MessageBubble: React.FC<MessageBubbleProps> = React.memo(({
                       minWidth: lockedBoxWidth ? `min(${lockedBoxWidth}, min(390px, 72vw))` : undefined,
                     }
                   : { width: lockedBoxWidth, aspectRatio: lockedBoxRatio })
-                : undefined}
+                : (hasMediaCaption && ['image', 'gif'].includes(resolvedMessageType)
+                  ? { aspectRatio: '4 / 3' }
+                  : undefined)}
             >
               <button
                 type="button"
@@ -521,11 +549,38 @@ export const MessageBubble: React.FC<MessageBubbleProps> = React.memo(({
                 style={lockApplies && resolvedMessageType === 'gif' && !hasMediaCaption
                   ? { width: lockedBoxWidth, aspectRatio: lockedBoxRatio, maxHeight: 'none' }
                   : undefined}
+                onLoad={(e) => {
+                  const img = e.currentTarget;
+                  if (!mediaDimensions && img.naturalWidth && img.naturalHeight && onRememberMediaDimensions) {
+                    onRememberMediaDimensions({
+                      width: img.naturalWidth,
+                      height: img.naturalHeight,
+                    });
+                  }
+                }}
                 onError={(e) => {
                     (e.target as HTMLElement).style.display = 'none';
                   }}
                 />
               </button>
+              {hasReachedMaxSize && (
+                <button
+                  type="button"
+                  className={styles.mediaFullscreenButton}
+                  onClick={(event) => {
+                    event.stopPropagation();
+                    onOpenMediaViewer({
+                      url: mediaUrl,
+                      message,
+                      type: resolvedMessageType,
+                    });
+                  }}
+                  aria-label="Open fullscreen"
+                  title="Open fullscreen"
+                >
+                  <FontAwesomeIcon icon={faExpand} />
+                </button>
+              )}
               {!['sticker', 'gif'].includes(resolvedMessageType) && (
                 <button
                   type="button"

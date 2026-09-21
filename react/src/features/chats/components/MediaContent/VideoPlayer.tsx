@@ -27,6 +27,9 @@ export interface VideoPlayerProps {
   captioned?: boolean;
   reply?: boolean;
   className?: string;
+  onOpenFullscreen?: () => void;
+  hasReachedMaxSize?: boolean;
+  onDimensionsLoaded?: (dims: { width: number; height: number }) => void;
 }
 
 /**
@@ -40,6 +43,9 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
   footer,
   style,
   className,
+  onOpenFullscreen,
+  hasReachedMaxSize,
+  onDimensionsLoaded,
 }) => {
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const containerRef = useRef<HTMLDivElement | null>(null);
@@ -155,6 +161,10 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
   );
 
   const toggleFullscreen = useCallback(() => {
+    if (onOpenFullscreen) {
+      onOpenFullscreen();
+      return;
+    }
     const container = containerRef.current;
     const video = videoRef.current;
     if (!container || !video) return;
@@ -168,7 +178,7 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
     } else {
       document.exitFullscreen?.().catch(() => {});
     }
-  }, []);
+  }, [onOpenFullscreen]);
 
   const restartVideo = useCallback(() => {
     const video = videoRef.current;
@@ -207,6 +217,9 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
     const onLoadedMetadata = () => {
       setDuration(video.duration || 0);
       setIsLoading(false);
+      if (video.videoWidth && video.videoHeight && onDimensionsLoaded) {
+        onDimensionsLoaded({ width: video.videoWidth, height: video.videoHeight });
+      }
     };
     const onCanPlay = () => setIsLoading(false);
     const onWaiting = () => setIsLoading(true);
@@ -271,6 +284,21 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
         onClick={togglePlay}
         onDoubleClick={toggleFullscreen}
       />
+
+      {hasReachedMaxSize && onOpenFullscreen && (
+        <button
+          type="button"
+          className={styles.videoTopFullscreenBtn}
+          onClick={(e) => {
+            e.stopPropagation();
+            onOpenFullscreen();
+          }}
+          aria-label="Open fullscreen"
+          title="Open fullscreen"
+        >
+          <FontAwesomeIcon icon={faExpand} />
+        </button>
+      )}
 
       {/* Sent/received time + seen overlay (Telegram-style) */}
       {footer && (

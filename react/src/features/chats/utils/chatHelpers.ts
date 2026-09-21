@@ -623,12 +623,25 @@ export const getLockedMediaBox = (
   const cap = MEDIA_BOX_CAPS[mediaType] || MEDIA_BOX_CAPS.image;
   const aspectRatio = dimensions.width / dimensions.height;
   if (!Number.isFinite(aspectRatio) || aspectRatio <= 0) return null;
-  let width = cap.width;
-  let height = width / aspectRatio;
+
+  // Use natural intrinsic dimensions without upscaling small media
+  let width = dimensions.width;
+  let height = dimensions.height;
+  let hasReachedMaxSize = false;
+
+  // Enforce maximum width cap
+  if (width > cap.width) {
+    width = cap.width;
+    height = width / aspectRatio;
+    hasReachedMaxSize = true;
+  }
+  // Enforce maximum height cap
   if (height > cap.height) {
     height = cap.height;
     width = height * aspectRatio;
+    hasReachedMaxSize = true;
   }
+
   if (!Number.isFinite(width) || !Number.isFinite(height) || width <= 0 || height <= 0) {
     return null;
   }
@@ -636,6 +649,7 @@ export const getLockedMediaBox = (
     width: Math.round(width),
     height: Math.round(height),
     aspectRatio: `${dimensions.width} / ${dimensions.height}`,
+    hasReachedMaxSize,
   };
 };
 

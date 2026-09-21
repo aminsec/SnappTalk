@@ -9,6 +9,7 @@ export interface LockedMediaBox {
   width: number;
   height: number;
   aspectRatio: string;
+  hasReachedMaxSize?: boolean;
 }
 
 export interface MediaCacheEntry {

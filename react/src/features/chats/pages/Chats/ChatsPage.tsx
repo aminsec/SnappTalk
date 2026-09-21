@@ -582,7 +582,11 @@ function ChatsPage() {
               prev.map((m) => {
                 const mid = getMessageId(m);
                 if (mid === optimisticId) {
-                  return { ...serverMessage, client_id: m.client_id || optimisticId };
+                  return {
+                    ...serverMessage,
+                    local_preview: m.local_preview || serverMessage.local_preview,
+                    client_id: m.client_id || optimisticId,
+                  };
                 }
                 return m;
               })
@@ -5221,6 +5225,9 @@ function ChatsPage() {
                     onLoadMediaMessage={loadMediaMessage}
                     onDownloadMessage={handleDownloadMessage}
                     onOpenMediaViewer={setMediaViewer}
+                    onRememberMediaDimensions={(dims) => {
+                      if (mediaStateKey) rememberMediaDimensions(mediaStateKey, dims);
+                    }}
                   />
                 );
               })}
