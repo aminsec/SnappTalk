@@ -24,6 +24,9 @@ const AppearanceSection: React.FC = () => {
 
   useEffect(() => {
     localStorage.setItem(WALLPAPER_STORAGE_KEY, selectedId);
+    window.dispatchEvent(
+      new CustomEvent('wallpaper-change', { detail: { wallpaperId: selectedId } })
+    );
   }, [selectedId]);
 
   const handleMessageSizeChange = (value: number) => {

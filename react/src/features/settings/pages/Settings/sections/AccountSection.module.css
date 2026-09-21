@@ -1,49 +1,301 @@
-.generalContainer {
+.accountContainer {
   width: 100%;
+  max-width: 680px;
+  margin: 0 auto;
   color: var(--text-main);
   display: flex;
   flex-direction: column;
-  gap: 20px;
-  align-items: center;
+  gap: 22px;
+  text-align: left;
 }
 
 .sectionHeader {
   text-align: center;
+  margin-bottom: 4px;
 }
 
 .eyebrow {
   display: block;
   margin-bottom: 7px;
-  color: #a78bfa;
+  color: var(--theme-accent, #a78bfa);
   font-size: 11px;
   font-weight: 700;
-  letter-spacing: 0.1em;
+  letter-spacing: 0.12em;
   text-transform: uppercase;
+  transition: color 0.3s ease;
 }
 
 .sectionHeader h2 {
-  font-size: 20px;
+  font-size: 22px;
+  font-weight: 700;
   margin-bottom: 6px;
+  color: var(--text-main);
+  letter-spacing: -0.01em;
 }
 
 .sectionHeader p {
   color: var(--text-muted);
   font-size: 14px;
+  line-height: 1.5;
+  max-width: 520px;
+  margin: 0 auto;
 }
 
+/* ============================================================
+   1. Account Overview Card (Themed)
+   ============================================================ */
+.overviewCard {
+  width: 100%;
+  padding: 22px;
+  border-radius: 16px;
+  background: linear-gradient(135deg, var(--theme-accent-soft, rgba(139, 92, 246, 0.08)) 0%, rgba(255, 255, 255, 0.02) 100%), var(--bg-panel);
+  border: 1px solid var(--theme-accent-border, rgba(139, 92, 246, 0.22));
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.18);
+  transition: border-color 0.3s ease, background 0.3s ease;
+}
+
+.overviewTop {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.avatarWrapper {
+  position: relative;
+  flex-shrink: 0;
+}
+
+.avatar {
+  border: 2px solid var(--theme-accent, #8b5cf6) !important;
+  box-shadow: 0 0 12px var(--theme-accent-glow, rgba(139, 92, 246, 0.25));
+  transition: border-color 0.3s ease, box-shadow 0.3s ease;
+}
+
+.activeIndicator {
+  position: absolute;
+  bottom: 2px;
+  right: 2px;
+  width: 13px;
+  height: 13px;
+  border-radius: 50%;
+  background: #00c897;
+  border: 2px solid var(--bg-panel);
+  box-shadow: 0 0 6px rgba(0, 200, 151, 0.6);
+}
+
+.userInfo {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
+.userTitleRow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.username {
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--text-main);
+  margin: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.badgeProtected {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 11px;
+  font-weight: 600;
+  padding: 2px 8px;
+  border-radius: 9999px;
+  background: rgba(0, 200, 151, 0.12);
+  color: #00c897;
+  border: 1px solid rgba(0, 200, 151, 0.3);
+  letter-spacing: 0.02em;
+}
+
+.badgeIcon {
+  font-size: 10px;
+}
+
+.themeBadge {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 11px;
+  font-weight: 600;
+  padding: 2px 8px;
+  border-radius: 9999px;
+  background: var(--theme-accent-soft, rgba(255, 255, 255, 0.08));
+  color: var(--theme-accent, var(--text-main));
+  border: 1px solid var(--theme-accent-border, rgba(255, 255, 255, 0.15));
+  letter-spacing: 0.02em;
+  transition: all 0.3s ease;
+}
+
+.themeIcon {
+  font-size: 10px;
+}
+
+.userEmail {
+  font-size: 13px;
+  color: var(--text-muted);
+  margin: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.credentialsGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 10px;
+}
+
+.credItem {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 14px;
+  border-radius: 12px;
+  background: rgba(0, 0, 0, 0.22);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  transition: border-color 0.2s ease, background 0.2s ease;
+}
+
+.credIconWrapper {
+  width: 34px;
+  height: 34px;
+  border-radius: 8px;
+  background: var(--theme-accent-soft, rgba(139, 92, 246, 0.12));
+  color: var(--theme-accent, #a78bfa);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 14px;
+  flex-shrink: 0;
+  transition: background 0.3s ease, color 0.3s ease;
+}
+
+.credContent {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+  overflow: hidden;
+}
+
+.credLabel {
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.credValue {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-main);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.idRow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.idCode {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 12px;
+  color: var(--theme-accent, #c4b5fd);
+  background: var(--theme-accent-soft, rgba(139, 92, 246, 0.1));
+  border: 1px solid var(--theme-accent-border, rgba(139, 92, 246, 0.2));
+  padding: 2px 7px;
+  border-radius: 5px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.idCode:hover {
+  filter: brightness(1.15);
+}
+
+.copyBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background: var(--theme-accent-soft, rgba(255, 255, 255, 0.06));
+  border: 1px solid var(--theme-accent-border, rgba(255, 255, 255, 0.1));
+  color: var(--theme-accent, var(--text-main));
+  padding: 3px 8px;
+  border-radius: 6px;
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.copyBtn:hover {
+  filter: brightness(1.2);
+  transform: translateY(-1px);
+}
+
+.copyBtn:active {
+  transform: translateY(0);
+}
+
+/* ============================================================
+   2. Password & Authentication Card
+   ============================================================ */
 .cardSection {
   width: 100%;
-  padding: 20px;
-  border-radius: 14px;
+  padding: 24px;
+  border-radius: 16px;
   background: rgba(255, 255, 255, 0.035);
   border: 1px solid rgba(255, 255, 255, 0.08);
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: 20px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.14);
+}
+
+.cardHeader {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.cardHeaderIconWrapper {
+  width: 40px;
+  height: 40px;
+  border-radius: 10px;
+  background: var(--theme-accent-soft, rgba(139, 92, 246, 0.12));
+  border: 1px solid var(--theme-accent-border, rgba(139, 92, 246, 0.25));
+  color: var(--theme-accent, #a78bfa);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 16px;
+  flex-shrink: 0;
+  transition: all 0.3s ease;
 }
 
 .cardHeader h4 {
-  margin: 0 0 4px;
+  margin: 0 0 3px;
   font-size: 16px;
   font-weight: 600;
   color: var(--text-main);
@@ -55,10 +307,94 @@
   color: var(--text-muted);
 }
 
+/* ============================================================
+   Fresh Error Alert Banner
+   ============================================================ */
+.errorAlert {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 13px 16px;
+  border-radius: 12px;
+  background: linear-gradient(135deg, rgba(239, 68, 68, 0.16) 0%, rgba(32, 14, 18, 0.95) 100%);
+  border: 1px solid rgba(239, 68, 68, 0.4);
+  box-shadow: 0 4px 20px rgba(239, 68, 68, 0.14);
+  animation: errorSlideIn 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.errorAlertIcon {
+  width: 28px;
+  height: 28px;
+  border-radius: 8px;
+  background: rgba(239, 68, 68, 0.22);
+  color: #ef4444;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 14px;
+  flex-shrink: 0;
+  margin-top: 1px;
+}
+
+.errorAlertContent {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.errorAlertContent strong {
+  font-size: 13px;
+  font-weight: 700;
+  color: #fca5a5;
+  letter-spacing: 0.01em;
+}
+
+.errorAlertContent p {
+  margin: 0;
+  font-size: 12.5px;
+  color: #fecaca;
+  line-height: 1.4;
+}
+
+.errorAlertDismiss {
+  background: transparent;
+  border: none;
+  color: #fca5a5;
+  cursor: pointer;
+  padding: 4px 6px;
+  border-radius: 6px;
+  font-size: 13px;
+  transition: all 0.15s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.errorAlertDismiss:hover {
+  background: rgba(239, 68, 68, 0.2);
+  color: #ffffff;
+}
+
+@keyframes errorSlideIn {
+  from {
+    opacity: 0;
+    transform: translateY(-8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* ============================================================
+   Form Inputs & Error States
+   ============================================================ */
 .passwordForm {
   display: flex;
   flex-direction: column;
-  gap: 14px;
+  gap: 16px;
   width: 100%;
 }
 
@@ -75,21 +411,208 @@
   color: var(--text-muted);
 }
 
+.labelRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.strengthBadge {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  padding: 2px 8px;
+  border-radius: 6px;
+}
+
+.strengthWeak {
+  color: #ff5c5c;
+  background: rgba(255, 92, 92, 0.12);
+  border: 1px solid rgba(255, 92, 92, 0.25);
+}
+
+.strengthFair {
+  color: #f59e0b;
+  background: rgba(245, 158, 11, 0.12);
+  border: 1px solid rgba(245, 158, 11, 0.25);
+}
+
+.strengthGood {
+  color: #38bdf8;
+  background: rgba(56, 189, 248, 0.12);
+  border: 1px solid rgba(56, 189, 248, 0.25);
+}
+
+.strengthStrong {
+  color: #10b981;
+  background: rgba(16, 185, 129, 0.12);
+  border: 1px solid rgba(16, 185, 129, 0.25);
+}
+
+.inputWrapper {
+  position: relative;
+  width: 100%;
+  display: flex;
+  align-items: center;
+}
+
 .fieldInput {
   width: 100%;
-  padding: 10px 14px;
+  height: 44px;
+  padding: 0 42px 0 14px;
   border-radius: 10px;
   background: rgba(255, 255, 255, 0.05);
   border: 1px solid rgba(255, 255, 255, 0.1);
   color: var(--text-main);
   font-size: 14px;
-  transition: border-color 0.2s ease, background 0.2s ease;
+  transition: border-color 0.2s ease, background 0.2s ease, box-shadow 0.2s ease;
   outline: none;
 }
 
 .fieldInput:focus {
   background: rgba(255, 255, 255, 0.08);
-  border-color: var(--chat-accent, #55aaf4);
+  border-color: var(--theme-accent, #2D90E4);
+  box-shadow: 0 0 0 3px var(--theme-accent-glow, rgba(45, 144, 228, 0.18));
+}
+
+.fieldInputError {
+  border-color: #ef4444 !important;
+  background: rgba(239, 68, 68, 0.05) !important;
+  box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.2) !important;
+  animation: inputShake 0.3s cubic-bezier(0.36, 0.07, 0.19, 0.97) both;
+}
+
+@keyframes inputShake {
+  10%, 90% { transform: translate3d(-1px, 0, 0); }
+  20%, 80% { transform: translate3d(2px, 0, 0); }
+  30%, 50%, 70% { transform: translate3d(-3px, 0, 0); }
+  40%, 60% { transform: translate3d(3px, 0, 0); }
+}
+
+.toggleVisibilityBtn {
+  position: absolute;
+  right: 8px;
+  background: transparent;
+  border: none;
+  color: var(--icon-color, #9ca3af);
+  cursor: pointer;
+  padding: 8px 10px;
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 14px;
+  transition: color 0.2s ease, background-color 0.2s ease;
+}
+
+.toggleVisibilityBtn:hover {
+  color: var(--text-main);
+  background: rgba(255, 255, 255, 0.08);
+}
+
+/* Strength meter bar */
+.strengthMeterContainer {
+  display: flex;
+  gap: 5px;
+  margin-top: 6px;
+  width: 100%;
+  height: 4px;
+}
+
+.strengthMeterBar {
+  flex: 1;
+  height: 100%;
+  border-radius: 2px;
+  background: rgba(255, 255, 255, 0.08);
+  transition: background-color 0.25s ease;
+}
+
+.meterFilled1 {
+  background: #ff5c5c;
+}
+
+.meterFilled2 {
+  background: #f59e0b;
+}
+
+.meterFilled3 {
+  background: #38bdf8;
+}
+
+.meterFilled4 {
+  background: #10b981;
+}
+
+/* Requirements Box */
+.requirementsBox {
+  background: rgba(0, 0, 0, 0.2);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  border-radius: 12px;
+  padding: 14px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.requirementsTitle {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.requirementsGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 8px 12px;
+}
+
+.reqItem {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  transition: color 0.2s ease;
+}
+
+.reqIcon {
+  font-size: 12px;
+  flex-shrink: 0;
+}
+
+.reqMet {
+  color: #10b981;
+  font-weight: 500;
+}
+
+.reqUnmet {
+  color: var(--text-muted);
+  opacity: 0.7;
+}
+
+/* Security notice */
+.securityNotice {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 12px 14px;
+  border-radius: 10px;
+  background: var(--theme-accent-soft, rgba(45, 144, 228, 0.06));
+  border: 1px solid var(--theme-accent-border, rgba(45, 144, 228, 0.18));
+  color: var(--text-muted);
+  font-size: 12px;
+  line-height: 1.5;
+  transition: all 0.3s ease;
+}
+
+.noticeIcon {
+  color: var(--theme-accent, #2D90E4);
+  font-size: 14px;
+  margin-top: 2px;
+  flex-shrink: 0;
+  transition: color 0.3s ease;
 }
 
 .passwordActions {
@@ -99,26 +622,49 @@
 }
 
 .updatePasswordBtn {
-  min-width: 140px;
+  min-width: 160px;
 }
 
-.dangerZone {
+/* ============================================================
+   3. Danger Zone
+   ============================================================ */
+.dangerZoneCard {
   width: 100%;
-  margin-top: 6px;
-  padding: 16px;
-  border-radius: 12px;
-  background: rgba(255, 92, 92, 0.08);
-  border: 1px solid rgba(255, 92, 92, 0.25);
+  padding: 22px;
+  border-radius: 16px;
+  background: linear-gradient(180deg, rgba(239, 68, 68, 0.06) 0%, rgba(239, 68, 68, 0.02) 100%);
+  border: 1px solid rgba(239, 68, 68, 0.24);
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  box-shadow: 0 4px 20px rgba(239, 68, 68, 0.04);
+}
+
+.dangerHeader {
   display: flex;
   align-items: center;
-  justify-content: space-between;
   gap: 12px;
 }
 
-.dangerCopy h4 {
-  margin: 0 0 4px;
+.dangerIconBadge {
+  width: 38px;
+  height: 38px;
+  border-radius: 10px;
+  background: rgba(239, 68, 68, 0.15);
+  border: 1px solid rgba(239, 68, 68, 0.3);
+  color: #ef4444;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   font-size: 16px;
-  color: var(--text-main);
+  flex-shrink: 0;
+}
+
+.dangerCopy h4 {
+  margin: 0 0 3px;
+  font-size: 16px;
+  font-weight: 600;
+  color: #ff5c5c;
 }
 
 .dangerCopy p {
@@ -127,51 +673,193 @@
   color: var(--text-muted);
 }
 
-.deleteBtn {
-  min-width: 140px;
+.dangerNoticeList {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  padding: 0 2px;
 }
 
+.dangerNoticeItem {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  font-size: 12.5px;
+  color: var(--text-muted);
+  line-height: 1.45;
+}
+
+.dangerBullet {
+  color: #ef4444;
+  font-size: 14px;
+  font-weight: bold;
+}
+
+.dangerActionRow {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 4px;
+}
+
+.deleteBtn {
+  min-width: 150px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+
+.btnIcon {
+  font-size: 13px;
+}
+
+/* ============================================================
+   4. Confirmation Modal
+   ============================================================ */
 .confirmOverlay {
-  animation: fadeIn 0.18s ease-out;
   position: fixed;
   inset: 0;
   display: flex;
   align-items: center;
   justify-content: center;
-  background: rgba(0, 0, 0, 0.4);
-  backdrop-filter: blur(1px);
+  background: rgba(0, 0, 0, 0.65);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
   z-index: 2000;
   padding: 20px;
+  animation: fadeIn 0.2s ease-out;
 }
 
 .confirmBox {
-  animation: popIn 0.22s ease-out;
   width: 100%;
-  max-width: 320px;
-  background: var(--bg-panel);
-  border-radius: 12px;
-  border: 1px solid var(--input-border);
-  padding: 1.25rem;
-  box-shadow: 0 12px 36px rgba(0, 0, 0, 0.25);
+  max-width: 420px;
+  background: var(--bg-panel, #161B1C);
+  border-radius: 16px;
+  border: 1px solid rgba(239, 68, 68, 0.35);
+  padding: 1.5rem;
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.5);
+  animation: popIn 0.22s cubic-bezier(0.16, 1, 0.3, 1);
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.modalHeader {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.modalWarningIcon {
+  width: 34px;
+  height: 34px;
+  border-radius: 8px;
+  background: rgba(239, 68, 68, 0.15);
+  color: #ef4444;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 15px;
+  flex-shrink: 0;
 }
 
 .confirmTitle {
-  margin: 0 0 0.35rem;
+  margin: 0;
   font-weight: 700;
-  font-size: 1rem;
+  font-size: 1.05rem;
   color: var(--text-main);
 }
 
 .confirmText {
-  margin: 0 0 1rem;
-  font-size: 0.9rem;
+  margin: 0;
+  font-size: 0.88rem;
   color: var(--text-muted);
+  line-height: 1.5;
+}
+
+.confirmText strong {
+  color: #ff5c5c;
+}
+
+.confirmInputGroup {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.confirmInputLabel {
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+.deleteKeyword {
+  color: #ef4444;
+  font-family: ui-monospace, SFMono-Regular, monospace;
+  font-size: 13px;
+}
+
+.confirmInput {
+  width: 100%;
+  height: 40px;
+  padding: 0 12px;
+  border-radius: 8px;
+  background: rgba(0, 0, 0, 0.3);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  color: var(--text-main);
+  font-size: 14px;
+  outline: none;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.confirmInput:focus {
+  border-color: #ef4444;
+  box-shadow: 0 0 0 2px rgba(239, 68, 68, 0.25);
 }
 
 .confirmActions {
   display: flex;
   justify-content: flex-end;
-  gap: 0.5rem;
+  gap: 8px;
+  margin-top: 6px;
+}
+
+.cancelButton,
+.confirmButton {
+  padding: 0.5rem 1rem;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background-color 0.2s ease, color 0.2s ease, border-color 0.2s ease, opacity 0.2s ease;
+}
+
+.cancelButton {
+  border: 1px solid var(--input-border, rgba(255, 255, 255, 0.12));
+  background: transparent;
+  color: var(--text-main);
+}
+
+.cancelButton:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.08);
+  border-color: rgba(255, 255, 255, 0.2);
+}
+
+.confirmButton {
+  background: #ef4444;
+  border: 1px solid #ef4444;
+  color: #ffffff;
+  font-weight: 600;
+}
+
+.confirmButton:hover:not(:disabled) {
+  background: #dc2626;
+  border-color: #dc2626;
+}
+
+.cancelButton:disabled,
+.confirmButton:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
 }
 
 @keyframes fadeIn {
@@ -180,7 +868,7 @@
 }
 
 @keyframes popIn {
-  from { opacity: 0; transform: scale(0.94); }
+  from { opacity: 0; transform: scale(0.95); }
   to { opacity: 1; transform: scale(1); }
 }
 
@@ -191,39 +879,45 @@
   }
 }
 
-.cancelButton,
-.confirmButton {
-  padding: 0.45rem 0.9rem;
-  border-radius: 8px;
-  border: 1px solid var(--input-border);
-  background: transparent;
-  color: var(--text-primary);
-  cursor: pointer;
-  transition: background-color 0.2s ease, color 0.2s ease, border-color 0.2s ease;
-}
+/* ============================================================
+   Mobile Responsiveness
+   ============================================================ */
+@media (max-width: 640px) {
+  .accountContainer {
+    gap: 18px;
+  }
 
-.cancelButton:hover:not(:disabled) {
-  background: rgba(255, 255, 255, 0.08);
-  border-color: rgba(255, 255, 255, 0.12);
-}
+  .overviewCard,
+  .cardSection,
+  .dangerZoneCard {
+    padding: 16px;
+  }
 
-.confirmButton {
-  background: rgba(255, 18, 18, 0.1);
-  border-color: rgba(255, 18, 18, 0.4);
-  color: var(--text-primary);
-}
+  .credentialsGrid {
+    grid-template-columns: 1fr;
+  }
 
-.confirmButton:hover:not(:disabled) {
-  background: rgba(255, 18, 18, 0.2);
-  border-color: rgba(255, 18, 18, 0.6);
-}
+  .requirementsGrid {
+    grid-template-columns: 1fr;
+  }
 
-.deleteBtn:hover:not(:disabled) {
-  background-color: #e14a4a;
-}
+  .passwordActions,
+  .dangerActionRow {
+    justify-content: stretch;
+  }
 
-.cancelButton:disabled,
-.confirmButton:disabled {
-  opacity: 0.6;
-  cursor: not-allowed;
+  .updatePasswordBtn,
+  .deleteBtn {
+    width: 100%;
+  }
+
+  .confirmActions {
+    flex-direction: column-reverse;
+  }
+
+  .cancelButton,
+  .confirmButton {
+    width: 100%;
+    text-align: center;
+  }
 }
