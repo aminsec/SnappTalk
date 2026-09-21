@@ -1,13 +1,22 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faArrowLeft, faBars, faRightFromBracket } from '@fortawesome/free-solid-svg-icons';
 
 import { Sidebar, UserCard, OptionItem } from '@/shared/components';
 import { useAuth } from '@/shared/state/useAuth';
+import { wallpapers, WALLPAPER_STORAGE_KEY } from '@/shared/utils/wallpapers';
 
 import { settingsOptions } from './data/options';
 import styles from './Settings.module.css';
+
+function hexToRgba(hex: string, alpha: number): string {
+  const cleanHex = hex.replace('#', '');
+  const r = parseInt(cleanHex.substring(0, 2), 16) || 0;
+  const g = parseInt(cleanHex.substring(2, 4), 16) || 0;
+  const b = parseInt(cleanHex.substring(4, 6), 16) || 0;
+  return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+}
 
 const SettingsPage: React.FC = () => {
   const navigate = useNavigate();
@@ -16,6 +25,58 @@ const SettingsPage: React.FC = () => {
   const [menuOpen, setMenuOpen] = useState<boolean>(false);
   const [isLoggingOut, setIsLoggingOut] = useState<boolean>(false);
   const [showLogoutConfirm, setShowLogoutConfirm] = useState<boolean>(false);
+
+  // Dynamic theme matching
+  const [wallpaperId, setWallpaperId] = useState<string>(() => {
+    if (typeof window === 'undefined') return 'aurora';
+    return localStorage.getItem(WALLPAPER_STORAGE_KEY) || 'aurora';
+  });
+
+  useEffect(() => {
+    const handleStorage = (event: StorageEvent) => {
+      if (event.key === WALLPAPER_STORAGE_KEY && event.newValue) {
+        setWallpaperId(event.newValue);
+      }
+    };
+
+    const handleCustomChange = (event: Event) => {
+      const customEvent = event as CustomEvent<{ wallpaperId: string }>;
+      if (customEvent.detail?.wallpaperId) {
+        setWallpaperId(customEvent.detail.wallpaperId);
+      }
+    };
+
+    window.addEventListener('storage', handleStorage);
+    window.addEventListener('wallpaper-change', handleCustomChange);
+
+    return () => {
+      window.removeEventListener('storage', handleStorage);
+      window.removeEventListener('wallpaper-change', handleCustomChange);
+    };
+  }, []);
+
+  const resolvedWallpaper = useMemo(() => {
+    return (
+      wallpapers.find((w) => w.id === wallpaperId) ||
+      wallpapers.find((w) => w.id === 'aurora') ||
+      wallpapers[0]
+    );
+  }, [wallpaperId]);
+
+  const settingsThemeStyle = useMemo(() => {
+    const accent = resolvedWallpaper.accent || '#3390ec';
+    const accentHover = resolvedWallpaper.accentHover || '#2678c7';
+    return {
+      '--theme-accent': accent,
+      '--theme-accent-hover': accentHover,
+      '--theme-accent-soft': hexToRgba(accent, 0.12),
+      '--theme-accent-border': hexToRgba(accent, 0.28),
+      '--theme-accent-glow': hexToRgba(accent, 0.25),
+      '--icon-active-bg': accent,
+      '--btn-color': accent,
+      '--btn-hover': accentHover,
+    } as React.CSSProperties;
+  }, [resolvedWallpaper]);
 
   const handleNavigate = (path: string) => {
     navigate(path);
@@ -73,6 +134,7 @@ const SettingsPage: React.FC = () => {
 
         <aside
           className={`${styles.settingsSidebar} ${menuOpen ? styles.settingsSidebarOpen : ''}`}
+          style={settingsThemeStyle}
         >
           <div className={styles.drawerHeader}>
             <span>Settings</span>
@@ -113,15 +175,17 @@ const SettingsPage: React.FC = () => {
             ))}
           </div>
 
-          <button
-            type="button"
-            className={styles.sidebarLogoutButton}
-            onClick={() => setShowLogoutConfirm(true)}
-            disabled={isLoggingOut}
-          >
-            <FontAwesomeIcon icon={faRightFromBracket} />
-            <span>{isLoggingOut ? 'Logging out…' : 'Logout'}</span>
-          </button>
+          {menuOpen && (
+            <button
+              type="button"
+              className={styles.drawerLogoutButton}
+              onClick={() => setShowLogoutConfirm(true)}
+              disabled={isLoggingOut}
+            >
+              <FontAwesomeIcon icon={faRightFromBracket} />
+              <span>{isLoggingOut ? 'Logging out…' : 'Logout'}</span>
+            </button>
+          )}
         </aside>
 
         <div className={styles.settingsContent}>
