@@ -21,6 +21,7 @@ const messageSchema = new Schema<Message>({
 
     attachment_key: {
         type: String,
+        allowNull: true,
         default: null
     },
 

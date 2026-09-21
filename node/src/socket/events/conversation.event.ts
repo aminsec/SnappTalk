@@ -58,7 +58,7 @@ export async function handleNewPvConversationEvent(socket: Socket, data: NewPvCo
             content: message_text || " ",
             conversation_id: newPvConversationId,
             replied_to: null,
-            attachment_key: attachment_key || "",
+            attachment_key: attachment_key? attachment_key : null,
             type: message_type,
             deleted_for: []
         };
