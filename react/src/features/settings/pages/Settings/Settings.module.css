@@ -25,9 +25,10 @@
 }
 
 .settingsSidebar {
-    border-left: solid 3px var(--input-border);
-    padding: 10px;
-    width: 25vw;
+    border-left: 1px solid rgba(255, 255, 255, 0.08);
+    border-right: 1px solid rgba(255, 255, 255, 0.08);
+    padding: 18px 14px;
+    width: 280px;
     height: 100%;
     background: linear-gradient(180deg, rgba(255, 255, 255, 0.02), rgba(255, 255, 255, 0)) , var(--bg-panel);
     display: flex;
@@ -36,14 +37,53 @@
     align-content: center;
     justify-content: flex-start;
     align-items: center;
-    gap: 5px;
-    flex: 0 0 320px;
-    min-width: 220px;
-    max-width: 400px;
+    gap: 6px;
+    flex: 0 0 280px;
+    min-width: 240px;
+    max-width: 320px;
     height: 100%;
     overflow-y: auto;
     animation: panelSlideIn 0.35s ease-out;
-    box-shadow: 8px 0 24px rgba(0, 0, 0, 0.2);
+    box-shadow: 4px 0 20px rgba(0, 0, 0, 0.15);
+}
+
+.sidebarHeader {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    width: 100%;
+    padding: 2px 6px 12px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+    margin-bottom: 4px;
+}
+
+.sidebarTitle {
+    font-size: 18px;
+    font-weight: 700;
+    color: var(--text-main);
+    letter-spacing: -0.01em;
+}
+
+.sidebarUserCard {
+    margin-bottom: 6px;
+    width: 100%;
+}
+
+.menuGroup {
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+    margin-top: 4px;
+}
+
+.menuGroupTitle {
+    font-size: 10px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: var(--text-muted);
+    padding: 6px 8px 3px;
 }
 
 .settingsPageName {
@@ -67,32 +107,37 @@
     display: none;
 }
 
-/* Logout button inside the settings drawer */
+/* Logout button inside the settings sidebar */
+.sidebarLogoutButton,
 .drawerLogoutButton {
-    display: none;
+    display: flex;
     align-items: center;
     justify-content: center;
     gap: 10px;
     width: 100%;
     margin-top: auto;
-    padding: 12px 14px;
-    border: 1px solid rgba(255, 18, 18, 0.4);
+    padding: 11px 14px;
+    border: 1px solid rgba(239, 68, 68, 0.25);
     border-radius: 12px;
-    background: rgba(255, 18, 18, 0.1);
-    color: var(--text-primary);
-    font-size: 15px;
-    font-weight: 500;
+    background: rgba(239, 68, 68, 0.08);
+    color: #fca5a5;
+    font-size: 14px;
+    font-weight: 600;
     cursor: pointer;
-    transition: background-color 0.2s ease, border-color 0.2s ease;
+    transition: background-color 0.2s ease, border-color 0.2s ease, transform 0.18s ease;
 }
 
+.sidebarLogoutButton:hover:not(:disabled),
 .drawerLogoutButton:hover:not(:disabled) {
-    background: rgba(255, 18, 18, 0.2);
-    border-color: rgba(255, 18, 18, 0.6);
+    background: rgba(239, 68, 68, 0.18);
+    border-color: rgba(239, 68, 68, 0.45);
+    color: #ff5c5c;
+    transform: translateY(-1px);
 }
 
+.sidebarLogoutButton:disabled,
 .drawerLogoutButton:disabled {
-    opacity: 0.6;
+    opacity: 0.5;
     cursor: not-allowed;
 }
 
@@ -416,8 +461,8 @@
         animation: overlayFade 0.25s ease-out;
     }
 
-    .drawerLogoutButton {
-        display: flex;
+    .sidebarHeader {
+        display: none;
     }
 
     .settingsContent {

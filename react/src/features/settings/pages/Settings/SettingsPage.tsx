@@ -86,24 +86,36 @@ const SettingsPage: React.FC = () => {
             </button>
           </div>
 
-          <UserCard fullWidth className="mb-4" />
+          <div className={styles.sidebarHeader}>
+            <span className={styles.sidebarTitle}>Settings</span>
+          </div>
 
-          {settingsOptions.map(({ label, icon, iconBg, path }) => (
-            <OptionItem
-              key={path}
-              icon={icon}
-              iconBg={iconBg}
-              label={label}
-              size="sm"
-              fullWidth
-              active={pathname.startsWith(path)}
-              onClick={() => handleNavigate(path)}
-            />
-          ))}
+          <UserCard
+            fullWidth
+            avatarSize={46}
+            className={styles.sidebarUserCard}
+            onClick={() => handleNavigate('/settings/profile')}
+          />
+
+          <div className={styles.menuGroup}>
+            <span className={styles.menuGroupTitle}>Navigation</span>
+            {settingsOptions.map(({ label, icon, iconBg, path }) => (
+              <OptionItem
+                key={path}
+                icon={icon}
+                iconBg={iconBg}
+                label={label}
+                size="sm"
+                fullWidth
+                active={pathname.startsWith(path)}
+                onClick={() => handleNavigate(path)}
+              />
+            ))}
+          </div>
 
           <button
             type="button"
-            className={styles.drawerLogoutButton}
+            className={styles.sidebarLogoutButton}
             onClick={() => setShowLogoutConfirm(true)}
             disabled={isLoggingOut}
           >

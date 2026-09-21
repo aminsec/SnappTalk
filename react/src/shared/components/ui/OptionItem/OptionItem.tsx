@@ -2,6 +2,7 @@ import React from 'react';
 import clsx from 'clsx';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { IconDefinition } from '@fortawesome/fontawesome-svg-core';
+import { faChevronRight } from '@fortawesome/free-solid-svg-icons';
 import styles from './OptionItem.module.css';
 
 export interface OptionItemProps {
@@ -20,8 +21,8 @@ export interface OptionItemProps {
 
 const OptionItem: React.FC<OptionItemProps> = ({
   icon,
-  iconColor = 'var(--icon-color)',
-  iconBg = 'var(--bg-cart)',
+  iconColor = '#ffffff',
+  iconBg = 'rgba(255, 255, 255, 0.1)',
   iconPosition = 'left',
   label,
   description = '',
@@ -31,14 +32,17 @@ const OptionItem: React.FC<OptionItemProps> = ({
   size = 'md',
   className = '',
 }) => {
-  const iconStyles = {
-    backgroundColor: iconBg,
-    color: iconColor,
-  };
-
   return (
     <div
       onClick={onClick}
+      role="button"
+      tabIndex={0}
+      onKeyDown={(e) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault();
+          onClick?.();
+        }
+      }}
       className={clsx(
         styles.optionItem,
         styles[size],
@@ -46,9 +50,10 @@ const OptionItem: React.FC<OptionItemProps> = ({
         fullWidth && styles.fullWidth,
         className
       )}
+      style={{ '--item-accent': iconBg } as React.CSSProperties}
     >
       {icon && iconPosition === 'left' && (
-        <span className={styles.iconWrapper} style={iconStyles}>
+        <span className={styles.iconWrapper} style={{ backgroundColor: iconBg, color: iconColor }}>
           <FontAwesomeIcon icon={icon} />
         </span>
       )}
@@ -58,8 +63,12 @@ const OptionItem: React.FC<OptionItemProps> = ({
         {description && <p className={styles.description}>{description}</p>}
       </div>
 
+      <span className={styles.chevronIcon} aria-hidden="true">
+        <FontAwesomeIcon icon={faChevronRight} />
+      </span>
+
       {icon && iconPosition === 'right' && (
-        <span className={styles.iconWrapper} style={iconStyles}>
+        <span className={styles.iconWrapper} style={{ backgroundColor: iconBg, color: iconColor }}>
           <FontAwesomeIcon icon={icon} />
         </span>
       )}
@@ -68,4 +77,3 @@ const OptionItem: React.FC<OptionItemProps> = ({
 };
 
 export default OptionItem;
-

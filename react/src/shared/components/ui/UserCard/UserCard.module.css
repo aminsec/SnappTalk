@@ -1,97 +1,113 @@
 .Profilcart {
-  background-color: var(--bg-cart);
-  padding: 15px 20px;
+  background: rgba(255, 255, 255, 0.035);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  padding: 12px 14px;
   display: flex;
-  gap: 15px;
-  border-radius: 20px;
+  gap: 12px;
+  border-radius: 14px;
   align-items: center;
   min-width: 0;
-  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease, background-color 0.2s ease;
   animation: cardFade 0.3s ease-out;
 }
 
 .Profilcart:hover {
+  background: rgba(255, 255, 255, 0.05);
+  border-color: rgba(255, 255, 255, 0.12);
   transform: translateY(-1px);
-  box-shadow: 0 12px 20px rgba(0, 0, 0, 0.25);
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.2);
 }
 
-/* Text Sizes */
-.sm h3 {
-  font-size: 16px;
-}
-.sm p {
-  font-size: 12px;
+.clickable {
+  cursor: pointer;
 }
 
-.md h3 {
-  font-size: 20px;
-}
-.md p {
-  font-size: 14px;
+.avatarWrapper {
+  position: relative;
+  flex-shrink: 0;
 }
 
-.lg h3 {
-  font-size: 24px;
+.avatar {
+  border: 1.5px solid rgba(255, 255, 255, 0.15) !important;
 }
-.lg p {
-  font-size: 16px;
+
+.statusDot {
+  position: absolute;
+  bottom: 0;
+  right: 0;
+  width: 11px;
+  height: 11px;
+  border-radius: 50%;
+  background: #00c897;
+  border: 2px solid var(--bg-panel);
+  box-shadow: 0 0 5px rgba(0, 200, 151, 0.6);
 }
 
 .ProfileartInfo {
   min-width: 0;
   flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
 }
 
 .ProfileartInfo h3 {
   text-align: left;
-  overflow-wrap: anywhere;
-  word-break: break-word;
+  font-size: 14.5px;
+  font-weight: 600;
+  color: var(--text-main);
+  margin: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
+
 .ProfileartInfo p {
   text-align: left;
   color: var(--text-muted);
-  margin-top: 5px;
-  overflow-wrap: anywhere;
-  word-break: break-word;
+  font-size: 12px;
+  margin: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 /* Skeleton styles */
 .skeletonAvatar {
-  width: 70px;
-  height: 70px;
-  background-color: #3a3a3a;
+  background-color: rgba(255, 255, 255, 0.08);
   border-radius: 50%;
   animation: pulse 1.2s infinite ease-in-out;
+  flex-shrink: 0;
 }
 
 .skeletonText {
   flex: 1;
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 6px;
 }
 
 .skeletonLine {
-  height: 16px;
-  background-color: #3a3a3a;
+  height: 14px;
+  background-color: rgba(255, 255, 255, 0.08);
   width: 70%;
   border-radius: 4px;
 }
 
 .skeletonLineShort {
-  height: 12px;
-  background-color: #3a3a3a;
+  height: 11px;
+  background-color: rgba(255, 255, 255, 0.06);
   width: 50%;
   border-radius: 4px;
 }
 
 @keyframes pulse {
-  0%, 100% { opacity: 1 }
-  50% { opacity: 0.5 }
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
 }
 
 @keyframes cardFade {
-  from { opacity: 0; transform: translateY(8px); }
+  from { opacity: 0; transform: translateY(6px); }
   to { opacity: 1; transform: translateY(0); }
 }
 
