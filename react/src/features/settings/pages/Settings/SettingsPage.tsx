@@ -175,17 +175,16 @@ const SettingsPage: React.FC = () => {
             ))}
           </div>
 
-          {menuOpen && (
-            <button
-              type="button"
-              className={styles.drawerLogoutButton}
-              onClick={() => setShowLogoutConfirm(true)}
-              disabled={isLoggingOut}
-            >
-              <FontAwesomeIcon icon={faRightFromBracket} />
-              <span>{isLoggingOut ? 'Logging out…' : 'Logout'}</span>
-            </button>
-          )}
+          <button
+            type="button"
+            className={styles.sidebarLogoutButton}
+            onClick={() => setShowLogoutConfirm(true)}
+            disabled={isLoggingOut}
+            aria-label="Logout"
+          >
+            <FontAwesomeIcon icon={faRightFromBracket} />
+            <span>{isLoggingOut ? 'Logging out…' : 'Logout'}</span>
+          </button>
         </aside>
 
         <div className={styles.settingsContent}>
