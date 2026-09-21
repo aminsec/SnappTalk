@@ -151,6 +151,8 @@ export const getMessageMediaUrl = (message: any): string =>
   '';
 
 export const getMessageDownloadUrl = (message: any): string =>
+  message?.local_preview ||
+  message?.preview_url ||
   message?.file_url ||
   message?.media_url ||
   message?.url ||

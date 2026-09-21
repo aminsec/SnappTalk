@@ -26,6 +26,7 @@ export interface VideoPlayerProps {
   style?: React.CSSProperties;
   captioned?: boolean;
   reply?: boolean;
+  className?: string;
 }
 
 /**
@@ -38,6 +39,7 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
   poster,
   footer,
   style,
+  className,
 }) => {
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const containerRef = useRef<HTMLDivElement | null>(null);
@@ -251,7 +253,7 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
   return (
     <div
       ref={containerRef}
-      className={`${styles.videoPlayer} ${isFullscreen ? styles.videoPlayerFullscreen : ''}`}
+      className={`${styles.videoPlayer} ${className || ''} ${isFullscreen ? styles.videoPlayerFullscreen : ''}`.trim()}
       style={style}
       onMouseMove={showControls}
       onPointerMove={showControls}

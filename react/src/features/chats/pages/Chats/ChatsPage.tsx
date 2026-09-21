@@ -575,6 +575,9 @@ function ChatsPage() {
               return;
             }
 
+            if (serverMessage?.attachment_key && mediaDimensionsRef.current[optimisticId]) {
+              rememberMediaDimensions(serverMessage.attachment_key, mediaDimensionsRef.current[optimisticId]);
+            }
             setMessages((prev) =>
               prev.map((m) => {
                 const mid = getMessageId(m);
@@ -1888,6 +1891,13 @@ function ChatsPage() {
       }
       const isOptimisticAck = pending?.tempId?.toString().startsWith('optimistic-');
       mediaUploadTasksRef.current.delete(pending.tempId);
+      if (mediaDimensionsRef.current[pending.tempId]) {
+        rememberMediaDimensions(messageId, mediaDimensionsRef.current[pending.tempId]);
+        const ackAttachmentKey = payload?.attachment_key || payload?.message?.attachment_key;
+        if (ackAttachmentKey) {
+          rememberMediaDimensions(ackAttachmentKey, mediaDimensionsRef.current[pending.tempId]);
+        }
+      }
       if (!isOptimisticAck) {
         animatedMessageIdsRef.current.add(messageId);
         setLastAnimatedMessageId(messageId);
@@ -1971,6 +1981,13 @@ function ChatsPage() {
       if (!pending?.tempId) return;
       delete pendingReplyMapRef.current[trackId];
       mediaUploadTasksRef.current.delete(pending.tempId);
+      if (mediaDimensionsRef.current[pending.tempId]) {
+        rememberMediaDimensions(messageId, mediaDimensionsRef.current[pending.tempId]);
+        const ackAttachmentKey = payload?.attachment_key || payload?.message?.attachment_key;
+        if (ackAttachmentKey) {
+          rememberMediaDimensions(ackAttachmentKey, mediaDimensionsRef.current[pending.tempId]);
+        }
+      }
       if (pendingAckTimersRef.current[pending.tempId]) {
         clearTimeout(pendingAckTimersRef.current[pending.tempId]);
         delete pendingAckTimersRef.current[pending.tempId];
@@ -4110,6 +4127,18 @@ function ChatsPage() {
         seen: false,
       };
 
+      // Sniff media dimensions immediately so optimistic message has proper locked box
+      if (previewUrl && ['image', 'video', 'gif'].includes(type)) {
+        void sniffMediaDimensions(previewUrl, type).then((dims) => {
+          if (dims) {
+            rememberMediaDimensions(optimisticId, dims);
+            if (attachmentKeyOverride) {
+              rememberMediaDimensions(attachmentKeyOverride, dims);
+            }
+          }
+        });
+      }
+
       // Track this message's upload progress (starts at 0)
       setMediaUploadProgress((prev) => ({ ...prev, [optimisticId]: 0 }));
       mediaUploadTasksRef.current.set(optimisticId, {
@@ -4200,6 +4229,9 @@ function ChatsPage() {
           ...mediaUploadTasksRef.current.get(optimisticId),
           attachmentKey,
         });
+        if (attachmentKey && mediaDimensionsRef.current[optimisticId]) {
+          rememberMediaDimensions(attachmentKey, mediaDimensionsRef.current[optimisticId]);
+        }
         setMessages((prev) => prev.map((message) => (
           getMessageId(message)?.toString() === optimisticId.toString()
             ? { ...message, attachment_key: attachmentKey }

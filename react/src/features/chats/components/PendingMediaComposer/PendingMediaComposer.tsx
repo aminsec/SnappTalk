@@ -76,10 +76,27 @@ export const PendingMediaComposer: React.FC<PendingMediaComposerProps> = ({
 
         <div className={styles.mediaUploadPreview}>
           {selectedItem.type === 'image' && (
-            <img src={selectedItem.previewUrl} alt={selectedItem.file.name} />
+            <>
+              <img
+                className={styles.mediaUploadBlurMedia}
+                src={selectedItem.previewUrl}
+                alt=""
+                aria-hidden="true"
+              />
+              <img src={selectedItem.previewUrl} alt={selectedItem.file.name} />
+            </>
           )}
           {selectedItem.type === 'video' && (
-            <video src={selectedItem.previewUrl} controls preload="metadata" />
+            <>
+              <video
+                className={styles.mediaUploadBlurMedia}
+                src={selectedItem.previewUrl}
+                muted
+                playsInline
+                aria-hidden="true"
+              />
+              <video src={selectedItem.previewUrl} controls preload="metadata" />
+            </>
           )}
           {(selectedItem.type === 'voice' || selectedItem.type === 'file') && (
             <div className={styles.mediaFilePreview}>

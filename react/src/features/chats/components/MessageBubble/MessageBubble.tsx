@@ -135,7 +135,9 @@ export const MessageBubble: React.FC<MessageBubbleProps> = React.memo(({
   const lockedPreviewStyle = !lockApplies
     ? undefined
     : resolvedMessageType === 'video'
-      ? { width: lockedBoxWidth, maxWidth: 'min(100%, 76vw)', aspectRatio: lockedBoxRatio }
+      ? (hasMediaCaption
+        ? { aspectRatio: lockedBoxRatio }
+        : { width: lockedBoxWidth, maxWidth: 'min(100%, 76vw)', aspectRatio: lockedBoxRatio })
       : resolvedMessageType === 'gif' || !hasMediaCaption
         ? { width: lockedBoxWidth, maxWidth: '100%', aspectRatio: lockedBoxRatio }
         : { aspectRatio: lockedBoxRatio };
@@ -418,8 +420,11 @@ export const MessageBubble: React.FC<MessageBubbleProps> = React.memo(({
               mimeType={message?.mime_type || 'video/mp4'}
               footer={showMediaFooter ? messageFooterMarkup : undefined}
               style={lockApplies && resolvedMessageType === 'video'
-                ? { width: lockedBoxWidth, aspectRatio: lockedBoxRatio }
+                ? (hasMediaCaption
+                  ? { aspectRatio: lockedBoxRatio }
+                  : { width: lockedBoxWidth, aspectRatio: lockedBoxRatio })
                 : undefined}
+              className={styles.videoPlayer}
             />
           )}
           {isMedia && isAudioMedia && (
