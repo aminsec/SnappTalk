@@ -10,6 +10,7 @@ export async function searchMemberByUsername(username: string): Promise<[Protect
         const foundMembers: RawUserInfo[] = await User.find({ 
             username: { $regex: escapedUsername, $options: "i" },
             deleted_account: false,
+            verified: true
         }).select(PROTECTED_USER_INFO_FIELDS_TO_SELECT).lean();
         
         return [foundMembers, null];
