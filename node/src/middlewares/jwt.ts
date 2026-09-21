@@ -17,11 +17,11 @@ export default async function validateJWT(req: Request, resp: Response, next: Ne
 
   try {
     //Verifing token in try-catch. If token was not valid, it will go through an error and we handle it with catch
-    const userInfo = jwt.verify(token, String(process.env.JWT_SECRET_KEY)) as ProtectedUserInfo;
+    const userInfo = jwt.verify(token, String(process.env.JWT_SECRET_KEY), { algorithms: ["HS256"] }) as ProtectedUserInfo;
 
     //Checking if token is not in dead_sessions list and account is in a valid state
-    const isTokenIsInDeadSessions = await DeadSession.findOne({token: token}).lean();
-    const isAccountValid = await User.findOne({_id: userInfo._id, deleted_account: false, verified: true}).lean();
+    const isTokenIsInDeadSessions = await DeadSession.exists({token: token}).lean();
+    const isAccountValid = await User.exists({_id: userInfo._id, deleted_account: false, verified: true}).lean();
 
     if(isTokenIsInDeadSessions || !isAccountValid){
         resp.redirect("/login");
