@@ -7,11 +7,9 @@ import {
   faImage,
   faFile as faFileSolid,
   faDownload,
-  faExpand,
 } from '@fortawesome/free-solid-svg-icons';
 import { ProfileAvatar } from '@/shared/components';
-import sentIcon from "@/shared/assets/icons/sent.svg";
-import seenIcon from "@/shared/assets/icons/seen.svg";
+import { CheckIcon } from '../CheckIcon/CheckIcon';
 import {
   convertISOtoLocal,
   formatFileSize,
@@ -218,10 +216,9 @@ export const MessageBubble: React.FC<MessageBubbleProps> = React.memo(({
             </button>
           )}
           {deliveryStatus === 'sent' && (
-            <img
-              src={message?.seen ? seenIcon : sentIcon}
-              alt={message?.seen ? "Seen" : "Sent"}
-              className={styles.seenIconImage}
+            <CheckIcon
+              seen={Boolean(message?.seen)}
+              className={styles.seenIconSvg}
             />
           )}
         </span>
@@ -563,37 +560,6 @@ export const MessageBubble: React.FC<MessageBubbleProps> = React.memo(({
                   }}
                 />
               </button>
-              {hasReachedMaxSize && (
-                <button
-                  type="button"
-                  className={styles.mediaFullscreenButton}
-                  onClick={(event) => {
-                    event.stopPropagation();
-                    onOpenMediaViewer({
-                      url: mediaUrl,
-                      message,
-                      type: resolvedMessageType,
-                    });
-                  }}
-                  aria-label="Open fullscreen"
-                  title="Open fullscreen"
-                >
-                  <FontAwesomeIcon icon={faExpand} />
-                </button>
-              )}
-              {!['sticker', 'gif'].includes(resolvedMessageType) && (
-                <button
-                  type="button"
-                  className={styles.mediaQuickDownload}
-                  onClick={(event) => {
-                    event.stopPropagation();
-                    onDownloadMessage(message);
-                  }}
-                  aria-label="Download media"
-                >
-                  <FontAwesomeIcon icon={faDownload} />
-                </button>
-              )}
               {showMediaFooter && (
                 <div className={styles.mediaImageFooter}>
                   {messageFooterMarkup}

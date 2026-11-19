@@ -44,30 +44,39 @@ const LoginPage: React.FC<LoginPageProps> = ({ initialStep = LOGIN_STEPS.LOGIN }
   });
 
   const [activeStep, setActiveStep] = useState<LoginStep>(initialStep);
-  const [isAnimating, setIsAnimating] = useState<boolean>(false);
+  const [slideDirection, setSlideDirection] = useState<'left' | 'right'>('right');
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
   const [isResending, setIsResending] = useState<boolean>(false);
   const [showPassword, setShowPassword] = useState<boolean>(false);
 
   useEffect(() => {
     if (location.pathname === '/signup') {
+      setSlideDirection('right');
       setActiveStep(LOGIN_STEPS.SIGNUP);
     } else if (
       location.pathname === '/forgot-password' ||
       location.pathname === '/forgetpassword'
     ) {
+      setSlideDirection('right');
       setActiveStep(LOGIN_STEPS.FORGOT);
     } else if (location.pathname === '/login') {
+      setSlideDirection('left');
       setActiveStep(LOGIN_STEPS.LOGIN);
     }
   }, [location.pathname]);
 
   const switchStep = (step: LoginStep) => {
-    setIsAnimating(true);
-    setTimeout(() => {
-      setActiveStep(step);
-      setIsAnimating(false);
-    }, 180);
+    if (step === activeStep) return;
+    if (step === LOGIN_STEPS.SIGNUP) {
+      setSlideDirection('right');
+    } else if (step === LOGIN_STEPS.LOGIN) {
+      setSlideDirection('left');
+    } else if (step === LOGIN_STEPS.FORGOT || step === LOGIN_STEPS.VERIFY_NOTICE) {
+      setSlideDirection('right');
+    } else {
+      setSlideDirection('left');
+    }
+    setActiveStep(step);
   };
 
   const handleChange =
@@ -347,7 +356,7 @@ const LoginPage: React.FC<LoginPageProps> = ({ initialStep = LOGIN_STEPS.LOGIN }
       <div className={styles.ambientGlow2} aria-hidden="true" />
       <div className={styles.patternOverlay} aria-hidden="true" />
 
-      <div className={`${styles.authCard} ${isAnimating ? styles.formFade : ''}`}>
+      <div className={styles.authCard}>
         {/* Brand Header */}
         <div className={styles.brandHeader}>
           <div className={styles.logoWrapper}>
@@ -394,8 +403,15 @@ const LoginPage: React.FC<LoginPageProps> = ({ initialStep = LOGIN_STEPS.LOGIN }
           </div>
         )}
 
-        {/* STEP 1: LOGIN */}
-        {activeStep === LOGIN_STEPS.LOGIN && (
+        <div className={styles.formContainer}>
+          <div
+            key={activeStep}
+            className={`${styles.formSlider} ${
+              slideDirection === 'right' ? styles.slideFromRight : styles.slideFromLeft
+            }`}
+          >
+            {/* STEP 1: LOGIN */}
+            {activeStep === LOGIN_STEPS.LOGIN && (
           <form className={styles.formBody} onSubmit={handleLoginSubmit} autoComplete="on">
             <div className={styles.fieldGroup}>
               <label htmlFor="login-email" className={styles.fieldLabel}>
@@ -703,6 +719,8 @@ const LoginPage: React.FC<LoginPageProps> = ({ initialStep = LOGIN_STEPS.LOGIN }
             </button>
           </form>
         )}
+          </div>
+        </div>
       </div>
     </div>
   );

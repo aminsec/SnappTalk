@@ -73,6 +73,7 @@ import {
 } from '@/shared/utils/mediaPreferences';
 import NewConversationModal from '../../components/NewConversationModal/NewConversationModal';
 import { MessageBubble } from '../../components/MessageBubble';
+import { CheckIcon } from '../../components/CheckIcon/CheckIcon';
 import { MediaViewerModal } from '../../components/MediaViewerModal';
 import { PendingMediaComposer } from '../../components/PendingMediaComposer';
 import { ChatInputBar } from '../../components/ChatInputBar';
@@ -203,6 +204,20 @@ function ChatsPage() {
   const messageContextMenuRef = useRef(null);
   const conversationAliasRef = useRef(new Map());
   const previousSelectedChatIdRef = useRef(null);
+  const conversationMessagesCacheRef = useRef<Map<string, any[]>>(new Map());
+
+  const handleBubbleContextMenu = useCallback((e: React.MouseEvent, msg: any, isMine: boolean) => {
+    setMessageContextMenu({
+      x: e.clientX,
+      y: e.clientY,
+      message: msg,
+      isMyMessage: isMine,
+    });
+  }, []);
+
+  const handleMemberClick = useCallback((memberId: string) => {
+    navigate(`/members/${memberId}`);
+  }, [navigate]);
 
   const [unreadCounts, setUnreadCounts] = useState({});
   const unreadCountsRef = useRef({});
@@ -3626,15 +3641,21 @@ function ChatsPage() {
     const isSameConversation = resolvedPrev && resolvedNext && resolvedPrev === resolvedNext;
 
     if (!isSameConversation) {
-      // Reset state and fetch initial messages (last 10 messages)
-      setMessages([]);
+      // Check cache first to avoid blank screen flash and lag when switching chats
+      const cached = conversationMessagesCacheRef.current.get(resolvedNext.toString());
+      if (cached && cached.length > 0) {
+        setMessages(cached);
+        isInitialLoadRef.current = false;
+      } else {
+        setMessages([]);
+        isInitialLoadRef.current = true;
+      }
       isJumpingToLatestRef.current = false;
       setShowJumpToLatest(false);
       setMessagesOffset(0);
       setHasMoreMessages(true);
       setMessagesConversationId(conversationId);
       setSenderInfoCache({}); // Clear cache
-      isInitialLoadRef.current = true;
       if (!conversationId.toString().startsWith('temp-')) {
         fetchMessages(conversationId, 0, false);
       }
@@ -3644,6 +3665,13 @@ function ChatsPage() {
     }
     previousSelectedChatIdRef.current = conversationId;
   }, [selectedChatIdStr, fetchMessages]);
+
+  // Keep messages cache up to date for instant reopening
+  useEffect(() => {
+    if (messagesConversationId && messages.length > 0) {
+      conversationMessagesCacheRef.current.set(messagesConversationId.toString(), messages);
+    }
+  }, [messagesConversationId, messages]);
 
   // Fetch sender info for group messages
   useEffect(() => {
@@ -4769,7 +4797,7 @@ function ChatsPage() {
   }, [wallpaperId]);
   const hasWallpaper = Boolean(resolvedWallpaper?.src);
   const messageSizeOption = getMessageSizeOption(messageSize);
-  const chatThemeStyle = {
+  const chatThemeStyle = useMemo(() => ({
     '--chat-accent': resolvedWallpaper?.accent || '#3390ec',
     '--chat-accent-hover': resolvedWallpaper?.accentHover || '#2678c7',
     '--chat-bubble-start': resolvedWallpaper?.bubbleStart || '#3390ec',
@@ -4786,7 +4814,7 @@ function ChatsPage() {
     '--chat-bubble-gap': messageSizeOption.bubbleGap,
     '--chat-bubble-radius': messageSizeOption.bubbleRadius,
     '--chat-caption-font-size': messageSizeOption.captionFontSize,
-  };
+  }), [resolvedWallpaper, messageSizeOption]);
   const wallpaperStyle = resolvedWallpaper?.src
     ? { backgroundImage: `url(${resolvedWallpaper.src})` }
     : undefined;
@@ -4998,11 +5026,10 @@ function ChatsPage() {
                       <span className={styles.chatTimestampRow}>
                         {hasLastMessage && isMyMessage && (
                           <span className={styles.chatStatusIcon} aria-hidden="true">
-                            {lastMessageSeen ? (
-                              <FontAwesomeIcon icon={faCheckDouble} className={styles.chatStatusSeen} />
-                            ) : (
-                              <FontAwesomeIcon icon={faCheck} className={styles.chatStatusSent} />
-                            )}
+                            <CheckIcon
+                              seen={Boolean(lastMessageSeen)}
+                              className={lastMessageSeen ? styles.chatStatusSeen : styles.chatStatusSent}
+                            />
                           </span>
                         )}
                         {hasLastMessage && messageTimestamp && (
@@ -5235,16 +5262,9 @@ function ChatsPage() {
                         messageRefs.current.delete(id);
                       }
                     }}
-                    onContextMenu={(e, msg, isMine) => {
-                      setMessageContextMenu({
-                        x: e.clientX,
-                        y: e.clientY,
-                        message: msg,
-                        isMyMessage: isMine,
-                      });
-                    }}
+                    onContextMenu={handleBubbleContextMenu}
                     onDoubleClick={handleReplyToMessage}
-                    onMemberClick={(memberId) => navigate(`/members/${memberId}`)}
+                    onMemberClick={handleMemberClick}
                     onScrollToMessage={scrollToMessage}
                     onResendMessage={handleResendMessage}
                     onCancelMediaUpload={handleCancelMediaUpload}

@@ -206,7 +206,8 @@
     align-self: auto;
 }
 
-.audioFooterOverlay .seenIconImage {
+.audioFooterOverlay .seenIconImage,
+.audioFooterOverlay .seenIconSvg {
     opacity: 1;
 }
 
@@ -549,8 +550,67 @@
     align-self: auto;
 }
 
-.videoFooterOverlay .seenIconImage {
+.videoFooterOverlay .seenIconImage,
+.videoFooterOverlay .seenIconSvg {
     opacity: 1;
+}
+
+/* Sent message overrides (blue bubble) */
+:global(.sent) .audioPlayer {
+    background: rgba(255, 255, 255, 0.12);
+    border: 1px solid rgba(255, 255, 255, 0.22);
+    color: #ffffff;
+}
+
+:global(.sent) .audioFileName {
+    color: #ffffff !important;
+}
+
+:global(.sent) .audioTime {
+    color: rgba(255, 255, 255, 0.78) !important;
+}
+
+:global(.sent) .audioWaveform span {
+    background: rgba(255, 255, 255, 0.35);
+}
+
+:global(.sent) .audioWaveform .audioWaveformPlayed {
+    background: #ffffff !important;
+}
+
+:global(.sent) .audioDownload {
+    color: rgba(255, 255, 255, 0.85) !important;
+}
+
+/* White theme overrides for received audio messages */
+:root[data-theme="light"] :global(.received) .audioPlayer {
+    background: rgba(0, 0, 0, 0.04);
+    border: 1px solid rgba(0, 0, 0, 0.08);
+    color: #0F172A;
+}
+
+:root[data-theme="light"] :global(.received) .audioFileName {
+    color: #0F172A !important;
+}
+
+:root[data-theme="light"] :global(.received) .audioTime {
+    color: #64748B !important;
+}
+
+:root[data-theme="light"] :global(.received) .audioWaveform span {
+    background: rgba(0, 0, 0, 0.14);
+}
+
+:root[data-theme="light"] :global(.received) .audioWaveform .audioWaveformPlayed {
+    background: var(--chat-accent, #2D90E4) !important;
+}
+
+:root[data-theme="light"] :global(.received) .audioFooterOverlay .timestamp {
+    color: #64748B !important;
+}
+
+:root[data-theme="light"] :global(.received) .audioDownload {
+    color: #64748B !important;
 }
 
 .videoFooterOverlay .deliveryClockFace {

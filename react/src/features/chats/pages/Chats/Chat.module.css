@@ -163,6 +163,7 @@
     -webkit-overflow-scrolling: touch;
     overscroll-behavior-y: contain;
     transform: translateZ(0);
+    contain: content;
 }
 
 .chatList::-webkit-scrollbar {
@@ -204,6 +205,7 @@
     background-color: var(--chat-item-bg, var(--input-bg));
     border: 1px solid var(--border-subtle, transparent);
     transition: background-color 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
+    contain: layout paint;
 }
 
 .chatItem:hover {
@@ -272,14 +274,21 @@
     flex-shrink: 0;
 }
 
+.chatStatusSent,
+.chatStatusSeen {
+    width: 14px;
+    height: 14px;
+    display: inline-block;
+    vertical-align: middle;
+    flex-shrink: 0;
+}
+
 .chatStatusSent {
     color: var(--text-muted);
-    font-size: 11px;
 }
 
 .chatStatusSeen {
     color: var(--chat-accent, #2D90E4);
-    font-size: 11px;
 }
 
 .chatStatusIconImage {
@@ -372,8 +381,8 @@
     padding: 7px 12px;
     box-sizing: border-box;
     background: var(--header-bg);
-    backdrop-filter: blur(26px) saturate(185%) contrast(110%);
-    -webkit-backdrop-filter: blur(26px) saturate(185%) contrast(110%);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
     border: 1px solid var(--header-border);
     border-radius: 25px;
     flex-direction: row;
@@ -398,7 +407,6 @@
         linear-gradient(112deg, rgba(255, 255, 255, 0.22), transparent 18%, transparent 72%, rgba(255, 255, 255, 0.08)),
         linear-gradient(180deg, rgba(255, 255, 255, 0.12), transparent 34%);
     opacity: 0.48;
-    mix-blend-mode: screen;
 }
 
 .chatHeader::after {
@@ -861,6 +869,7 @@
     overflow-wrap: anywhere;
     word-break: break-word;
     min-width: 0;
+    contain: layout paint;
 }
 
 .mediaOnly {
@@ -1248,12 +1257,16 @@
 
 .emojiOnly .seenIconImage,
 .received.emojiOnly .seenIconImage,
-.sent.emojiOnly .seenIconImage {
+.sent.emojiOnly .seenIconImage,
+.emojiOnly .seenIconSvg,
+.received.emojiOnly .seenIconSvg,
+.sent.emojiOnly .seenIconSvg {
     width: 14px;
     height: 14px;
     opacity: 0.95;
     display: inline-block;
     vertical-align: middle;
+    color: #ffffff;
 }
 
 :root[data-theme="light"] .emojiOnly .messageFooter,
@@ -1723,14 +1736,7 @@
 }
 
 .mediaImageWrap::after {
-    content: '';
-    position: absolute;
-    inset: auto 0 0;
-    z-index: 1;
-    height: 72px;
-    background: linear-gradient(transparent, rgba(3, 7, 12, 0.48));
-    border-radius: 0 0 16px 16px;
-    pointer-events: none;
+    display: none !important;
 }
 
 .mediaImageWrap:has(.messageMediaSticker)::after { display: none; }
@@ -1924,7 +1930,8 @@
     font-size: 10px;
 }
 
-.mediaImageFooter .seenIconImage { opacity: 1; }
+.mediaImageFooter .seenIconImage,
+.mediaImageFooter .seenIconSvg { opacity: 1; color: #fff; }
 .mediaImageFooter .deliveryClockFace { border-color: rgba(255, 255, 255, 0.9); }
 .mediaImageFooter .deliveryClockHandShort,
 .mediaImageFooter .deliveryClockHandLong { background: rgba(255, 255, 255, 0.95); }
@@ -2278,10 +2285,14 @@
     margin-left: 4px;
 }
 
-.seenIconImage {
+.seenIconImage,
+.seenIconSvg {
     width: 14px;
     height: 14px;
-    opacity: 0.9;
+    opacity: 0.95;
+    display: inline-block;
+    vertical-align: middle;
+    color: #ffffff;
 }
 
 .deliveryErrorButton {
@@ -3743,6 +3754,11 @@
         backdrop-filter: blur(8px) !important;
         -webkit-backdrop-filter: blur(8px) !important;
     }
+
+    .chatHeader::before,
+    .chatHeader::after {
+        display: none !important;
+    }
     
     .message { max-width: 85%; }
     .messageWrapperGroup .message { max-width: calc(85% - 44px); }
@@ -3922,7 +3938,7 @@
         width: 100% !important;
         min-width: 0 !important;
         max-width: 100% !important;
-        overflow-x: hidden !important;
+        overflow: hidden !important;
         box-sizing: border-box !important;
     }
     
@@ -3933,12 +3949,13 @@
         height: 60px !important;
         font-size: 26px !important;
         box-shadow: 0 6px 18px rgba(0, 0, 0, 0.35);
+        animation: none !important;
     }
     
     .chatTabs {
         padding: 4px;
         margin-bottom: 8px;
-        transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1), background-color 0.2s ease, box-shadow 0.2s ease, margin 0.3s ease;
+        transition: none !important;
     }
 
     .chatTabsSticky {
@@ -3951,7 +3968,10 @@
     }
 
     .chatTab { padding: 8px 12px; font-size: 13px; }
-    .searchContainer { padding: 8px 0; }
+    .searchContainer {
+        padding: 8px 0;
+        transition: max-height 0.2s ease, opacity 0.15s ease !important;
+    }
 
     .searchHidden {
         max-height: 0 !important;
@@ -4168,4 +4188,88 @@
         animation: none !important;
         transition: none !important;
     }
+}
+
+/* ============================================
+   SENT BUBBLE MEDIA & FILE STYLING (Blue bubble)
+   ============================================ */
+.sent .fileAttachment {
+    background: rgba(255, 255, 255, 0.12) !important;
+    border: 1px solid rgba(255, 255, 255, 0.22) !important;
+}
+
+.sent .fileAttachmentName,
+.sent .audioFileName,
+.sent .audioManualInfo strong,
+.sent .fileAttachmentInfo strong {
+    color: #ffffff !important;
+}
+
+.sent .fileAttachmentSize,
+.sent .audioTime,
+.sent .audioManualInfo span {
+    color: rgba(255, 255, 255, 0.78) !important;
+}
+
+.sent .fileAttachmentDownload {
+    background: rgba(255, 255, 255, 0.2) !important;
+    color: #ffffff !important;
+}
+
+.sent .audioManualCard {
+    background: rgba(255, 255, 255, 0.12) !important;
+    border: 1px solid rgba(255, 255, 255, 0.22) !important;
+    color: #ffffff !important;
+}
+
+/* ============================================
+   LIGHT THEME RECEIVED MESSAGE STYLING (White bubble)
+   ============================================ */
+:root[data-theme="light"] .received .fileAttachment {
+    background: rgba(0, 0, 0, 0.04) !important;
+    border: 1px solid rgba(0, 0, 0, 0.08) !important;
+    color: #0F172A !important;
+}
+
+:root[data-theme="light"] .received .fileAttachmentName {
+    color: #0F172A !important;
+}
+
+:root[data-theme="light"] .received .fileAttachmentSize {
+    color: #64748B !important;
+}
+
+:root[data-theme="light"] .received .fileAttachmentDownload {
+    background: color-mix(in srgb, var(--chat-accent, #2D90E4) 14%, transparent) !important;
+    color: var(--chat-accent, #2D90E4) !important;
+}
+
+:root[data-theme="light"] .received .audioManualCard {
+    background: rgba(0, 0, 0, 0.04) !important;
+    border: 1px solid rgba(0, 0, 0, 0.08) !important;
+    color: #0F172A !important;
+}
+
+:root[data-theme="light"] .received .audioManualInfo strong {
+    color: #0F172A !important;
+}
+
+:root[data-theme="light"] .received .audioManualInfo span {
+    color: #64748B !important;
+}
+
+:root[data-theme="light"] .received .replyPreview {
+    background: rgba(0, 0, 0, 0.04) !important;
+}
+
+:root[data-theme="light"] .received .replyPreview:hover {
+    background: rgba(0, 0, 0, 0.07) !important;
+}
+
+:root[data-theme="light"] .received .replyPreviewText {
+    color: #64748B !important;
+}
+
+:root[data-theme="light"] .received .mediaDocumentFooter .timestamp {
+    color: #64748B !important;
 }

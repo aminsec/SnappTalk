@@ -216,28 +216,51 @@
 }
 
 /* Form Container & Animation */
+.formContainer {
+  position: relative;
+  width: 100%;
+  overflow: hidden;
+}
+
+.formSlider {
+  width: 100%;
+}
+
+.slideFromRight {
+  animation: formSlideRight 0.28s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+.slideFromLeft {
+  animation: formSlideLeft 0.28s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+@keyframes formSlideRight {
+  from {
+    opacity: 0;
+    transform: translateX(36px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes formSlideLeft {
+  from {
+    opacity: 0;
+    transform: translateX(-36px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
 .formBody {
   display: flex;
   flex-direction: column;
   gap: 16px;
   width: 100%;
-  animation: contentIn 0.22s ease-out;
-}
-
-@keyframes contentIn {
-  from {
-    opacity: 0;
-    transform: translateY(6px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-.formFade {
-  opacity: 0;
-  transition: opacity 0.18s ease;
 }
 
 /* Field Group */
