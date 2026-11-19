@@ -15,3 +15,17 @@ root.render(
   </StrictMode>
 );
 
+// Register PWA Service Worker for mobile installability and offline support
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker
+      .register('/sw.js')
+      .then((reg) => {
+        console.log('[SnappTalk PWA] Service worker registered:', reg.scope);
+      })
+      .catch((error) => {
+        console.error('[SnappTalk PWA] Service worker registration failed:', error);
+      });
+  });
+}
+
