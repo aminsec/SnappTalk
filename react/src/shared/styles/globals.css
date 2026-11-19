@@ -74,32 +74,22 @@ html, body {
 }
 
 /* ———————————————————————————————————————————————————————————————
-  Scrollbar style
+  Scrollbar style (Hidden globally, scrolling preserved)
 —————————————————————————————————————————————————————————————— */
+html, body, #root, * {
+  -ms-overflow-style: none !important;
+  scrollbar-width: none !important;
+}
+
 ::-webkit-scrollbar {
-  width: 8px;
-  height: 8px;
+  display: none !important;
+  width: 0 !important;
+  height: 0 !important;
 }
 
-::-webkit-scrollbar-track {
-  background: transparent;
-}
-
+::-webkit-scrollbar-track,
 ::-webkit-scrollbar-thumb {
-  background-color: var(--icon-color); 
-  border-radius: 4px;
-  transition: opacity 0.3s ease;
-  opacity: 0;
-}
-
-::-webkit-scrollbar-thumb:hover {
-  background-color: var(--btn-hover);
-}
-
-* {
-  scrollbar-width: thin;
-  scrollbar-color: var(--icon-color) transparent;
-  scroll-margin: 20px;
+  display: none !important;
 }
 
 /* ———————————————————————————————————————————————————————————————

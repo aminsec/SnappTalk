@@ -134,22 +134,13 @@
   padding-right: 4px;
 }
 
-/* Custom scrollbar for users list */
 .usersList::-webkit-scrollbar {
-  width: 6px;
+  display: none;
 }
 
-.usersList::-webkit-scrollbar-track {
-  background: transparent;
-}
-
-.usersList::-webkit-scrollbar-thumb {
-  background-color: var(--icon-color);
-  border-radius: 3px;
-}
-
-.usersList::-webkit-scrollbar-thumb:hover {
-  background-color: var(--btn-hover);
+.usersList {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
 }
 
 .userItem {

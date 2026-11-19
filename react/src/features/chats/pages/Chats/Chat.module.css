@@ -3177,15 +3177,12 @@
     gap: 8px;
     max-height: 150px;
     overflow-y: auto;
+    -ms-overflow-style: none;
+    scrollbar-width: none;
 }
 
 .mediaGrid::-webkit-scrollbar {
-    width: 6px;
-}
-
-.mediaGrid::-webkit-scrollbar-thumb {
-    background-color: var(--icon-color);
-    border-radius: 999px;
+    display: none;
 }
 
 .mediaItem {
