@@ -1,13 +1,19 @@
 import React, { useState, useEffect } from 'react';
 import toast from 'react-hot-toast';
 import { faUser, faEnvelope } from '@fortawesome/free-regular-svg-icons';
-import { faLock, faArrowLeft } from '@fortawesome/free-solid-svg-icons';
+import {
+  faLock,
+  faArrowLeft,
+  faEye,
+  faEyeSlash,
+  faPaperPlane,
+  faEnvelopeOpenText,
+} from '@fortawesome/free-solid-svg-icons';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { useNavigate, useLocation } from 'react-router-dom';
 
-import logo from '@/shared/assets/images/logo.png';
-import sliderImage from '@/shared/assets/images/Slider.png';
-import { Button, Input } from '@/shared/components';
+import MiniLogo from '@/shared/assets/images/MiniLogo.png';
+import { Input } from '@/shared/components';
 import { useAuth } from '@/shared/state/useAuth';
 
 import styles from './Login.module.css';
@@ -41,11 +47,15 @@ const LoginPage: React.FC<LoginPageProps> = ({ initialStep = LOGIN_STEPS.LOGIN }
   const [isAnimating, setIsAnimating] = useState<boolean>(false);
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
   const [isResending, setIsResending] = useState<boolean>(false);
+  const [showPassword, setShowPassword] = useState<boolean>(false);
 
   useEffect(() => {
     if (location.pathname === '/signup') {
       setActiveStep(LOGIN_STEPS.SIGNUP);
-    } else if (location.pathname === '/forgot-password' || location.pathname === '/forgetpassword') {
+    } else if (
+      location.pathname === '/forgot-password' ||
+      location.pathname === '/forgetpassword'
+    ) {
       setActiveStep(LOGIN_STEPS.FORGOT);
     } else if (location.pathname === '/login') {
       setActiveStep(LOGIN_STEPS.LOGIN);
@@ -57,7 +67,7 @@ const LoginPage: React.FC<LoginPageProps> = ({ initialStep = LOGIN_STEPS.LOGIN }
     setTimeout(() => {
       setActiveStep(step);
       setIsAnimating(false);
-    }, 200);
+    }, 180);
   };
 
   const handleChange =
@@ -101,7 +111,7 @@ const LoginPage: React.FC<LoginPageProps> = ({ initialStep = LOGIN_STEPS.LOGIN }
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          email: formValues.email,
+          email: formValues.email.trim(),
           password: formValues.password,
         }),
       });
@@ -329,47 +339,95 @@ const LoginPage: React.FC<LoginPageProps> = ({ initialStep = LOGIN_STEPS.LOGIN }
     }
   };
 
+  const isTabVisible = activeStep === LOGIN_STEPS.LOGIN || activeStep === LOGIN_STEPS.SIGNUP;
+
   return (
-    <div className={styles.loginPage}>
-      <div className={`${styles.popUp} ${isAnimating ? styles.formFade : ''}`}>
-        <div className={styles.slider}>
-          <img src={sliderImage} alt="Slider" className={styles.sliderImage} />
+    <div className={styles.authContainer}>
+      <div className={styles.ambientGlow1} aria-hidden="true" />
+      <div className={styles.ambientGlow2} aria-hidden="true" />
+      <div className={styles.patternOverlay} aria-hidden="true" />
+
+      <div className={`${styles.authCard} ${isAnimating ? styles.formFade : ''}`}>
+        {/* Brand Header */}
+        <div className={styles.brandHeader}>
+          <div className={styles.logoWrapper}>
+            <img src={MiniLogo} alt="SnappTalk" className={styles.brandLogo} />
+          </div>
+          <h1 className={styles.brandTitle}>
+            SnappTalk
+            <span className={styles.brandBadge}>v2.0</span>
+          </h1>
+          <p className={styles.brandSubtitle}>
+            {activeStep === LOGIN_STEPS.LOGIN && 'Welcome back! Sign in to continue talking.'}
+            {activeStep === LOGIN_STEPS.SIGNUP && 'Join today and connect seamlessly across devices.'}
+            {activeStep === LOGIN_STEPS.FORGOT && 'Trouble logging in? We’ll help you get back in.'}
+            {activeStep === LOGIN_STEPS.VERIFY_NOTICE && 'One last step to secure your account.'}
+            {activeStep === LOGIN_STEPS.USERNAME && 'Choose your unique handle to finish setup.'}
+          </p>
         </div>
-        <div className={styles.form}>
-          <img src={logo} alt="Logo" className={styles.logo} />
 
-          {/* VIEW 1: LOGIN */}
-          {activeStep === LOGIN_STEPS.LOGIN && (
-            <>
-              <h2 className={styles.Titr}>Login to your account</h2>
-              <h4 className={styles.Discription}>Enter your email address and password to login</h4>
+        {/* Tab Switcher (Log in / Sign up) */}
+        {isTabVisible && (
+          <div className={styles.segmentTabs} role="tablist">
+            <button
+              type="button"
+              role="tab"
+              aria-selected={activeStep === LOGIN_STEPS.LOGIN}
+              className={`${styles.segmentTab} ${
+                activeStep === LOGIN_STEPS.LOGIN ? styles.segmentTabActive : ''
+              }`}
+              onClick={() => switchStep(LOGIN_STEPS.LOGIN)}
+            >
+              Log in
+            </button>
+            <button
+              type="button"
+              role="tab"
+              aria-selected={activeStep === LOGIN_STEPS.SIGNUP}
+              className={`${styles.segmentTab} ${
+                activeStep === LOGIN_STEPS.SIGNUP ? styles.segmentTabActive : ''
+              }`}
+              onClick={() => switchStep(LOGIN_STEPS.SIGNUP)}
+            >
+              Sign up
+            </button>
+          </div>
+        )}
 
-              <form
-                className={styles['form-inputs']}
-                onSubmit={handleLoginSubmit}
-                autoComplete="on"
-              >
+        {/* STEP 1: LOGIN */}
+        {activeStep === LOGIN_STEPS.LOGIN && (
+          <form className={styles.formBody} onSubmit={handleLoginSubmit} autoComplete="on">
+            <div className={styles.fieldGroup}>
+              <label htmlFor="login-email" className={styles.fieldLabel}>
+                Email address
+              </label>
+              <Input
+                type="email"
+                name="email"
+                id="login-email"
+                placeholder="name@example.com"
+                icon={faEnvelope}
+                value={formValues.email}
+                onChange={handleChange('email')}
+                autoComplete="email"
+                autoCapitalize="none"
+                autoCorrect="off"
+                spellCheck={false}
+                size="md"
+                fullWidth
+              />
+            </div>
+
+            <div className={styles.fieldGroup}>
+              <label htmlFor="login-password" className={styles.fieldLabel}>
+                Password
+              </label>
+              <div className={styles.passwordWrapper}>
                 <Input
-                  type="email"
-                  name="email"
-                  id="login-email"
-                  placeholder="Email"
-                  icon={faEnvelope}
-                  value={formValues.email}
-                  onChange={handleChange('email')}
-                  autoComplete="email"
-                  autoCapitalize="none"
-                  autoCorrect="off"
-                  spellCheck={false}
-                  size="md"
-                  fullWidth
-                />
-
-                <Input
-                  type="password"
+                  type={showPassword ? 'text' : 'password'}
                   name="password"
                   id="login-password"
-                  placeholder="Password"
+                  placeholder="Enter your password"
                   icon={faLock}
                   value={formValues.password}
                   onChange={handleChange('password')}
@@ -377,80 +435,108 @@ const LoginPage: React.FC<LoginPageProps> = ({ initialStep = LOGIN_STEPS.LOGIN }
                   size="md"
                   fullWidth
                 />
+                <button
+                  type="button"
+                  className={styles.eyeButton}
+                  onClick={() => setShowPassword((prev) => !prev)}
+                  aria-label={showPassword ? 'Hide password' : 'Show password'}
+                >
+                  <FontAwesomeIcon icon={showPassword ? faEyeSlash : faEye} />
+                </button>
+              </div>
+            </div>
 
-                <div className={styles.linkRow}>
-                  <button
-                    type="button"
-                    className={styles.formLink}
-                    onClick={() => switchStep(LOGIN_STEPS.FORGOT)}
-                  >
-                    Forgot Password?
-                  </button>
-                </div>
-
-                <Button type="submit" size="lg" fullWidth disabled={isSubmitting}>
-                  {isSubmitting ? 'Please wait...' : 'Login'}
-                </Button>
-
-                <p className={styles.toggleAuth}>
-                  Don't have an account?{' '}
-                  <button
-                    type="button"
-                    className={styles.linkButton}
-                    onClick={() => switchStep(LOGIN_STEPS.SIGNUP)}
-                  >
-                    Sign up
-                  </button>
-                </p>
-              </form>
-            </>
-          )}
-
-          {/* VIEW 2: SIGNUP */}
-          {activeStep === LOGIN_STEPS.SIGNUP && (
-            <>
-              <h2 className={styles.Titr}>Create an account</h2>
-              <h4 className={styles.Discription}>Join SnappTalk and start chatting with friends</h4>
-
-              <form
-                className={styles['form-inputs']}
-                onSubmit={handleSignupSubmit}
-                autoComplete="on"
+            <div className={styles.linkRow}>
+              <button
+                type="button"
+                className={styles.forgotLink}
+                onClick={() => switchStep(LOGIN_STEPS.FORGOT)}
               >
-                <Input
-                  type="text"
-                  name="username"
-                  id="signup-username"
-                  placeholder="Username (5-24 chars, a-z, 0-9, _)"
-                  icon={faUser}
-                  value={formValues.username}
-                  onChange={handleChange('username')}
-                  autoComplete="username"
-                  autoCapitalize="none"
-                  autoCorrect="off"
-                  spellCheck={false}
-                  size="md"
-                  fullWidth
-                />
+                Forgot password?
+              </button>
+            </div>
 
-                <Input
-                  type="email"
-                  name="email"
-                  id="signup-email"
-                  placeholder="Email"
-                  icon={faEnvelope}
-                  value={formValues.email}
-                  onChange={handleChange('email')}
-                  autoComplete="email"
-                  size="md"
-                  fullWidth
-                />
+            <button type="submit" className={styles.submitButton} disabled={isSubmitting}>
+              {isSubmitting ? (
+                <>
+                  <span className={styles.buttonSpinner} />
+                  <span>Signing in...</span>
+                </>
+              ) : (
+                <>
+                  <FontAwesomeIcon icon={faPaperPlane} />
+                  <span>Sign in</span>
+                </>
+              )}
+            </button>
 
+            <div className={styles.switchPrompt}>
+              <span>Don't have an account?</span>
+              <button
+                type="button"
+                className={styles.switchAction}
+                onClick={() => switchStep(LOGIN_STEPS.SIGNUP)}
+              >
+                Create one
+              </button>
+            </div>
+          </form>
+        )}
+
+        {/* STEP 2: SIGNUP */}
+        {activeStep === LOGIN_STEPS.SIGNUP && (
+          <form className={styles.formBody} onSubmit={handleSignupSubmit} autoComplete="on">
+            <div className={styles.fieldGroup}>
+              <label htmlFor="signup-username" className={styles.fieldLabel}>
+                Username
+              </label>
+              <Input
+                type="text"
+                name="username"
+                id="signup-username"
+                placeholder="Choose a username"
+                icon={faUser}
+                value={formValues.username}
+                onChange={handleChange('username')}
+                autoComplete="username"
+                autoCapitalize="none"
+                autoCorrect="off"
+                spellCheck={false}
+                size="md"
+                fullWidth
+              />
+              <span className={styles.fieldHint}>5–24 characters: letters, numbers, and underscores</span>
+            </div>
+
+            <div className={styles.fieldGroup}>
+              <label htmlFor="signup-email" className={styles.fieldLabel}>
+                Email address
+              </label>
+              <Input
+                type="email"
+                name="email"
+                id="signup-email"
+                placeholder="name@example.com"
+                icon={faEnvelope}
+                value={formValues.email}
+                onChange={handleChange('email')}
+                autoComplete="email"
+                autoCapitalize="none"
+                size="md"
+                fullWidth
+              />
+            </div>
+
+            <div className={styles.fieldGroup}>
+              <label htmlFor="signup-password" className={styles.fieldLabel}>
+                Password
+              </label>
+              <div className={styles.passwordWrapper}>
                 <Input
-                  type="password"
+                  type={showPassword ? 'text' : 'password'}
                   name="password"
                   id="signup-password"
-                  placeholder="Password (uppercase, lowercase, number, symbol)"
+                  placeholder="Create a strong password"
                   icon={faLock}
                   value={formValues.password}
                   onChange={handleChange('password')}
@@ -458,135 +544,168 @@ const LoginPage: React.FC<LoginPageProps> = ({ initialStep = LOGIN_STEPS.LOGIN }
                   size="md"
                   fullWidth
                 />
-
-                <Button type="submit" size="lg" fullWidth disabled={isSubmitting}>
-                  {isSubmitting ? 'Creating account...' : 'Create Account'}
-                </Button>
-
-                <p className={styles.toggleAuth}>
-                  Already have an account?{' '}
-                  <button
-                    type="button"
-                    className={styles.linkButton}
-                    onClick={() => switchStep(LOGIN_STEPS.LOGIN)}
-                  >
-                    Log in
-                  </button>
-                </p>
-              </form>
-            </>
-          )}
-
-          {/* VIEW 3: FORGOT PASSWORD */}
-          {activeStep === LOGIN_STEPS.FORGOT && (
-            <>
-              <h2 className={styles.Titr}>Reset Password</h2>
-              <h4 className={styles.Discription}>
-                Enter your email address and we will send you a reset link
-              </h4>
-
-              <form className={styles['form-inputs']} onSubmit={handleForgotSubmit}>
-                <Input
-                  type="email"
-                  name="email"
-                  id="forgot-email"
-                  placeholder="Enter your email"
-                  icon={faEnvelope}
-                  value={formValues.email}
-                  onChange={handleChange('email')}
-                  autoComplete="email"
-                  size="md"
-                  fullWidth
-                />
-
-                <Button type="submit" size="lg" fullWidth disabled={isSubmitting}>
-                  {isSubmitting ? 'Sending link...' : 'Send Reset Link'}
-                </Button>
-
-                <div className={styles.backRow}>
-                  <button
-                    type="button"
-                    className={styles.backLink}
-                    onClick={() => switchStep(LOGIN_STEPS.LOGIN)}
-                  >
-                    <FontAwesomeIcon icon={faArrowLeft} />
-                    <span>Back to login</span>
-                  </button>
-                </div>
-              </form>
-            </>
-          )}
-
-          {/* VIEW 4: VERIFY NOTICE & RESEND */}
-          {activeStep === LOGIN_STEPS.VERIFY_NOTICE && (
-            <>
-              <h2 className={styles.Titr}>Check your email</h2>
-              <h4 className={styles.Discription}>
-                We sent a verification link to <strong>{formValues.email}</strong>. Please check
-                your inbox to activate your account.
-              </h4>
-
-              <div className={styles['form-inputs']}>
-                <Button
+                <button
                   type="button"
-                  variant="outline"
-                  size="md"
-                  fullWidth
-                  disabled={isResending}
-                  onClick={handleResendVerification}
+                  className={styles.eyeButton}
+                  onClick={() => setShowPassword((prev) => !prev)}
+                  aria-label={showPassword ? 'Hide password' : 'Show password'}
                 >
-                  {isResending ? 'Sending...' : 'Resend Verification Email'}
-                </Button>
-
-                <Button
-                  type="button"
-                  size="md"
-                  fullWidth
-                  onClick={() => switchStep(LOGIN_STEPS.LOGIN)}
-                >
-                  Back to Login
-                </Button>
+                  <FontAwesomeIcon icon={showPassword ? faEyeSlash : faEye} />
+                </button>
               </div>
-            </>
-          )}
+              <span className={styles.fieldHint}>Must include uppercase, lowercase, number & symbol</span>
+            </div>
 
-          {/* VIEW 5: USERNAME (LEGACY ONBOARDING STEP) */}
-          {activeStep === LOGIN_STEPS.USERNAME && (
-            <>
-              <h2 className={styles.Titr}>Enter Username</h2>
-              <h4 className={styles.Discription}>Please enter your username to complete login</h4>
+            <button type="submit" className={styles.submitButton} disabled={isSubmitting}>
+              {isSubmitting ? (
+                <>
+                  <span className={styles.buttonSpinner} />
+                  <span>Creating account...</span>
+                </>
+              ) : (
+                <>
+                  <FontAwesomeIcon icon={faPaperPlane} />
+                  <span>Create Account</span>
+                </>
+              )}
+            </button>
 
-              <form className={styles['form-inputs']} onSubmit={handleUsernameSubmit}>
-                <Input
-                  value={formValues.username}
-                  onChange={handleChange('username')}
-                  type="text"
-                  name="username"
-                  id="onboard-username"
-                  placeholder="Username"
-                  icon={faUser}
-                  autoFocus
-                  size="md"
-                  fullWidth
-                  className="slide-in"
-                />
-                <Button
-                  type="submit"
-                  size="lg"
-                  className="slide-in"
-                  fullWidth
-                  disabled={isSubmitting}
-                >
-                  {isSubmitting ? 'Saving...' : 'Continue'}
-                </Button>
-              </form>
-            </>
-          )}
-        </div>
+            <div className={styles.switchPrompt}>
+              <span>Already have an account?</span>
+              <button
+                type="button"
+                className={styles.switchAction}
+                onClick={() => switchStep(LOGIN_STEPS.LOGIN)}
+              >
+                Log in
+              </button>
+            </div>
+          </form>
+        )}
+
+        {/* STEP 3: FORGOT PASSWORD */}
+        {activeStep === LOGIN_STEPS.FORGOT && (
+          <form className={styles.formBody} onSubmit={handleForgotSubmit}>
+            <div className={styles.fieldGroup}>
+              <label htmlFor="forgot-email" className={styles.fieldLabel}>
+                Registered email
+              </label>
+              <Input
+                type="email"
+                name="email"
+                id="forgot-email"
+                placeholder="Enter your email"
+                icon={faEnvelope}
+                value={formValues.email}
+                onChange={handleChange('email')}
+                autoComplete="email"
+                size="md"
+                fullWidth
+              />
+              <span className={styles.fieldHint}>
+                We will email you a secure link to reset your account credentials.
+              </span>
+            </div>
+
+            <button type="submit" className={styles.submitButton} disabled={isSubmitting}>
+              {isSubmitting ? (
+                <>
+                  <span className={styles.buttonSpinner} />
+                  <span>Sending link...</span>
+                </>
+              ) : (
+                <>
+                  <FontAwesomeIcon icon={faPaperPlane} />
+                  <span>Send Reset Link</span>
+                </>
+              )}
+            </button>
+
+            <div className={styles.backButtonRow}>
+              <button
+                type="button"
+                className={styles.backButton}
+                onClick={() => switchStep(LOGIN_STEPS.LOGIN)}
+              >
+                <FontAwesomeIcon icon={faArrowLeft} />
+                <span>Back to login</span>
+              </button>
+            </div>
+          </form>
+        )}
+
+        {/* STEP 4: VERIFY NOTICE & RESEND */}
+        {activeStep === LOGIN_STEPS.VERIFY_NOTICE && (
+          <div className={styles.formBody}>
+            <div className={styles.verifyIconBox}>
+              <FontAwesomeIcon icon={faEnvelopeOpenText} />
+            </div>
+
+            <div className={styles.emailPill}>{formValues.email}</div>
+
+            <p className={styles.brandSubtitle} style={{ textAlign: 'center' }}>
+              We've dispatched a verification link to your email. Click it to verify your account,
+              then log in to start chatting.
+            </p>
+
+            <button
+              type="button"
+              className={styles.outlineButton}
+              disabled={isResending}
+              onClick={handleResendVerification}
+            >
+              {isResending ? 'Sending email...' : 'Resend Verification Email'}
+            </button>
+
+            <button
+              type="button"
+              className={styles.submitButton}
+              onClick={() => switchStep(LOGIN_STEPS.LOGIN)}
+            >
+              Back to Login
+            </button>
+          </div>
+        )}
+
+        {/* STEP 5: USERNAME STEP 2 ONBOARDING */}
+        {activeStep === LOGIN_STEPS.USERNAME && (
+          <form className={styles.formBody} onSubmit={handleUsernameSubmit}>
+            <div className={styles.fieldGroup}>
+              <label htmlFor="onboard-username" className={styles.fieldLabel}>
+                Choose your username
+              </label>
+              <Input
+                value={formValues.username}
+                onChange={handleChange('username')}
+                type="text"
+                name="username"
+                id="onboard-username"
+                placeholder="e.g. alex_rivera"
+                icon={faUser}
+                autoFocus
+                size="md"
+                fullWidth
+              />
+              <span className={styles.fieldHint}>
+                This is how other users on SnappTalk will discover and mention you.
+              </span>
+            </div>
+
+            <button type="submit" className={styles.submitButton} disabled={isSubmitting}>
+              {isSubmitting ? (
+                <>
+                  <span className={styles.buttonSpinner} />
+                  <span>Saving...</span>
+                </>
+              ) : (
+                <span>Complete Setup</span>
+              )}
+            </button>
+          </form>
+        )}
       </div>
     </div>
   );
 };
 
 export default LoginPage;
-

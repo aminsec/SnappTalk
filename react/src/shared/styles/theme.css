@@ -33,6 +33,7 @@
     --icon-color: #9CA3AF;
     --icon-active: #FFFFFF;
     --icon-active-bg: #2D90E4;
+    --action-icon-color: rgba(255, 255, 255, 0.55);
 
     --success-color: #00C897;
     --error-color: #FF5C5C;
@@ -87,7 +88,7 @@
     --bubble-sent: #2D90E4;
     --bubble-received: #FFFFFF;
     --bubble-received-border: rgba(0, 0, 0, 0.08);
-    --bubble-received-text: #1E293B;
+    --bubble-received-text: #0F172A;
     --bubble-received-timestamp: rgba(30, 41, 59, 0.55);
 
     --notification-badge: #2D90E4;
@@ -104,6 +105,7 @@
     --icon-color: #64748B;
     --icon-active: #FFFFFF;
     --icon-active-bg: #2D90E4;
+    --action-icon-color: #64748B;
 
     --success-color: #00C897;
     --error-color: #EF4444;
@@ -117,7 +119,7 @@
     --border-subtle: rgba(0, 0, 0, 0.08);
     --border-divider: rgba(0, 0, 0, 0.06);
 
-    --header-bg: radial-gradient(ellipse at 12% -100%, color-mix(in srgb, var(--chat-accent, #2D90E4) 18%, transparent), transparent 58%), radial-gradient(ellipse at 92% 130%, rgba(255, 255, 255, 0.95), transparent 52%), rgba(255, 255, 255, 0.88);
+    --header-bg: radial-gradient(ellipse at 12% -100%, color-mix(in srgb, var(--chat-accent, #2D90E4) 18%, transparent), transparent 58%), radial-gradient(ellipse at 92% 130%, rgba(255, 255, 255, 0.95), transparent 52%), rgba(255, 255, 255, 0.92);
     --header-border: rgba(0, 0, 0, 0.08);
     --header-shadow: 0 10px 30px rgba(0, 0, 0, 0.06), 0 2px 8px rgba(0, 0, 0, 0.04), inset 0 1px 0 rgba(255, 255, 255, 0.9);
 
@@ -125,7 +127,7 @@
     --glass-input-border: rgba(0, 0, 0, 0.1);
     --glass-input-shadow: 0 4px 18px rgba(0, 0, 0, 0.08);
 
-    --date-separator-bg: rgba(255, 255, 255, 0.9);
+    --date-separator-bg: rgba(0, 0, 0, 0.06);
     --date-separator-text: #475569;
 
     --reply-received-bg: rgba(0, 0, 0, 0.04);

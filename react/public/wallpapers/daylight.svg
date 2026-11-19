@@ -1,0 +1,32 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1440" height="1000" viewBox="0 0 1440 1000" fill="none">
+  <defs>
+    <linearGradient id="daylight_base" x1="0" y1="0" x2="1440" y2="1000" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#E8F1FA"/>
+      <stop offset="0.5" stop-color="#F2F6FC"/>
+      <stop offset="1" stop-color="#E5EDF7"/>
+    </linearGradient>
+    <radialGradient id="daylight_sun" cx="0" cy="0" r="1" gradientTransform="translate(250 160) rotate(45) scale(600 450)" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#60A5FA" stop-opacity="0.22"/>
+      <stop offset="0.7" stop-color="#93C5FD" stop-opacity="0.08"/>
+      <stop offset="1" stop-color="#E8F1FA" stop-opacity="0"/>
+    </radialGradient>
+    <radialGradient id="daylight_warm" cx="0" cy="0" r="1" gradientTransform="translate(1250 800) rotate(-140) scale(700 500)" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#38BDF8" stop-opacity="0.18"/>
+      <stop offset="1" stop-color="#38BDF8" stop-opacity="0"/>
+    </radialGradient>
+    <pattern id="daylight_doodles" width="160" height="160" patternUnits="userSpaceOnUse">
+      <g stroke="#3B82F6" stroke-opacity="0.07" stroke-width="1.3" fill="none">
+        <path d="M25 45c15-15 35-15 50 0s35 15 50 0"/>
+        <circle cx="45" cy="115" r="14"/>
+        <path d="M125 105l-10 10m0-10l10 10"/>
+        <rect x="85" y="40" width="22" height="22" rx="5"/>
+        <path d="M30 140c10-8 25-8 35 0"/>
+      </g>
+    </pattern>
+    <filter id="daylight_blur"><feGaussianBlur stdDeviation="50"/></filter>
+  </defs>
+  <rect width="1440" height="1000" fill="url(#daylight_base)"/>
+  <rect width="1440" height="1000" fill="url(#daylight_sun)" filter="url(#daylight_blur)"/>
+  <rect width="1440" height="1000" fill="url(#daylight_warm)" filter="url(#daylight_blur)"/>
+  <rect width="1440" height="1000" fill="url(#daylight_doodles)"/>
+</svg>

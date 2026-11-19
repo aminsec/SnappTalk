@@ -141,8 +141,9 @@
 .searchContainer {
     width: 100%;
     overflow: hidden;
-    max-height: 80px;
+    max-height: 48px;
     opacity: 1;
+    margin-bottom: 6px;
     transform: translateY(0);
     transition: max-height 0.32s cubic-bezier(0.4, 0, 0.2, 1),
                 opacity 0.25s ease,
@@ -254,7 +255,7 @@
 .chatTimestampRow {
     display: inline-flex;
     align-items: center;
-    gap: 6px;
+    gap: 5px;
 }
 
 .chatStatusIcon {
@@ -265,6 +266,16 @@
     align-items: center;
     justify-content: center;
     flex-shrink: 0;
+}
+
+.chatStatusSent {
+    color: var(--text-muted);
+    font-size: 11px;
+}
+
+.chatStatusSeen {
+    color: var(--chat-accent, #2D90E4);
+    font-size: 11px;
 }
 
 .chatStatusIconImage {
@@ -335,6 +346,12 @@
         radial-gradient(circle at center, transparent 20%, rgba(0, 0, 0, 0.12) 100%);
     z-index: -1;
     pointer-events: none;
+}
+
+:root[data-theme="light"] .chatMainWallpaper::before {
+    background:
+        linear-gradient(180deg, rgba(255, 255, 255, 0.55), rgba(255, 255, 255, 0.25) 35%, rgba(255, 255, 255, 0.6)),
+        radial-gradient(circle at center, transparent 30%, rgba(255, 255, 255, 0.4) 100%);
 }
 
 /* ============================================
@@ -1172,16 +1189,42 @@
     font-weight: 600;
 }
 
-.emojiOnly {
+.emojiOnly,
+.received.emojiOnly,
+.sent.emojiOnly {
     background: transparent !important;
+    background-color: transparent !important;
+    border: none !important;
     box-shadow: none !important;
-    padding: 2px 0;
-    border-radius: 0;
+    padding: 2px 4px !important;
+    border-radius: 0 !important;
 }
 
-.emojiOnly p {
-    font-size: 32px;
+.emojiOnly p,
+.received.emojiOnly p,
+.sent.emojiOnly p {
+    font-size: 38px;
     line-height: 1.15;
+    background: transparent !important;
+}
+
+.emojiOnly .messageFooter,
+.received.emojiOnly .messageFooter,
+.sent.emojiOnly .messageFooter {
+    background: rgba(0, 0, 0, 0.42);
+    color: #ffffff;
+    padding: 2px 6px;
+    border-radius: 8px;
+    backdrop-filter: blur(4px);
+    width: fit-content;
+    margin-top: 2px;
+}
+
+:root[data-theme="light"] .emojiOnly .messageFooter,
+:root[data-theme="light"] .received.emojiOnly .messageFooter,
+:root[data-theme="light"] .sent.emojiOnly .messageFooter {
+    background: rgba(0, 0, 0, 0.22);
+    color: #ffffff;
 }
 
 /* ============================================
@@ -1255,7 +1298,7 @@
 }
 
 .received .replyPreviewLine {
-    background: rgba(77, 184, 255, 0.9);
+    background: var(--chat-accent, #2D90E4);
 }
 
 .replyPreviewContent {
@@ -1280,7 +1323,7 @@
 }
 
 .received .replyPreviewIcon {
-    color: rgba(77, 184, 255, 0.9);
+    color: var(--chat-accent, #2D90E4);
 }
 
 .replyPreviewLabel {
@@ -1294,7 +1337,7 @@
 }
 
 .received .replyPreviewLabel {
-    color: rgba(77, 184, 255, 0.95);
+    color: var(--chat-accent, #2D90E4);
 }
 
 .replyPreviewText {
@@ -1305,6 +1348,10 @@
     text-overflow: ellipsis;
     white-space: nowrap;
     line-height: 1.35;
+}
+
+.received .replyPreviewText {
+    color: var(--text-muted);
 }
 
 .message p {
@@ -2343,7 +2390,7 @@
     border-radius: 50%;
     border: none;
     background: transparent;
-    color: rgba(255, 255, 255, 0.45);
+    color: var(--action-icon-color, var(--icon-color, #9CA3AF));
     font-size: 17px;
     cursor: pointer;
     display: flex;
@@ -2644,12 +2691,12 @@
 /* ============================================
    CHAT HEADER OPTIONS BUTTON (Three Dots)
    ============================================ */
-   .optionsButton {
+.optionsButton {
     width: 36px;
     height: 36px;
     border-radius: 50%;
-    border: 1px solid rgba(255, 255, 255, 0.16);
-    background: rgba(255, 255, 255, 0.08);
+    border: 1px solid var(--border-subtle, rgba(255, 255, 255, 0.16));
+    background: var(--input-bg, rgba(255, 255, 255, 0.08));
     color: var(--text-muted);
     font-size: 18px;
     cursor: pointer;
@@ -2661,7 +2708,7 @@
 }
 
 .optionsButton:hover {
-    background: rgba(255, 255, 255, 0.16);
+    background: var(--item-hover);
     color: var(--text-main);
 }
 
@@ -3149,6 +3196,11 @@
     height: 48px;
     object-fit: contain;
     filter: invert(100%) sepia(0%) saturate(1552%) hue-rotate(333deg) brightness(112%) contrast(101%);
+}
+
+:root[data-theme="light"] .welcomeIcon {
+    filter: none;
+    opacity: 0.8;
 }
 
 .emptyChatSubtitle {

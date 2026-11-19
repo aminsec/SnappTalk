@@ -1,0 +1,36 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1440" height="1000" viewBox="0 0 1440 1000" fill="none">
+  <defs>
+    <linearGradient id="midnight_base" x1="0" y1="0" x2="1440" y2="1000" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#090D14"/>
+      <stop offset="0.45" stop-color="#0F1726"/>
+      <stop offset="1" stop-color="#06090F"/>
+    </linearGradient>
+    <radialGradient id="midnight_glow" cx="0" cy="0" r="1" gradientTransform="translate(720 300) rotate(90) scale(500 800)" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#1E3A5F" stop-opacity="0.32"/>
+      <stop offset="1" stop-color="#090D14" stop-opacity="0"/>
+    </radialGradient>
+    <radialGradient id="midnight_accent" cx="0" cy="0" r="1" gradientTransform="translate(1200 850) rotate(-135) scale(600 450)" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#2D90E4" stop-opacity="0.2"/>
+      <stop offset="1" stop-color="#2D90E4" stop-opacity="0"/>
+    </radialGradient>
+    <pattern id="midnight_stars" width="160" height="160" patternUnits="userSpaceOnUse">
+      <g fill="#A5C8FF" fill-opacity="0.14">
+        <circle cx="24" cy="36" r="1.5"/>
+        <circle cx="88" cy="18" r="1"/>
+        <circle cx="140" cy="74" r="1.8"/>
+        <circle cx="50" cy="112" r="1.2"/>
+        <circle cx="114" cy="138" r="1"/>
+      </g>
+      <g stroke="#6488B8" stroke-opacity="0.06" stroke-width="1.2" fill="none">
+        <path d="M20 40 L60 80 L100 40"/>
+        <circle cx="120" cy="110" r="12"/>
+        <path d="M30 130 Q50 110 70 130 T110 130"/>
+      </g>
+    </pattern>
+    <filter id="midnight_blur"><feGaussianBlur stdDeviation="60"/></filter>
+  </defs>
+  <rect width="1440" height="1000" fill="url(#midnight_base)"/>
+  <rect width="1440" height="1000" fill="url(#midnight_glow)" filter="url(#midnight_blur)"/>
+  <rect width="1440" height="1000" fill="url(#midnight_accent)" filter="url(#midnight_blur)"/>
+  <rect width="1440" height="1000" fill="url(#midnight_stars)"/>
+</svg>

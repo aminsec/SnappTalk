@@ -14,6 +14,8 @@ import {
   faArrowDown,
   faBars,
   faDownload,
+  faCheck,
+  faCheckDouble,
 } from '@fortawesome/free-solid-svg-icons';
 import { Sidebar, MobileMenu, Input, ProfileAvatar } from '@/shared/components';
 import { useAuth } from '@/shared/state/useAuth';
@@ -32,6 +34,7 @@ import {
   MAX_MESSAGE_LENGTH,
   createOptimisticId,
   convertISOtoLocal,
+  formatChatListTime,
   truncateMessage,
   getMessagePreviewText,
   getConversationId,
@@ -3227,14 +3230,25 @@ function ChatsPage() {
   }, [isOptionsMenuOpen]);
 
   useEffect(() => {
-    const handleStorage = (event) => {
-      if (event.key === WALLPAPER_STORAGE_KEY) {
-        setWallpaperId(event.newValue || 'aurora');
+    const handleStorage = (event: StorageEvent) => {
+      if (event.key === WALLPAPER_STORAGE_KEY && event.newValue) {
+        setWallpaperId(event.newValue);
+      }
+    };
+
+    const handleCustomChange = (event: Event) => {
+      const customEvent = event as CustomEvent<{ wallpaperId: string }>;
+      if (customEvent.detail?.wallpaperId) {
+        setWallpaperId(customEvent.detail.wallpaperId);
       }
     };
 
     window.addEventListener('storage', handleStorage);
-    return () => window.removeEventListener('storage', handleStorage);
+    window.addEventListener('wallpaper-change', handleCustomChange);
+    return () => {
+      window.removeEventListener('storage', handleStorage);
+      window.removeEventListener('wallpaper-change', handleCustomChange);
+    };
   }, []);
 
   // Handle click outside media picker
@@ -4751,7 +4765,7 @@ function ChatsPage() {
     return wallpapers.find((wallpaper) => wallpaper.id === wallpaperId)
       || wallpapers.find((wallpaper) => wallpaper.id === 'aurora');
   }, [wallpaperId]);
-  const hasWallpaper = resolvedWallpaper?.src && wallpaperId !== 'none';
+  const hasWallpaper = Boolean(resolvedWallpaper?.src);
   const messageSizeOption = getMessageSizeOption(messageSize);
   const chatThemeStyle = {
     '--chat-accent': resolvedWallpaper?.accent || '#3390ec',
@@ -4771,7 +4785,7 @@ function ChatsPage() {
     '--chat-bubble-radius': messageSizeOption.bubbleRadius,
     '--chat-caption-font-size': messageSizeOption.captionFontSize,
   };
-  const wallpaperStyle = hasWallpaper
+  const wallpaperStyle = resolvedWallpaper?.src
     ? { backgroundImage: `url(${resolvedWallpaper.src})` }
     : undefined;
 
@@ -4823,18 +4837,17 @@ function ChatsPage() {
           >
             <FontAwesomeIcon icon={faBars} />
           </button>
-          <span className={styles.mobileChatHeaderTitle}>Chats</span>
+          <span className={styles.mobileChatHeaderTitle}>SnappTalk</span>
         </div>
         <div className={`${styles.searchContainer} ${isChatListScrolled ? styles.searchHidden : ''}`}>
           <Input
             type="text"
             name="text"
             id="search"
-            placeholder="Search..."
+            placeholder="Search conversations..."
             icon={faSearch}
-            size="lg"
+            size="sm"
             fullWidth
-            className="mb-3"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
           />
@@ -4871,21 +4884,31 @@ function ChatsPage() {
           ) : (
             tabbedChats.map((chat, index) => {
               const isPrivateChat = chat.type === "pv";
-              const lastMessageSenderId = chat.last_message?.sender_id
-                || chat.last_message?.sender?._id
-                || chat.last_message?.sender?.id;
+              const curUserId = (user?._id || user?.id)?.toString();
+              const lastSenderId = getSenderId(chat.last_message);
               const hasLastMessage = Boolean(
-                chat.last_message?.content
-                || chat.last_message?.when
-                || chat.last_message?.message_id
+                chat.last_message?.content ||
+                chat.last_message?.text ||
+                chat.last_message?.created_at ||
+                chat.last_message?.when ||
+                chat.last_message?.message_id ||
+                chat.last_message?._id
               );
-              const isMyMessage = hasLastMessage
-                && (lastMessageSenderId
-                  ? lastMessageSenderId?.toString() === user?.id?.toString()
-                  : chat.last_message?.sender === user?.username);
+              const isMyMessage = hasLastMessage && Boolean(
+                (lastSenderId && curUserId && lastSenderId === curUserId) ||
+                (chat.last_message?.sender === user?.username) ||
+                (lastSenderId && curUserId && lastSenderId.toLowerCase() === curUserId.toLowerCase())
+              );
               const lastMessageSeen = isMyMessage
-                ? resolveMessageSeen(chat.last_message, chat, user?.id?.toString())
+                ? resolveMessageSeen(chat.last_message, chat, curUserId)
                 : false;
+              const messageTimestamp =
+                chat.last_message?.created_at ||
+                chat.last_message?.when ||
+                chat.last_message?.time ||
+                chat.last_message?.timestamp ||
+                chat.updated_at ||
+                chat.created_at;
               const selectedId = getConversationId(selectedChat);
               const chatId = getConversationId(chat);
               const chatIdStr = chatId?.toString();
@@ -4964,7 +4987,7 @@ function ChatsPage() {
                           <span className={styles.youText}>You: </span>
                         )}
                         {!isMyMessage && !isPrivateChat && (
-                          <b>{chat.last_message.sender}: </b>
+                          <b>{chat.last_message?.sender_username || chat.last_message?.sender_name || (lastSenderId && senderInfoCache[lastSenderId]?.username) || 'Member'}: </b>
                         )}
                         {truncateMessage(getMessagePreviewText(chat.last_message))}
                       </p>
@@ -4973,25 +4996,16 @@ function ChatsPage() {
                       <span className={styles.chatTimestampRow}>
                         {hasLastMessage && isMyMessage && (
                           <span className={styles.chatStatusIcon} aria-hidden="true">
-                            <img
-                              src={sentIcon}
-                              alt="Sent"
-                              className={`${styles.chatStatusIconImage} ${
-                                lastMessageSeen ? '' : styles.chatStatusIconVisible
-                              }`}
-                            />
-                            <img
-                              src={seenIcon}
-                              alt="Seen"
-                              className={`${styles.chatStatusIconImage} ${
-                                lastMessageSeen ? styles.chatStatusIconVisible : ''
-                              }`}
-                            />
+                            {lastMessageSeen ? (
+                              <FontAwesomeIcon icon={faCheckDouble} className={styles.chatStatusSeen} />
+                            ) : (
+                              <FontAwesomeIcon icon={faCheck} className={styles.chatStatusSent} />
+                            )}
                           </span>
                         )}
-                        {hasLastMessage && (
+                        {hasLastMessage && messageTimestamp && (
                           <span className={styles.timestamp}>
-                            {convertISOtoLocal(chat.last_message.when)}
+                            {formatChatListTime(messageTimestamp)}
                           </span>
                         )}
                       </span>

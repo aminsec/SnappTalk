@@ -3,11 +3,15 @@ import { Wallpaper } from '../types/preferences.types';
 export const WALLPAPER_STORAGE_KEY = 'chat_wallpaper';
 
 const BASE_URL = import.meta.env.BASE_URL || '/';
-const withBase = (path: string): string => `${BASE_URL}${path}`;
+const withBase = (path: string): string => {
+  const base = BASE_URL.endsWith('/') ? BASE_URL : `${BASE_URL}/`;
+  const cleanPath = path.startsWith('/') ? path.slice(1) : path;
+  return `${base}${cleanPath}`;
+};
 
 export const wallpapers: Wallpaper[] = [
-  { id: 'none', label: 'Midnight', description: 'Clean and distraction-free', src: null, accent: '#3390ec', accentHover: '#2678c7', bubbleStart: '#3390ec', bubbleEnd: '#2476c5' },
-  { id: 'daylight', label: 'Daylight', description: 'Clean soft brightness', src: null, accent: '#2D90E4', accentHover: '#2478c5', bubbleStart: '#2D90E4', bubbleEnd: '#1e75c2' },
+  { id: 'none', label: 'Midnight', description: 'Clean starry midnight', src: withBase('wallpapers/midnight.svg'), accent: '#3390ec', accentHover: '#2678c7', bubbleStart: '#3390ec', bubbleEnd: '#2476c5' },
+  { id: 'daylight', label: 'Daylight', description: 'Clean soft brightness', src: withBase('wallpapers/daylight.svg'), accent: '#2D90E4', accentHover: '#2478c5', bubbleStart: '#2D90E4', bubbleEnd: '#1e75c2' },
   { id: 'aurora', label: 'Aurora', description: 'Cool northern glow', src: withBase('wallpapers/aurora.svg'), accent: '#35bfa6', accentHover: '#269b89', bubbleStart: '#27aa94', bubbleEnd: '#187c74' },
   { id: 'dusk', label: 'Dusk', description: 'Warm violet evening', src: withBase('wallpapers/dusk.svg'), accent: '#d57699', accentHover: '#b95d83', bubbleStart: '#c7658d', bubbleEnd: '#924c79' },
   { id: 'grid', label: 'Blueprint', description: 'Crisp geometric depth', src: withBase('wallpapers/grid.svg'), accent: '#5399db', accentHover: '#3d7fbd', bubbleStart: '#438fd1', bubbleEnd: '#2d6fa9' },
@@ -15,4 +19,3 @@ export const wallpapers: Wallpaper[] = [
   { id: 'nebula', label: 'Nebula', description: 'Deep cosmic color', src: withBase('wallpapers/nebula.svg'), accent: '#9278df', accentHover: '#775dc2', bubbleStart: '#876cda', bubbleEnd: '#6048ad' },
   { id: 'ocean', label: 'Tide', description: 'Calm teal current', src: withBase('wallpapers/ocean.svg'), accent: '#36aeb5', accentHover: '#278b93', bubbleStart: '#2ba0a8', bubbleEnd: '#1e747d' },
 ];
-

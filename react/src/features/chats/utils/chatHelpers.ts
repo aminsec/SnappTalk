@@ -65,6 +65,50 @@ export const convertISOtoLocal = (isoDate?: string | Date | null): string => {
   }
 };
 
+export const formatChatListTime = (isoDate?: string | Date | null): string => {
+  try {
+    if (!isoDate) return '';
+    const date = new Date(isoDate);
+    if (isNaN(date.getTime())) return '';
+
+    const now = new Date();
+    const isToday =
+      date.getDate() === now.getDate() &&
+      date.getMonth() === now.getMonth() &&
+      date.getFullYear() === now.getFullYear();
+
+    if (isToday) {
+      return date.toLocaleTimeString('en-US', {
+        hour: '2-digit',
+        minute: '2-digit',
+      });
+    }
+
+    const yesterday = new Date(now);
+    yesterday.setDate(yesterday.getDate() - 1);
+    const isYesterday =
+      date.getDate() === yesterday.getDate() &&
+      date.getMonth() === yesterday.getMonth() &&
+      date.getFullYear() === yesterday.getFullYear();
+
+    if (isYesterday) {
+      return 'Yesterday';
+    }
+
+    const diffDays = Math.floor((now.getTime() - date.getTime()) / (1000 * 60 * 60 * 24));
+    if (diffDays < 7 && diffDays >= 0) {
+      return date.toLocaleDateString('en-US', { weekday: 'short' });
+    }
+
+    return date.toLocaleDateString('en-US', {
+      month: 'short',
+      day: 'numeric',
+    });
+  } catch {
+    return '';
+  }
+};
+
 export const formatFileSize = (bytes: number): string => {
   if (bytes === 0) return '0 Bytes';
   const k = 1024;
