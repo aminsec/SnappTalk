@@ -140,6 +140,15 @@
 
 .searchContainer {
     width: 100%;
+    overflow: hidden;
+    max-height: 80px;
+    opacity: 1;
+    transform: translateY(0);
+    transition: max-height 0.32s cubic-bezier(0.4, 0, 0.2, 1),
+                opacity 0.25s ease,
+                transform 0.3s cubic-bezier(0.4, 0, 0.2, 1),
+                margin 0.3s ease,
+                padding 0.3s ease;
 }
 
 .chatList {
@@ -832,10 +841,43 @@
 }
 
 .mediaOnly {
-    padding: 2px;
+    padding: 0 !important;
+    border: none !important;
     overflow: visible;
     background: transparent !important;
     box-shadow: none !important;
+}
+
+.received.mediaOnly,
+.received.mediaWithCaption,
+.received:has(.mediaImageWrap),
+.received:has(.videoPlayer),
+.received:has(.mediaManualPreview),
+.received:has(.messageMedia),
+.received .mediaImageWrap,
+.received .mediaImageButton,
+.received .messageMedia,
+.received .videoPlayer,
+.received .mediaManualPreview {
+    border: none !important;
+}
+
+.mediaOnly .mediaImageWrap,
+.mediaOnly .mediaImageButton,
+.mediaOnly .messageMedia,
+.mediaOnly .videoPlayer,
+.mediaOnly .mediaManualPreview {
+    margin: 0 !important;
+}
+
+.sent.mediaOnly {
+    align-self: flex-end !important;
+    margin-right: 0 !important;
+}
+
+.received.mediaOnly {
+    align-self: flex-start !important;
+    margin-left: 0 !important;
 }
 
 .mediaWithCaption {
@@ -3415,8 +3457,8 @@
     width: 38px;
     height: 38px;
     flex: 0 0 38px;
-    background: rgba(255, 255, 255, 0.08);
-    border: 1px solid rgba(255, 255, 255, 0.16);
+    background: var(--input-bg, rgba(255, 255, 255, 0.08));
+    border: 1px solid var(--border-subtle, rgba(255, 255, 255, 0.16));
     color: var(--text-main);
     font-size: 18px;
     padding: 0;
@@ -3425,15 +3467,31 @@
     border-radius: 50%;
     align-items: center;
     justify-content: center;
-    transition: background-color 0.2s ease, transform 0.15s ease;
+    outline: none !important;
+    -webkit-tap-highlight-color: transparent !important;
+    user-select: none;
+    -webkit-user-select: none;
+    box-shadow: none !important;
+    transition: background-color 0.2s ease, transform 0.15s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.2s ease;
 }
 
 .mobileBackButton:hover {
-    background: rgba(255, 255, 255, 0.16);
+    background: var(--item-hover, rgba(255, 255, 255, 0.16));
+}
+
+.mobileBackButton:focus {
+    outline: none !important;
+    box-shadow: none !important;
+}
+
+.mobileBackButton:focus-visible {
+    outline: 2px solid var(--chat-accent, #2D90E4) !important;
+    outline-offset: 2px;
 }
 
 .mobileBackButton:active {
-    transform: scale(0.92);
+    transform: scale(0.88);
+    background: color-mix(in srgb, var(--chat-accent, #2D90E4) 25%, var(--input-bg, rgba(255, 255, 255, 0.16)));
 }
 
 /* ============================================
@@ -3479,16 +3537,25 @@
         font-size: 18px;
         border-radius: 12px;
         cursor: pointer;
+        outline: none !important;
+        -webkit-tap-highlight-color: transparent !important;
+        box-shadow: none !important;
         transition: background-color 0.2s ease, transform 0.15s ease;
         flex-shrink: 0;
     }
 
     .mobileMenuButton:hover {
-        background: rgba(255, 255, 255, 0.08);
+        background: var(--item-hover, rgba(255, 255, 255, 0.08));
+    }
+
+    .mobileMenuButton:focus {
+        outline: none !important;
+        box-shadow: none !important;
     }
 
     .mobileMenuButton:active {
-        transform: scale(0.92);
+        transform: scale(0.9);
+        background: var(--item-hover, rgba(255, 255, 255, 0.16));
     }
 
     .mobileChatHeaderTitle {
@@ -3720,9 +3787,34 @@
         height: 52px;
     }
     
-    .chatTabs { padding: 4px; margin-bottom: 8px; }
+    .chatTabs {
+        padding: 4px;
+        margin-bottom: 8px;
+        transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1), background-color 0.2s ease, box-shadow 0.2s ease, margin 0.3s ease;
+    }
+
+    .chatTabsSticky {
+        position: sticky;
+        top: 0;
+        z-index: 20;
+        background: var(--bg-panel);
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+        border-radius: 12px;
+    }
+
     .chatTab { padding: 8px 12px; font-size: 13px; }
     .searchContainer { padding: 8px 0; }
+
+    .searchHidden {
+        max-height: 0 !important;
+        opacity: 0 !important;
+        margin-top: 0 !important;
+        margin-bottom: 0 !important;
+        padding-top: 0 !important;
+        padding-bottom: 0 !important;
+        transform: translateY(-8px) !important;
+        pointer-events: none !important;
+    }
     
     .noChatSelected { padding: 20px; }
     .emptyChatTitle { font-size: 20px; }

@@ -45,6 +45,19 @@
   margin: 0;
   padding: 0;
   box-sizing: border-box;
+  -webkit-tap-highlight-color: transparent !important;
+}
+
+button,
+[role="button"],
+a {
+  -webkit-tap-highlight-color: transparent !important;
+}
+
+button:focus:not(:focus-visible),
+[role="button"]:focus:not(:focus-visible) {
+  outline: none !important;
+  box-shadow: none !important;
 }
 
 html, body {

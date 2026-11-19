@@ -204,6 +204,16 @@ function ChatsPage() {
   const [unreadCounts, setUnreadCounts] = useState({});
   const unreadCountsRef = useRef({});
   const hasFetchedContactsRef = useRef(false);
+  const [isChatListScrolled, setIsChatListScrolled] = useState(false);
+
+  const handleChatListScroll = useCallback((e: React.UIEvent<HTMLElement>) => {
+    const scrollTop = e.currentTarget.scrollTop;
+    if (scrollTop > 12 && !searchQuery.trim()) {
+      setIsChatListScrolled(true);
+    } else if (scrollTop <= 4) {
+      setIsChatListScrolled(false);
+    }
+  }, [searchQuery]);
   // Mobile responsive states
   const [isMobileChatOpen, setIsMobileChatOpen] = useState(() => {
     // If arriving via a deep link, open the chat pane immediately
@@ -4803,7 +4813,7 @@ function ChatsPage() {
 
       <MobileMenu open={isMobileMenuOpen} onClose={() => setIsMobileMenuOpen(false)} />
 
-      <aside className={styles.chatListSidebar}>
+      <aside className={styles.chatListSidebar} onScroll={handleChatListScroll}>
         <div className={styles.mobileChatHeader}>
           <button
             type="button"
@@ -4815,7 +4825,7 @@ function ChatsPage() {
           </button>
           <span className={styles.mobileChatHeaderTitle}>Chats</span>
         </div>
-        <div className={styles.searchContainer}>
+        <div className={`${styles.searchContainer} ${isChatListScrolled ? styles.searchHidden : ''}`}>
           <Input
             type="text"
             name="text"
@@ -4829,7 +4839,7 @@ function ChatsPage() {
             onChange={(e) => setSearchQuery(e.target.value)}
           />
         </div>
-        <div className={styles.chatTabs}>
+        <div className={`${styles.chatTabs} ${isChatListScrolled ? styles.chatTabsSticky : ''}`}>
           <button
             type="button"
             className={`${styles.chatTab} ${activeTab === 'all' ? styles.chatTabActive : ''}`}
@@ -4853,7 +4863,7 @@ function ChatsPage() {
           </button>
         </div>
   
-        <div className={styles.chatList}>
+        <div className={styles.chatList} onScroll={handleChatListScroll}>
           {contacts.length === 0 ? (
             <div className={styles.emptyState}>
               <p>Start a conversation...</p>

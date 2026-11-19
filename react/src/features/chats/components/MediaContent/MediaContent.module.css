@@ -235,7 +235,7 @@
     height: auto;
     overflow: hidden;
     background: #05070a;
-    border: 1px solid rgba(255, 255, 255, 0.14);
+    border: none;
     border-radius: 16px;
     box-shadow: 0 16px 36px rgba(0, 0, 0, 0.28), 0 0 0 1px rgba(71, 170, 255, 0.04);
     cursor: pointer;
