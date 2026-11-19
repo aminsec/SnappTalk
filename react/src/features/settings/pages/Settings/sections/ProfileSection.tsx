@@ -12,7 +12,6 @@ import {
   faCircleExclamation,
   faXmark,
   faClock,
-  faShieldHalved,
 } from '@fortawesome/free-solid-svg-icons';
 
 import { Button, ProfileAvatar, ProfileImageUpload } from '@/shared/components';
@@ -267,13 +266,6 @@ export default function ProfileSection(): React.ReactElement {
 
   return (
     <div className={styles.profileContainer} style={dynamicThemeStyles}>
-      {/* Header */}
-      <div className={styles.sectionHeader}>
-        <span className={styles.eyebrow}>Personal Identity</span>
-        <h2>Profile Settings</h2>
-        <p>Customize how you appear to others across SnappTalk conversations.</p>
-      </div>
-
       {/* 1. Hero Identity Card */}
       <div className={styles.heroCard}>
         <div className={styles.heroGlowBackdrop} aria-hidden="true" />
@@ -535,14 +527,6 @@ export default function ProfileSection(): React.ReactElement {
                   {user?.bio || 'No biography added yet. Click "Edit profile" to introduce yourself!'}
                 </p>
               </div>
-            </div>
-
-            {/* Security summary */}
-            <div className={styles.profileMetaNotice}>
-              <FontAwesomeIcon icon={faShieldHalved} className={styles.noticeIcon} />
-              <span>
-                Your profile picture, username, and bio are shared with contacts and groups you join.
-              </span>
             </div>
           </div>
         )}

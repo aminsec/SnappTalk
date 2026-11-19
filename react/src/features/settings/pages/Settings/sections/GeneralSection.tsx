@@ -132,9 +132,7 @@ const GeneralSection: React.FC = () => {
     <div className={styles.generalContainer} style={dynamicThemeStyles}>
       {/* Header */}
       <div className={styles.sectionHeader}>
-        <span className={styles.eyebrow}>Device & Media Preferences</span>
         <h2>General Settings</h2>
-        <p>Control how shared media behaves, manage network consumption, and local device preferences.</p>
       </div>
 
       {/* 1. Media Downloads Card */}

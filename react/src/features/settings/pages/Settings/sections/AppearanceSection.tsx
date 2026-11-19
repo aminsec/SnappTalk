@@ -37,9 +37,7 @@ const AppearanceSection: React.FC = () => {
   return (
     <div className={styles.appearanceContainer}>
       <div className={styles.sectionHeader}>
-        <span className={styles.eyebrow}>Chat personalization</span>
         <h2>Choose your atmosphere</h2>
-        <p>Pick a subtle background designed to keep every message easy to read.</p>
       </div>
 
       <div className={styles.wallpaperGrid}>

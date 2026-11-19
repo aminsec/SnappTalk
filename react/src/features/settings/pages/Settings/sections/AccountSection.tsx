@@ -356,9 +356,7 @@ const AccountSection: React.FC = () => {
     <div className={styles.accountContainer} style={dynamicThemeStyles}>
       {/* Header */}
       <div className={styles.sectionHeader}>
-        <span className={styles.eyebrow}>Security & Credentials</span>
         <h2>Account Settings</h2>
-        <p>Manage your account identity, security preferences, and sensitive actions.</p>
       </div>
 
       {/* 1. Account Overview Card (Styled with Appearance Theme) */}
@@ -655,15 +653,6 @@ const AccountSection: React.FC = () => {
                 </div>
               )}
             </div>
-          </div>
-
-          {/* Advisory Notice */}
-          <div className={styles.securityNotice}>
-            <FontAwesomeIcon icon={faLock} className={styles.noticeIcon} />
-            <span>
-              Updating your password will safeguard your conversations and require entering your new
-              credentials next time you log in.
-            </span>
           </div>
 
           {/* Actions */}
