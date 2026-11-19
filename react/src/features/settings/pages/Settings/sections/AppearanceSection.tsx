@@ -17,10 +17,10 @@ export const THEME_STORAGE_KEY = 'app_theme';
 const AppearanceSection: React.FC = () => {
   const [theme, setTheme] = useState<'dark' | 'light'>(() => {
     if (typeof window === 'undefined') {
-      return 'dark';
+      return 'light';
     }
     const saved = localStorage.getItem(THEME_STORAGE_KEY);
-    return saved === 'light' ? 'light' : 'dark';
+    return saved === 'dark' ? 'dark' : 'light';
   });
 
   const [selectedId, setSelectedId] = useState<string>(() => {

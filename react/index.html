@@ -7,13 +7,13 @@
 
     <!-- PWA & Mobile Web App Meta -->
     <meta name="description" content="Welcome to SnappTalk - A place for chat with ease" />
-    <meta name="theme-color" content="#161B1C" />
+    <meta name="theme-color" content="#FFFFFF" />
     <meta name="mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
     <meta name="apple-mobile-web-app-title" content="SnappTalk" />
     <meta name="application-name" content="SnappTalk" />
-    <meta name="msapplication-TileColor" content="#161B1C" />
+    <meta name="msapplication-TileColor" content="#FFFFFF" />
 
     <!-- Icons & Manifest -->
     <link rel="manifest" href="/manifest.json" />
@@ -27,11 +27,11 @@
       (function() {
         try {
           var savedTheme = localStorage.getItem('app_theme');
-          var theme = savedTheme === 'light' ? 'light' : 'dark';
+          var theme = savedTheme === 'dark' ? 'dark' : 'light';
           document.documentElement.setAttribute('data-theme', theme);
           var metaThemeColor = document.querySelector('meta[name="theme-color"]');
           if (metaThemeColor) {
-            metaThemeColor.setAttribute('content', theme === 'light' ? '#FFFFFF' : '#161B1C');
+            metaThemeColor.setAttribute('content', theme === 'dark' ? '#161B1C' : '#FFFFFF');
           }
         } catch (e) {}
       })();

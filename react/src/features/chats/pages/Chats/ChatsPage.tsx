@@ -208,14 +208,19 @@ function ChatsPage() {
   const unreadCountsRef = useRef({});
   const hasFetchedContactsRef = useRef(false);
   const [isChatListScrolled, setIsChatListScrolled] = useState(false);
+  const chatListScrollRafRef = useRef<number | null>(null);
 
   const handleChatListScroll = useCallback((e: React.UIEvent<HTMLElement>) => {
     const scrollTop = e.currentTarget.scrollTop;
-    if (scrollTop > 12 && !searchQuery.trim()) {
-      setIsChatListScrolled(true);
-    } else if (scrollTop <= 4) {
-      setIsChatListScrolled(false);
-    }
+    if (chatListScrollRafRef.current !== null) return;
+    chatListScrollRafRef.current = requestAnimationFrame(() => {
+      chatListScrollRafRef.current = null;
+      if (scrollTop > 12 && !searchQuery.trim()) {
+        setIsChatListScrolled((prev) => (prev ? prev : true));
+      } else if (scrollTop <= 4) {
+        setIsChatListScrolled((prev) => (!prev ? prev : false));
+      }
+    });
   }, [searchQuery]);
   // Mobile responsive states
   const [isMobileChatOpen, setIsMobileChatOpen] = useState(() => {
@@ -3253,18 +3258,24 @@ function ChatsPage() {
 
   // Handle click outside media picker
   useEffect(() => {
-    const handleClickOutside = (event) => {
-      if (mediaPickerRef.current && !mediaPickerRef.current.contains(event.target)) {
+    const handleClickOutside = (event: MouseEvent | TouchEvent) => {
+      const target = event.target as Node;
+      if (!target || !document.contains(target)) {
+        return;
+      }
+      if (mediaPickerRef.current && !mediaPickerRef.current.contains(target)) {
         setIsMediaPickerOpen(false);
       }
     };
 
     if (isMediaPickerOpen) {
       document.addEventListener('mousedown', handleClickOutside);
+      document.addEventListener('touchstart', handleClickOutside, { passive: true });
     }
 
     return () => {
       document.removeEventListener('mousedown', handleClickOutside);
+      document.removeEventListener('touchstart', handleClickOutside);
     };
   }, [isMediaPickerOpen]);
 
@@ -4721,31 +4732,22 @@ function ChatsPage() {
 
   // Scroll to bottom only on initial load or when switching chats
   useLayoutEffect(() => {
-    if (!messagesEndRef.current) return;
-    if (isInitialLoadRef.current) {
-      messagesEndRef.current.scrollIntoView({ behavior: 'auto', block: 'end' });
-    }
-  }, [messages, selectedChat]);
-
-  // Extra robust bottom scroll to handle layout shifts (images/fonts)
-  useEffect(() => {
     if (!isInitialLoadRef.current) return;
-    const run = () => scrollToBottom();
-    run();
-    requestAnimationFrame(run);
-    const t1 = setTimeout(run, 0);
-    const t2 = setTimeout(run, 100);
-    return () => {
-      clearTimeout(t1);
-      clearTimeout(t2);
-    };
-  }, [messages.length, selectedChat, scrollToBottom]);
+    const container = messagesContainerRef.current;
+    if (container && messages.length > 0) {
+      container.scrollTop = container.scrollHeight;
+    }
+  }, [messages.length, selectedChat]);
 
   useEffect(() => {
     return () => {
       if (scrollFrameRef.current) {
         cancelAnimationFrame(scrollFrameRef.current);
         scrollFrameRef.current = null;
+      }
+      if (chatListScrollRafRef.current !== null) {
+        cancelAnimationFrame(chatListScrollRafRef.current);
+        chatListScrollRafRef.current = null;
       }
     };
   }, []);
@@ -4827,7 +4829,7 @@ function ChatsPage() {
 
       <MobileMenu open={isMobileMenuOpen} onClose={() => setIsMobileMenuOpen(false)} />
 
-      <aside className={styles.chatListSidebar} onScroll={handleChatListScroll}>
+      <aside className={styles.chatListSidebar}>
         <div className={styles.mobileChatHeader}>
           <button
             type="button"

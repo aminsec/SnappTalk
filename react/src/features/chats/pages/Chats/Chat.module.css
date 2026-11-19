@@ -47,8 +47,9 @@
     min-width: 220px;
     max-width: 400px;
     height: 100vh;
-    overflow-y: auto;
+    overflow: hidden;
     position: relative;
+    transform: translateZ(0);
 }
 
 .chatListSidebar::-webkit-scrollbar {
@@ -159,6 +160,9 @@
     display: flex;
     gap: 5px;
     flex-direction: column;
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior-y: contain;
+    transform: translateZ(0);
 }
 
 .chatList::-webkit-scrollbar {
@@ -333,7 +337,6 @@
     background-size: cover;
     background-position: center;
     background-repeat: no-repeat;
-    background-attachment: local;
     z-index: 0;
 }
 
@@ -544,6 +547,9 @@
     background-color: transparent;
     position: relative;
     z-index: 1;
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior-y: contain;
+    transform: translateZ(0);
 }
 
 .messagesContainer::-webkit-scrollbar {
@@ -1198,6 +1204,10 @@
     box-shadow: none !important;
     padding: 2px 4px !important;
     border-radius: 0 !important;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    width: fit-content;
 }
 
 .emojiOnly p,
@@ -1206,24 +1216,50 @@
     font-size: 38px;
     line-height: 1.15;
     background: transparent !important;
+    text-align: right;
+    margin: 0;
 }
 
 .emojiOnly .messageFooter,
 .received.emojiOnly .messageFooter,
 .sent.emojiOnly .messageFooter {
-    background: rgba(0, 0, 0, 0.42);
+    background: rgba(0, 0, 0, 0.48);
     color: #ffffff;
-    padding: 2px 6px;
-    border-radius: 8px;
+    padding: 2px 7px;
+    border-radius: 10px;
     backdrop-filter: blur(4px);
     width: fit-content;
-    margin-top: 2px;
+    margin-top: 3px;
+    margin-left: auto !important;
+    align-self: flex-end !important;
+    display: inline-flex !important;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 4px;
+}
+
+.emojiOnly .timestamp,
+.received.emojiOnly .timestamp,
+.sent.emojiOnly .timestamp {
+    color: rgba(255, 255, 255, 0.9) !important;
+    font-size: 11px !important;
+    margin: 0 !important;
+}
+
+.emojiOnly .seenIconImage,
+.received.emojiOnly .seenIconImage,
+.sent.emojiOnly .seenIconImage {
+    width: 14px;
+    height: 14px;
+    opacity: 0.95;
+    display: inline-block;
+    vertical-align: middle;
 }
 
 :root[data-theme="light"] .emojiOnly .messageFooter,
 :root[data-theme="light"] .received.emojiOnly .messageFooter,
 :root[data-theme="light"] .sent.emojiOnly .messageFooter {
-    background: rgba(0, 0, 0, 0.22);
+    background: rgba(0, 0, 0, 0.38);
     color: #ffffff;
 }
 
@@ -3222,16 +3258,38 @@
     position: absolute;
     bottom: 60px;
     right: 0;
-    width: 320px;
-    max-height: 350px;
-    padding: 12px;
-    border-radius: 14px;
+    width: 360px;
+    height: 440px;
+    max-height: calc(100vh - 120px);
+    padding: 10px;
+    border-radius: 16px;
     background: var(--bg-panel);
     border: 1px solid var(--input-border);
-    box-shadow: 0 16px 32px rgba(0, 0, 0, 0.35);
+    box-shadow: 0 16px 36px rgba(0, 0, 0, 0.35);
     animation: fadeInUp 0.22s ease-out;
     z-index: 1000;
     overflow: hidden;
+    display: flex;
+    flex-direction: column;
+}
+
+:root[data-theme="light"] .mediaPicker {
+    box-shadow: 0 16px 36px rgba(0, 0, 0, 0.12);
+}
+
+:root[data-theme="light"] .mediaTabs {
+    background: rgba(0, 0, 0, 0.05);
+}
+
+:root[data-theme="light"] .mediaSearch input {
+    background: rgba(0, 0, 0, 0.03);
+    border-color: rgba(0, 0, 0, 0.1);
+    color: var(--text-main);
+}
+
+:root[data-theme="light"] .mediaItem {
+    background: rgba(0, 0, 0, 0.03);
+    border-color: rgba(0, 0, 0, 0.07);
 }
 
 .mediaTabs {
@@ -3241,6 +3299,7 @@
     background: rgba(255, 255, 255, 0.04);
     padding: 4px;
     border-radius: 10px;
+    flex-shrink: 0;
 }
 
 .mediaTab {
@@ -3264,7 +3323,9 @@
     display: grid;
     grid-template-columns: repeat(3, 1fr);
     gap: 8px;
-    max-height: 150px;
+    flex: 1;
+    min-height: 0;
+    max-height: 100%;
     overflow-y: auto;
     -ms-overflow-style: none;
     scrollbar-width: none;
@@ -3298,6 +3359,7 @@
 
 .mediaSearch {
     margin-bottom: 8px;
+    flex-shrink: 0;
 }
 
 .mediaSearch input {
@@ -3325,13 +3387,29 @@
 .mediaLoading, .mediaEmpty { color: var(--text-muted); }
 
 .emojiPane {
-    border-radius: 12px;
+    flex: 1;
+    min-height: 0;
+    width: 100%;
+    height: 100%;
     overflow: hidden;
-    max-height: 250px;
+    position: relative;
+    border-radius: 10px;
+}
+
+.emojiPane :global(.epr-main) {
+    width: 100% !important;
+    height: 100% !important;
+    max-height: 100% !important;
+    border: none !important;
+    border-radius: 10px !important;
+    background: transparent !important;
+    font-family: inherit !important;
+    box-shadow: none !important;
 }
 
 .emojiPicker {
     width: 100% !important;
+    height: 100% !important;
     background: transparent !important;
     border: none !important;
     box-shadow: none !important;
@@ -3627,18 +3705,17 @@
         max-width: 100%;
         overflow-x: hidden;
         z-index: 100;
-        transform: translate3d(100%, 0, 0) scale(0.985);
-        transform-origin: right center;
+        transform: translate3d(100%, 0, 0);
         opacity: 0;
         visibility: hidden;
         transition:
-            transform 0.38s cubic-bezier(0.22, 1, 0.36, 1),
-            opacity 0.18s ease-out,
-            visibility 0s linear 0.38s;
+            transform 0.22s cubic-bezier(0.2, 0.9, 0.3, 1),
+            opacity 0.15s ease-out,
+            visibility 0s linear 0.22s;
         background-color: var(--bg-color);
-        box-shadow: -18px 0 42px rgba(0, 0, 0, 0.2);
+        box-shadow: -4px 0 16px rgba(0, 0, 0, 0.12);
         backface-visibility: hidden;
-        will-change: transform, opacity;
+        will-change: transform;
     }
 
     .chatsPageContainer:not(.mobileChatOpen) .chatMain {
@@ -3646,7 +3723,7 @@
     }
     
     .mobileChatOpen .chatMain {
-        transform: translate3d(0, 0, 0) scale(1);
+        transform: translate3d(0, 0, 0);
         opacity: 1;
         visibility: visible;
         pointer-events: auto;
@@ -3663,6 +3740,8 @@
         right: 10px;
         padding: 5px 10px;
         border-radius: 20px;
+        backdrop-filter: blur(8px) !important;
+        -webkit-backdrop-filter: blur(8px) !important;
     }
     
     .message { max-width: 85%; }
@@ -3685,6 +3764,8 @@
         gap: 6px;
         align-items: center;
         border-radius: 22px;
+        backdrop-filter: blur(8px) !important;
+        -webkit-backdrop-filter: blur(8px) !important;
     }
     
     .actionButton {
@@ -3729,21 +3810,34 @@
     /* Media Picker */
     .mediaPicker {
         position: fixed;
-        bottom: 70px;
+        bottom: calc(72px + env(safe-area-inset-bottom, 0px));
         left: 8px;
         right: 8px;
         width: auto;
-        max-height: 280px;
-        border-radius: 16px;
+        max-width: calc(100% - 16px);
+        height: 390px;
+        max-height: 54vh;
+        border-radius: 20px;
+        padding: 10px;
+        display: flex;
+        flex-direction: column;
+        box-shadow: 0 12px 32px rgba(0, 0, 0, 0.38);
     }
     
     .emojiPane {
-        max-height: 180px;
+        flex: 1;
+        min-height: 0;
+        width: 100%;
+        height: 100%;
+        max-height: none;
         overflow: hidden;
     }
     
     .mediaGrid {
-        max-height: 120px;
+        flex: 1;
+        min-height: 0;
+        max-height: 280px;
+        overflow-y: auto;
     }
     
     .mediaItem img {
@@ -3834,9 +3928,11 @@
     
     .newConversationButton {
         bottom: 24px;
-        right: 24px;
-        width: 52px;
-        height: 52px;
+        right: 20px;
+        width: 60px !important;
+        height: 60px !important;
+        font-size: 26px !important;
+        box-shadow: 0 6px 18px rgba(0, 0, 0, 0.35);
     }
     
     .chatTabs {
@@ -3915,7 +4011,14 @@
     .chatHeader h2 { font-size: 14px; }
     .chatHeader .onlineStatus { font-size: 11px; }
     
-    .mediaPicker { max-height: 240px; }
+    .mediaPicker {
+        bottom: calc(66px + env(safe-area-inset-bottom, 0px));
+        left: 6px;
+        right: 6px;
+        max-width: calc(100% - 12px);
+        height: 380px;
+        max-height: 52vh;
+    }
 
     .jumpToLatestButton {
         right: 12px;
@@ -3968,10 +4071,11 @@
     }
     
     .newConversationButton {
-        right: 12px !important;
-        bottom: 16px !important;
-        width: 48px !important;
-        height: 48px !important;
+        right: 18px !important;
+        bottom: 20px !important;
+        width: 58px !important;
+        height: 58px !important;
+        font-size: 25px !important;
     }
 }
 
@@ -3979,8 +4083,8 @@
    LANDSCAPE
    ============================================ */
 @media (max-height: 500px) and (orientation: landscape) {
-    .mediaPicker { max-height: 200px; }
-    .emojiPane { max-height: 140px; }
+    .mediaPicker { height: 220px; max-height: 80vh; }
+    .emojiPane { height: 100%; max-height: none; }
     
     .inputBar { padding: 6px 10px; }
     
@@ -4011,6 +4115,7 @@
     .optionsMenuItem:active { background-color: var(--item-hover); }
     
     .chatItem:hover { transform: none; box-shadow: none; }
+    .chatItem { transition: none !important; }
 }
 
 /* ============================================
@@ -4019,7 +4124,7 @@
 @supports (padding: env(safe-area-inset-bottom)) {
     @media (max-width: 768px) {
         .inputBar { padding-bottom: calc(6px + env(safe-area-inset-bottom)); }
-        .newConversationButton { bottom: calc(24px + env(safe-area-inset-bottom)); right: calc(24px + env(safe-area-inset-right)); }
+        .newConversationButton { bottom: calc(24px + env(safe-area-inset-bottom)); right: calc(20px + env(safe-area-inset-right)); }
     }
 }
 

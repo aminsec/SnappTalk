@@ -103,6 +103,25 @@ export const ChatInputBar: React.FC<ChatInputBarProps> = ({
   onStartRecording,
   onStopRecording,
 }) => {
+  const [isLightTheme, setIsLightTheme] = React.useState(() => {
+    if (typeof document === 'undefined') return true;
+    return document.documentElement.getAttribute('data-theme') !== 'dark';
+  });
+
+  React.useEffect(() => {
+    const updateTheme = () => {
+      const themeAttr = document.documentElement.getAttribute('data-theme');
+      setIsLightTheme(themeAttr !== 'dark');
+    };
+    updateTheme();
+    const observer = new MutationObserver(updateTheme);
+    observer.observe(document.documentElement, {
+      attributes: true,
+      attributeFilter: ['data-theme'],
+    });
+    return () => observer.disconnect();
+  }, []);
+
   return (
     <div className={styles.inputBar}>
       <input
@@ -318,7 +337,12 @@ export const ChatInputBar: React.FC<ChatInputBarProps> = ({
                   <EmojiPicker
                     className={styles.emojiPicker}
                     open
-                    theme={Theme.AUTO}
+                    theme={isLightTheme ? Theme.LIGHT : Theme.DARK}
+                    width="100%"
+                    height="100%"
+                    autoFocusSearch={false}
+                    lazyLoadEmojis={true}
+                    previewConfig={{ showPreview: false }}
                     onEmojiClick={(emojiData) => {
                       onEmojiClick(emojiData.emoji);
                     }}
