@@ -69,8 +69,8 @@
     gap: 6px;
     padding: 6px;
     border-radius: 12px;
-    background: rgba(255, 255, 255, 0.04);
-    border: 1px solid rgba(255, 255, 255, 0.06);
+    background: var(--input-bg, rgba(255, 255, 255, 0.04));
+    border: 1px solid var(--border-subtle, rgba(255, 255, 255, 0.06));
     margin-bottom: 10px;
 }
 
@@ -187,17 +187,18 @@
     padding: 12px;
     border-radius: 8px;
     cursor: pointer;
-    background-color: var(--input-bg);
-    transition: background-color 0.2s ease, box-shadow 0.2s ease;
+    background-color: var(--chat-item-bg, var(--input-bg));
+    border: 1px solid var(--border-subtle, transparent);
+    transition: background-color 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
 }
 
 .chatItem:hover {
     background-color: var(--item-hover);
-    box-shadow: 0 6px 14px rgba(0, 0, 0, 0.25);
+    box-shadow: 0 4px 14px rgba(0, 0, 0, 0.08);
 }
 
 .active {
-    background-color: var(--item-hover);
+    background-color: var(--item-active-bg, var(--item-hover));
 }
 
 /* ============================================
@@ -341,24 +342,16 @@
     right: 12px;
     padding: 7px 12px;
     box-sizing: border-box;
-    background:
-        radial-gradient(ellipse at 12% -100%, color-mix(in srgb, var(--chat-accent) 24%, transparent), transparent 58%),
-        radial-gradient(ellipse at 92% 130%, rgba(255, 255, 255, 0.055), transparent 52%),
-        rgba(12, 16, 22, 0.58);
+    background: var(--header-bg);
     backdrop-filter: blur(26px) saturate(185%) contrast(110%);
     -webkit-backdrop-filter: blur(26px) saturate(185%) contrast(110%);
-    border: 1px solid rgba(255, 255, 255, 0.17);
+    border: 1px solid var(--header-border);
     border-radius: 25px;
     flex-direction: row;
     flex-wrap: nowrap;
     justify-content: space-between;
     align-items: center;
-    box-shadow:
-        0 20px 42px rgba(0, 0, 0, 0.2),
-        0 4px 12px rgba(0, 0, 0, 0.1),
-        inset 0 1px 0 rgba(255, 255, 255, 0.24),
-        inset 0 -1px 0 rgba(255, 255, 255, 0.06),
-        0 0 0 1px rgba(255, 255, 255, 0.025);
+    box-shadow: var(--header-shadow);
     z-index: 10;
 }
 
@@ -815,14 +808,15 @@
 }
 
 .dateSeparatorText {
-    background-color: rgba(30, 30, 30, 0.85);
-    color: rgba(255, 255, 255, 0.6);
+    background-color: var(--date-separator-bg, rgba(30, 30, 30, 0.85));
+    color: var(--date-separator-text, rgba(255, 255, 255, 0.6));
+    border: 1px solid var(--border-subtle, transparent);
     font-size: 12px;
     font-weight: 500;
     padding: 4px 12px;
     border-radius: 8px;
     backdrop-filter: blur(10px);
-    box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
 }
 .message {
     max-width: 70%;
@@ -1202,11 +1196,11 @@
 }
 
 .received .replyPreview {
-    background: rgba(255, 255, 255, 0.06);
+    background: var(--reply-received-bg, rgba(255, 255, 255, 0.06));
 }
 
 .received .replyPreview:hover {
-    background: rgba(255, 255, 255, 0.1);
+    background: var(--reply-received-hover, rgba(255, 255, 255, 0.1));
 }
 
 .replyPreviewLine {
@@ -2120,16 +2114,17 @@
    ============================================ */
 .received {
     align-self: flex-start;
-    background-color: #2C2C2E; /* Dark Charcoal Gray */
-    border-radius: var(--chat-bubble-radius, 18px) var(--chat-bubble-radius, 18px) var(--chat-bubble-radius, 18px) 4px; /* Rounded with bottom-left tail */
-    color: #FFFFFF;
-    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    background-color: var(--bubble-received, #2C2C2E);
+    border: 1px solid var(--bubble-received-border, transparent);
+    border-radius: var(--chat-bubble-radius, 18px) var(--chat-bubble-radius, 18px) var(--chat-bubble-radius, 18px) 4px;
+    color: var(--bubble-received-text, #FFFFFF);
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.08);
 }
 
-.received p { color: #FFFFFF; }
+.received p { color: var(--bubble-received-text, #FFFFFF); }
 
 .received .timestamp {
-    color: rgba(255, 255, 255, 0.5);
+    color: var(--bubble-received-timestamp, rgba(255, 255, 255, 0.5));
     font-size: 11px;
     opacity: 1;
     margin-left: auto !important;
@@ -2229,12 +2224,12 @@
     gap: 8px;
     padding: 10px 12px;
     margin: 0 16px 16px 16px;
-    background: linear-gradient(180deg, rgba(255, 255, 255, 0.08), rgba(255, 255, 255, 0.03)), rgba(24, 24, 28, 0.55);
+    background: var(--glass-input-bg);
     backdrop-filter: blur(18px) saturate(160%);
     -webkit-backdrop-filter: blur(18px) saturate(160%);
-    border: 1px solid rgba(255, 255, 255, 0.12);
+    border: 1px solid var(--glass-input-border);
     border-radius: 26px;
-    box-shadow: 0 2px 12px rgba(0, 0, 0, 0.18), inset 0 1px 0 rgba(255, 255, 255, 0.1);
+    box-shadow: var(--glass-input-shadow);
     position: absolute;
     left: 0;
     right: 0;
@@ -2273,7 +2268,7 @@
     font-family: "Vazirmatn", "Outfit", sans-serif;
     font-size: 15px;
     line-height: 1.4;
-    color: #FFFFFF;
+    color: var(--text-main);
     background: transparent !important;
     border: none !important;
     outline: none !important;
@@ -2281,7 +2276,7 @@
 }
 
 .messageTextarea::placeholder {
-    color: rgba(255, 255, 255, 0.35);
+    color: var(--input-placeholder);
 }
 
 .messageTextarea:focus {

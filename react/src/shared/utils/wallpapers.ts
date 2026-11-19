@@ -7,6 +7,7 @@ const withBase = (path: string): string => `${BASE_URL}${path}`;
 
 export const wallpapers: Wallpaper[] = [
   { id: 'none', label: 'Midnight', description: 'Clean and distraction-free', src: null, accent: '#3390ec', accentHover: '#2678c7', bubbleStart: '#3390ec', bubbleEnd: '#2476c5' },
+  { id: 'daylight', label: 'Daylight', description: 'Clean soft brightness', src: null, accent: '#2D90E4', accentHover: '#2478c5', bubbleStart: '#2D90E4', bubbleEnd: '#1e75c2' },
   { id: 'aurora', label: 'Aurora', description: 'Cool northern glow', src: withBase('wallpapers/aurora.svg'), accent: '#35bfa6', accentHover: '#269b89', bubbleStart: '#27aa94', bubbleEnd: '#187c74' },
   { id: 'dusk', label: 'Dusk', description: 'Warm violet evening', src: withBase('wallpapers/dusk.svg'), accent: '#d57699', accentHover: '#b95d83', bubbleStart: '#c7658d', bubbleEnd: '#924c79' },
   { id: 'grid', label: 'Blueprint', description: 'Crisp geometric depth', src: withBase('wallpapers/grid.svg'), accent: '#5399db', accentHover: '#3d7fbd', bubbleStart: '#438fd1', bubbleEnd: '#2d6fa9' },

@@ -233,7 +233,7 @@
 }
 
 @media (max-width: 576px) {
-    body {
+    .loginPage {
         padding: 8px;
     }
 

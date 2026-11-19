@@ -1,7 +1,7 @@
-:root {
+:root,
+:root[data-theme="dark"] {
     --bg-color: #0A0E0F;
     --bg-panel: #161B1C;
-
     --bg-cart: #202427;
 
     --btn-color: #2D90E4;
@@ -13,7 +13,11 @@
     --input-placeholder: #828282;
 
     --buble-sent: #4C8EDE;
-    --bubble-received: #2A2D2F;
+    --bubble-sent: #4C8EDE;
+    --bubble-received: #2C2C2E;
+    --bubble-received-border: rgba(255, 255, 255, 0.05);
+    --bubble-received-text: #FFFFFF;
+    --bubble-received-timestamp: rgba(255, 255, 255, 0.5);
 
     --notification-badge: #2D90E4;
 
@@ -21,6 +25,7 @@
     --offline-color: #9BA1AC;
 
     --text-main: #F5F6FA;
+    --text-primary: #F5F6FA;
     --text-sub: #a1a1a1;
     --text-muted: #9BA1AC;
     --text-link: #4faeff;
@@ -34,7 +39,101 @@
     --warning-color: #FFCB00;
 
     --item-hover: #2e2e2e;
-    
+    --item-active-bg: rgba(255, 255, 255, 0.08);
+
+    --card-bg: rgba(255, 255, 255, 0.035);
+    --card-inner-bg: rgba(0, 0, 0, 0.18);
+    --border-subtle: rgba(255, 255, 255, 0.08);
+    --border-divider: rgba(255, 255, 255, 0.06);
+
+    --header-bg: radial-gradient(ellipse at 12% -100%, color-mix(in srgb, var(--chat-accent, #2D90E4) 24%, transparent), transparent 58%), radial-gradient(ellipse at 92% 130%, rgba(255, 255, 255, 0.055), transparent 52%), rgba(12, 16, 22, 0.58);
+    --header-border: rgba(255, 255, 255, 0.17);
+    --header-shadow: 0 20px 42px rgba(0, 0, 0, 0.2), 0 4px 12px rgba(0, 0, 0, 0.1), inset 0 1px 0 rgba(255, 255, 255, 0.24), inset 0 -1px 0 rgba(255, 255, 255, 0.06), 0 0 0 1px rgba(255, 255, 255, 0.025);
+
+    --glass-input-bg: linear-gradient(180deg, rgba(255, 255, 255, 0.08), rgba(255, 255, 255, 0.03)), rgba(24, 24, 28, 0.55);
+    --glass-input-border: rgba(255, 255, 255, 0.12);
+    --glass-input-shadow: 0 2px 12px rgba(0, 0, 0, 0.18);
+
+    --date-separator-bg: rgba(30, 30, 30, 0.85);
+    --date-separator-text: rgba(255, 255, 255, 0.7);
+
+    --reply-received-bg: rgba(255, 255, 255, 0.06);
+    --reply-received-hover: rgba(255, 255, 255, 0.1);
+
+    --chat-item-bg: var(--input-bg);
+    --preview-stage-bg: radial-gradient(circle at 20% 0%, rgba(85, 167, 239, 0.16), transparent 50%), #141a22;
+
+    --white: white;
+    --black: black;
+
+    --border-radius: 6px;
+    --transition: all 0.3s ease;
+}
+
+:root[data-theme="light"] {
+    --bg-color: #F0F2F5;
+    --bg-panel: #FFFFFF;
+    --bg-cart: #F8FAFC;
+
+    --btn-color: #2D90E4;
+    --btn-hover: #2478c5;
+    --btn-disable: #b0c9e5;
+
+    --input-bg: #F1F4F8;
+    --input-border: #E2E8F0;
+    --input-placeholder: #8A98A8;
+
+    --buble-sent: #2D90E4;
+    --bubble-sent: #2D90E4;
+    --bubble-received: #FFFFFF;
+    --bubble-received-border: rgba(0, 0, 0, 0.08);
+    --bubble-received-text: #1E293B;
+    --bubble-received-timestamp: rgba(30, 41, 59, 0.55);
+
+    --notification-badge: #2D90E4;
+
+    --online-color: #00af75;
+    --offline-color: #94A3B8;
+
+    --text-main: #0F172A;
+    --text-primary: #0F172A;
+    --text-sub: #475569;
+    --text-muted: #64748B;
+    --text-link: #2563EB;
+
+    --icon-color: #64748B;
+    --icon-active: #FFFFFF;
+    --icon-active-bg: #2D90E4;
+
+    --success-color: #00C897;
+    --error-color: #EF4444;
+    --warning-color: #F59E0B;
+
+    --item-hover: #F1F5F9;
+    --item-active-bg: #E8F2FC;
+
+    --card-bg: #FFFFFF;
+    --card-inner-bg: #F8FAFC;
+    --border-subtle: rgba(0, 0, 0, 0.08);
+    --border-divider: rgba(0, 0, 0, 0.06);
+
+    --header-bg: radial-gradient(ellipse at 12% -100%, color-mix(in srgb, var(--chat-accent, #2D90E4) 18%, transparent), transparent 58%), radial-gradient(ellipse at 92% 130%, rgba(255, 255, 255, 0.95), transparent 52%), rgba(255, 255, 255, 0.88);
+    --header-border: rgba(0, 0, 0, 0.08);
+    --header-shadow: 0 10px 30px rgba(0, 0, 0, 0.06), 0 2px 8px rgba(0, 0, 0, 0.04), inset 0 1px 0 rgba(255, 255, 255, 0.9);
+
+    --glass-input-bg: linear-gradient(180deg, rgba(255, 255, 255, 0.98), rgba(248, 250, 252, 0.95)), rgba(255, 255, 255, 0.94);
+    --glass-input-border: rgba(0, 0, 0, 0.1);
+    --glass-input-shadow: 0 4px 18px rgba(0, 0, 0, 0.08);
+
+    --date-separator-bg: rgba(255, 255, 255, 0.9);
+    --date-separator-text: #475569;
+
+    --reply-received-bg: rgba(0, 0, 0, 0.04);
+    --reply-received-hover: rgba(0, 0, 0, 0.07);
+
+    --chat-item-bg: #FFFFFF;
+    --preview-stage-bg: radial-gradient(circle at 20% 0%, rgba(85, 167, 239, 0.12), transparent 50%), #F8FAFC;
+
     --white: white;
     --black: black;
 

@@ -49,12 +49,12 @@
   width: 100%;
   padding: 24px;
   border-radius: 16px;
-  background: rgba(255, 255, 255, 0.035);
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: var(--card-bg, rgba(255, 255, 255, 0.035));
+  border: 1px solid var(--border-subtle, rgba(255, 255, 255, 0.08));
   display: flex;
   flex-direction: column;
   gap: 18px;
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.14);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.08);
 }
 
 .cardHeader {
@@ -106,14 +106,14 @@
   gap: 14px;
   padding: 16px 18px;
   border-radius: 12px;
-  background: rgba(0, 0, 0, 0.22);
-  border: 1px solid rgba(255, 255, 255, 0.05);
+  background: var(--input-bg, rgba(0, 0, 0, 0.22));
+  border: 1px solid var(--border-subtle, rgba(255, 255, 255, 0.05));
   transition: border-color 0.2s ease, background 0.2s ease;
 }
 
 .preferenceRow:hover {
-  background: rgba(0, 0, 0, 0.3);
-  border-color: rgba(255, 255, 255, 0.08);
+  background: var(--item-hover, rgba(0, 0, 0, 0.3));
+  border-color: var(--border-subtle, rgba(255, 255, 255, 0.08));
 }
 
 .preferenceIcon {
@@ -257,8 +257,8 @@
   gap: 4px;
   padding: 14px 16px;
   border-radius: 12px;
-  background: rgba(0, 0, 0, 0.22);
-  border: 1px solid rgba(255, 255, 255, 0.05);
+  background: var(--input-bg, rgba(0, 0, 0, 0.22));
+  border: 1px solid var(--border-subtle, rgba(255, 255, 255, 0.05));
 }
 
 .metaLabel {

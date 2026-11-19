@@ -1,6 +1,6 @@
 .Profilcart {
-  background: rgba(255, 255, 255, 0.035);
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: var(--card-bg, rgba(255, 255, 255, 0.035));
+  border: 1px solid var(--border-subtle, rgba(255, 255, 255, 0.08));
   padding: 12px 14px;
   display: flex;
   gap: 12px;
@@ -12,10 +12,10 @@
 }
 
 .Profilcart:hover {
-  background: rgba(255, 255, 255, 0.05);
-  border-color: rgba(255, 255, 255, 0.12);
+  background: var(--item-hover, rgba(255, 255, 255, 0.05));
+  border-color: var(--input-border, rgba(255, 255, 255, 0.12));
   transform: translateY(-1px);
-  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.2);
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.1);
 }
 
 .clickable {
