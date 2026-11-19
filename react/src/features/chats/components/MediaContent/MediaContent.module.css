@@ -9,15 +9,93 @@
     align-items: center;
     gap: 11px;
     box-sizing: border-box;
-    padding: 10px 12px;
+    padding: 2px 2px;
     color: var(--text-main);
-    background: rgba(255, 255, 255, 0.065);
-    border: 1px solid rgba(255, 255, 255, 0.1);
+    background: transparent !important;
+    border: none !important;
     border-radius: 16px;
 }
 
 .audioPlayerVoice { width: 286px; }
-.audioPlayerWithFooter { padding-bottom: 29px; }
+.audioPlayerWithFooter { padding-bottom: 22px; }
+
+:global(.sent) .audioPlayer {
+    color: #ffffff;
+}
+:global(.sent) .audioFileName {
+    color: #ffffff !important;
+}
+:global(.sent) .audioTime {
+    color: rgba(255, 255, 255, 0.78) !important;
+}
+:global(.sent) .audioPlayButton {
+    background: #ffffff !important;
+    color: var(--chat-accent, #2D90E4) !important;
+}
+:global(.sent) .audioWaveform span {
+    background: rgba(255, 255, 255, 0.38) !important;
+}
+:global(.sent) .audioWaveform .audioWaveformPlayed {
+    background: #ffffff !important;
+}
+:global(.sent) .audioFooterOverlay .timestamp {
+    color: rgba(255, 255, 255, 0.75) !important;
+    margin: 0 !important;
+}
+:global(.sent) .audioFooterOverlay .seenIconSvg {
+    color: #ffffff !important;
+}
+
+:global(:root[data-theme="light"]) :global(.received) .audioPlayer {
+    color: #0F172A;
+}
+:global(:root[data-theme="light"]) :global(.received) .audioFileName {
+    color: #0F172A !important;
+}
+:global(:root[data-theme="light"]) :global(.received) .audioTime {
+    color: #64748B !important;
+}
+:global(:root[data-theme="light"]) :global(.received) .audioPlayButton {
+    background: var(--chat-accent, #2D90E4) !important;
+    color: #ffffff !important;
+}
+:global(:root[data-theme="light"]) :global(.received) .audioWaveform span {
+    background: rgba(0, 0, 0, 0.16) !important;
+}
+:global(:root[data-theme="light"]) :global(.received) .audioWaveform .audioWaveformPlayed {
+    background: var(--chat-accent, #2D90E4) !important;
+}
+:global(:root[data-theme="light"]) :global(.received) .audioFooterOverlay .timestamp {
+    color: #64748B !important;
+    margin: 0 !important;
+}
+:global(:root[data-theme="light"]) :global(.received) .audioFooterOverlay .seenIconSvg {
+    color: var(--chat-accent, #2D90E4) !important;
+}
+
+:global(:root[data-theme="dark"]) :global(.received) .audioPlayer {
+    color: #FFFFFF;
+}
+:global(:root[data-theme="dark"]) :global(.received) .audioFileName {
+    color: #FFFFFF !important;
+}
+:global(:root[data-theme="dark"]) :global(.received) .audioTime {
+    color: rgba(255, 255, 255, 0.6) !important;
+}
+:global(:root[data-theme="dark"]) :global(.received) .audioPlayButton {
+    background: var(--chat-accent, #2D90E4) !important;
+    color: #ffffff !important;
+}
+:global(:root[data-theme="dark"]) :global(.received) .audioWaveform span {
+    background: rgba(255, 255, 255, 0.24) !important;
+}
+:global(:root[data-theme="dark"]) :global(.received) .audioWaveform .audioWaveformPlayed {
+    background: var(--chat-accent, #2D90E4) !important;
+}
+:global(:root[data-theme="dark"]) :global(.received) .audioFooterOverlay .timestamp {
+    color: rgba(255, 255, 255, 0.6) !important;
+    margin: 0 !important;
+}
 
 .audioPlayButton {
     flex-shrink: 0;

@@ -320,9 +320,31 @@ function ChatsPage() {
   const handleSelectChat = useCallback((chat) => {
     const conversationId = getConversationId(chat);
     if (!conversationId) return;
+    const convIdStr = conversationId.toString();
     setSelectedChat(chat);
+    setMessagesConversationId(convIdStr);
+    const cached = conversationMessagesCacheRef.current.get(convIdStr);
+    if (cached && cached.length > 0) {
+      setMessages(cached);
+      isInitialLoadRef.current = true;
+    } else if (chat?.last_message?.content) {
+      setMessages([{
+        _id: `fallback-${convIdStr}`,
+        id: `fallback-${convIdStr}`,
+        conversation_id: convIdStr,
+        sender: chat.last_message.sender || '',
+        type: chat.last_message.type || 'text',
+        content: chat.last_message.content || '',
+        created_at: chat.last_message.when || new Date().toISOString(),
+        edited: false,
+      }]);
+      isInitialLoadRef.current = true;
+    } else {
+      setMessages([]);
+      isInitialLoadRef.current = true;
+    }
     setIsMobileChatOpen(true);
-    navigate(`/chats/${encodeURIComponent(conversationId.toString())}`);
+    navigate(`/chats/${encodeURIComponent(convIdStr)}`);
   }, [navigate]);
 
   const handleCloseChat = useCallback(() => {
@@ -2965,6 +2987,24 @@ function ChatsPage() {
     if (matchingChat) {
       if (selectedChatRef.current !== matchingChat && resolvedSelectedId !== resolvedRouteId) {
         setSelectedChat(matchingChat);
+        setMessagesConversationId(resolvedRouteId);
+        const cached = conversationMessagesCacheRef.current.get(resolvedRouteId);
+        if (cached && cached.length > 0) {
+          setMessages(cached);
+          isInitialLoadRef.current = true;
+        } else if (matchingChat?.last_message?.content) {
+          setMessages([{
+            _id: `fallback-${resolvedRouteId}`,
+            id: `fallback-${resolvedRouteId}`,
+            conversation_id: resolvedRouteId,
+            sender: matchingChat.last_message.sender || '',
+            type: matchingChat.last_message.type || 'text',
+            content: matchingChat.last_message.content || '',
+            created_at: matchingChat.last_message.when || new Date().toISOString(),
+            edited: false,
+          }]);
+          isInitialLoadRef.current = true;
+        }
       }
       setIsMobileChatOpen(true);
       if (resolvedRouteId !== routeId) {
@@ -3645,9 +3685,6 @@ function ChatsPage() {
       const cached = conversationMessagesCacheRef.current.get(resolvedNext.toString());
       if (cached && cached.length > 0) {
         setMessages(cached);
-        isInitialLoadRef.current = false;
-      } else {
-        setMessages([]);
         isInitialLoadRef.current = true;
       }
       isJumpingToLatestRef.current = false;
@@ -4837,16 +4874,6 @@ function ChatsPage() {
     : null;
   const shouldRenderMessages = resolvedActiveId && resolvedMessagesId && resolvedActiveId === resolvedMessagesId;
   const visibleMessages = shouldRenderMessages ? messages : [];
-  const isActiveGroup = selectedChat?.type === 'group';
-  const missingSenderInfo = isActiveGroup
-    && visibleMessages.some((msg) => {
-      const senderId = getSenderId(msg);
-      const senderIdStr = senderId?.toString();
-      if (!senderIdStr) return false;
-      const isMine = senderIdStr === user?.id?.toString();
-      return !isMine && !senderInfoCache[senderIdStr];
-    });
-  const shouldHoldGroupMessages = isActiveGroup && missingSenderInfo;
 
   return (
     <div
@@ -5185,17 +5212,6 @@ function ChatsPage() {
                   </div>
                 </div>
               )}
-              {shouldHoldGroupMessages && visibleMessages.length > 0 && (
-                <div className={styles.loadingMessages}>
-                  <div className={styles.loadingCenter}>
-                    <div className={styles.loadingPulse}>
-                      <span />
-                      <span />
-                      <span />
-                    </div>
-                  </div>
-                </div>
-              )}
               <div ref={loadMoreSentinelRef} className={styles.loadMoreSentinel} aria-hidden="true" />
               {!isLoadingMessages && visibleMessages.length === 0 && (
                 <div className={styles.emptyMessages}>
@@ -5209,7 +5225,7 @@ function ChatsPage() {
                 </div>
               )}
               <div className={styles.messagesWrapper}>
-              {!shouldHoldGroupMessages && visibleMessages.map((message, index) => {
+              {visibleMessages.map((message, index) => {
                 const currentMsgDate = message.created_at || message.when;
                 const prevMsgDate = index > 0 ? (visibleMessages[index - 1].created_at || visibleMessages[index - 1].when) : null;
                 const currentDateObj = new Date(currentMsgDate).toDateString();

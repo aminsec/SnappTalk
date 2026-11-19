@@ -159,7 +159,8 @@ export const MessageBubble: React.FC<MessageBubbleProps> = React.memo(({
   const isVisualManualPreview = showMediaDownloadPreview
     && !isDocument
     && isVisualMedia;
-  const isMediaOnly = isMedia && !messageContent.trim() && !replyPreview;
+  const isVisualMediaOnly = ['image', 'gif', 'sticker', 'video'].includes(resolvedMessageType);
+  const isMediaOnly = isVisualMediaOnly && !messageContent.trim() && !replyPreview;
   const isEmojiOnly = isEmojiOnlyMessage(messageContent);
   const shouldUseEmojiOnlyStyle = isEmojiOnly && !replyPreview && !isMedia;
   const replyPreviewText = truncateMessage(

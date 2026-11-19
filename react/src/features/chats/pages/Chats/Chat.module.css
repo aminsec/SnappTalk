@@ -340,6 +340,7 @@
     background-color: var(--bg-color);
     position: relative;
     isolation: isolate;
+    contain: layout;
 }
 
 .chatMainWallpaper {
@@ -558,6 +559,7 @@
     -webkit-overflow-scrolling: touch;
     overscroll-behavior-y: contain;
     transform: translateZ(0);
+    contain: content;
 }
 
 .messagesContainer::-webkit-scrollbar {
@@ -1586,7 +1588,17 @@
     backdrop-filter: blur(8px);
 }
 
-.mediaManualFooter .timestamp { margin: 0; color: #fff; font-size: 10px; }
+.mediaManualFooter .timestamp,
+.received .mediaManualFooter .timestamp,
+.sent .mediaManualFooter .timestamp,
+:root[data-theme="light"] .received .mediaManualFooter .timestamp,
+:root[data-theme="light"] .sent .mediaManualFooter .timestamp {
+    color: #ffffff !important;
+    font-size: 10px !important;
+    margin: 0 !important;
+    margin-left: 0 !important;
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.6) !important;
+}
 
 .mediaResolvingCard {
     width: min(390px, 72vw);
@@ -1714,6 +1726,7 @@
     max-height: 440px;
     line-height: 0;
     border-radius: 16px;
+    overflow: hidden;
     isolation: isolate;
 }
 
@@ -1740,9 +1753,12 @@
 }
 
 .mediaImageWrap:has(.messageMediaSticker)::after { display: none; }
-.mediaImageWrap .messageMedia {
-    width: 100%;
-    height: 100%;
+.mediaImageWrap .messageMedia,
+.mediaImageWrap .messageMediaImage {
+    width: 100% !important;
+    height: 100% !important;
+    object-fit: cover !important;
+    display: block;
     margin: 0;
     border-radius: inherit;
 }
@@ -1904,34 +1920,45 @@
 
 .mediaImageFooter {
     position: absolute;
-    right: 7px;
-    bottom: 7px;
-    z-index: 3;
-    display: flex;
+    right: 8px;
+    bottom: 8px;
+    z-index: 10;
+    display: inline-flex;
     align-items: center;
     gap: 4px;
-    min-height: 22px;
-    padding: 3px 7px;
+    min-height: 20px;
+    padding: 3px 8px;
     color: #fff;
     line-height: 1;
-    background: rgba(10, 14, 20, 0.52);
-    border: 1px solid rgba(255, 255, 255, 0.08);
+    background: rgba(0, 0, 0, 0.54) !important;
     border-radius: 999px;
-    backdrop-filter: blur(8px);
-    -webkit-backdrop-filter: blur(8px);
-    pointer-events: auto;
-    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
+    backdrop-filter: blur(4px);
+    -webkit-backdrop-filter: blur(4px);
+    pointer-events: none;
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.6);
 }
 
-.mediaImageFooter .timestamp {
-    margin-left: 0;
-    align-self: auto;
-    color: #fff;
-    font-size: 10px;
+.mediaImageFooter .timestamp,
+.received .mediaImageFooter .timestamp,
+.sent .mediaImageFooter .timestamp,
+:root[data-theme="light"] .received .mediaImageFooter .timestamp,
+:root[data-theme="light"] .sent .mediaImageFooter .timestamp,
+:root[data-theme="light"] .mediaImageFooter .timestamp {
+    color: #ffffff !important;
+    font-size: 10px !important;
+    line-height: 1 !important;
+    margin: 0 !important;
+    margin-left: 0 !important;
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.6) !important;
 }
 
 .mediaImageFooter .seenIconImage,
-.mediaImageFooter .seenIconSvg { opacity: 1; color: #fff; }
+.mediaImageFooter .seenIconSvg {
+    opacity: 1;
+    color: #ffffff !important;
+    width: 13px !important;
+    height: 13px !important;
+}
 .mediaImageFooter .deliveryClockFace { border-color: rgba(255, 255, 255, 0.9); }
 .mediaImageFooter .deliveryClockHandShort,
 .mediaImageFooter .deliveryClockHandLong { background: rgba(255, 255, 255, 0.95); }
@@ -1970,23 +1997,23 @@
 /* Document card */
 .fileAttachment {
     width: min(340px, 72vw);
-    min-width: 260px;
+    min-width: 250px;
     display: flex;
     align-items: center;
     gap: 12px;
-    padding: 11px 12px;
+    padding: 2px 2px;
     color: inherit;
     text-align: left;
-    background: rgba(255, 255, 255, 0.065);
-    border: 1px solid rgba(255, 255, 255, 0.11);
+    background: transparent !important;
+    border: none !important;
     border-radius: 15px;
     cursor: pointer;
     transition: background 150ms ease, border-color 150ms ease;
 }
 
 .fileAttachment:hover:not(:disabled) {
-    background: rgba(255, 255, 255, 0.105);
-    border-color: rgba(255, 255, 255, 0.17);
+    background: transparent !important;
+    border-color: transparent !important;
 }
 
 .fileAttachment:disabled { cursor: wait; opacity: 0.78; }
@@ -2059,17 +2086,19 @@
 
 .mediaDocumentWrap {
     position: relative;
-    display: inline-block;
+    display: flex;
+    flex-direction: column;
     max-width: 100%;
+    padding-bottom: 18px;
 }
 
 .mediaDocumentWrap .fileAttachment { margin: 0; }
-.mediaOnly .mediaDocumentWrap .fileAttachment { padding-bottom: 31px; }
+.mediaOnly .mediaDocumentWrap .fileAttachment { padding-bottom: 20px; }
 
 .mediaDocumentFooter {
     position: absolute;
-    right: 12px;
-    bottom: 8px;
+    right: 4px;
+    bottom: 2px;
     display: flex;
     align-items: center;
     gap: 4px;
@@ -3751,8 +3780,8 @@
         right: 10px;
         padding: 5px 10px;
         border-radius: 20px;
-        backdrop-filter: blur(8px) !important;
-        -webkit-backdrop-filter: blur(8px) !important;
+        backdrop-filter: none !important;
+        -webkit-backdrop-filter: none !important;
     }
 
     .chatHeader::before,
@@ -3762,8 +3791,6 @@
     
     .message { max-width: 85%; }
     .messageWrapperGroup .message { max-width: calc(85% - 44px); }
-    
-    .messageMediaImage { max-width: 100%; height: auto; }
 
     .jumpToLatestButton {
         right: 14px;
@@ -3780,8 +3807,8 @@
         gap: 6px;
         align-items: center;
         border-radius: 22px;
-        backdrop-filter: blur(8px) !important;
-        -webkit-backdrop-filter: blur(8px) !important;
+        backdrop-filter: none !important;
+        -webkit-backdrop-filter: none !important;
     }
     
     .actionButton {
@@ -4193,9 +4220,12 @@
 /* ============================================
    SENT BUBBLE MEDIA & FILE STYLING (Blue bubble)
    ============================================ */
-.sent .fileAttachment {
-    background: rgba(255, 255, 255, 0.12) !important;
-    border: 1px solid rgba(255, 255, 255, 0.22) !important;
+.sent .fileAttachment,
+.sent .audioPlayer,
+.sent .audioManualCard {
+    background: transparent !important;
+    border: none !important;
+    box-shadow: none !important;
 }
 
 .sent .fileAttachmentName,
@@ -4211,32 +4241,69 @@
     color: rgba(255, 255, 255, 0.78) !important;
 }
 
-.sent .fileAttachmentDownload {
-    background: rgba(255, 255, 255, 0.2) !important;
+.sent .fileAttachmentIcon {
+    background: rgba(255, 255, 255, 0.22) !important;
     color: #ffffff !important;
 }
 
-.sent .audioManualCard {
-    background: rgba(255, 255, 255, 0.12) !important;
-    border: 1px solid rgba(255, 255, 255, 0.22) !important;
+.sent .fileAttachmentDownload {
+    background: rgba(255, 255, 255, 0.22) !important;
+    color: #ffffff !important;
+}
+
+.sent .audioPlayButton,
+.sent .audioDownloadButton {
+    background: #ffffff !important;
+    color: var(--chat-accent, #2D90E4) !important;
+}
+
+.sent .audioWaveform span {
+    background: rgba(255, 255, 255, 0.38) !important;
+}
+
+.sent .audioWaveform .audioWaveformPlayed {
+    background: #ffffff !important;
+}
+
+.sent .mediaDocumentFooter .timestamp,
+.sent .audioFooterOverlay .timestamp,
+.sent .audioManualFooter .timestamp {
+    color: rgba(255, 255, 255, 0.75) !important;
+    margin: 0 !important;
+}
+
+.sent .mediaDocumentFooter .seenIconSvg,
+.sent .audioFooterOverlay .seenIconSvg {
     color: #ffffff !important;
 }
 
 /* ============================================
    LIGHT THEME RECEIVED MESSAGE STYLING (White bubble)
    ============================================ */
-:root[data-theme="light"] .received .fileAttachment {
-    background: rgba(0, 0, 0, 0.04) !important;
-    border: 1px solid rgba(0, 0, 0, 0.08) !important;
+:root[data-theme="light"] .received .fileAttachment,
+:root[data-theme="light"] .received .audioPlayer,
+:root[data-theme="light"] .received .audioManualCard {
+    background: transparent !important;
+    border: none !important;
+    box-shadow: none !important;
     color: #0F172A !important;
 }
 
-:root[data-theme="light"] .received .fileAttachmentName {
+:root[data-theme="light"] .received .fileAttachmentName,
+:root[data-theme="light"] .received .audioFileName,
+:root[data-theme="light"] .received .audioManualInfo strong {
     color: #0F172A !important;
 }
 
-:root[data-theme="light"] .received .fileAttachmentSize {
+:root[data-theme="light"] .received .fileAttachmentSize,
+:root[data-theme="light"] .received .audioTime,
+:root[data-theme="light"] .received .audioManualInfo span {
     color: #64748B !important;
+}
+
+:root[data-theme="light"] .received .fileAttachmentIcon {
+    background: var(--chat-accent, #2D90E4) !important;
+    color: #ffffff !important;
 }
 
 :root[data-theme="light"] .received .fileAttachmentDownload {
@@ -4244,18 +4311,18 @@
     color: var(--chat-accent, #2D90E4) !important;
 }
 
-:root[data-theme="light"] .received .audioManualCard {
-    background: rgba(0, 0, 0, 0.04) !important;
-    border: 1px solid rgba(0, 0, 0, 0.08) !important;
-    color: #0F172A !important;
+:root[data-theme="light"] .received .audioPlayButton,
+:root[data-theme="light"] .received .audioDownloadButton {
+    background: var(--chat-accent, #2D90E4) !important;
+    color: #ffffff !important;
 }
 
-:root[data-theme="light"] .received .audioManualInfo strong {
-    color: #0F172A !important;
+:root[data-theme="light"] .received .audioWaveform span {
+    background: rgba(0, 0, 0, 0.16) !important;
 }
 
-:root[data-theme="light"] .received .audioManualInfo span {
-    color: #64748B !important;
+:root[data-theme="light"] .received .audioWaveform .audioWaveformPlayed {
+    background: var(--chat-accent, #2D90E4) !important;
 }
 
 :root[data-theme="light"] .received .replyPreview {
@@ -4270,6 +4337,68 @@
     color: #64748B !important;
 }
 
-:root[data-theme="light"] .received .mediaDocumentFooter .timestamp {
+:root[data-theme="light"] .received .mediaDocumentFooter .timestamp,
+:root[data-theme="light"] .received .audioFooterOverlay .timestamp,
+:root[data-theme="light"] .received .audioManualFooter .timestamp {
     color: #64748B !important;
+    margin: 0 !important;
+}
+
+:root[data-theme="light"] .received .mediaDocumentFooter .seenIconSvg,
+:root[data-theme="light"] .received .audioFooterOverlay .seenIconSvg {
+    color: var(--chat-accent, #2D90E4) !important;
+}
+
+/* ============================================
+   DARK THEME RECEIVED MESSAGE STYLING (Dark bubble)
+   ============================================ */
+:root[data-theme="dark"] .received .fileAttachment,
+:root[data-theme="dark"] .received .audioPlayer,
+:root[data-theme="dark"] .received .audioManualCard {
+    background: transparent !important;
+    border: none !important;
+    box-shadow: none !important;
+}
+
+:root[data-theme="dark"] .received .fileAttachmentName,
+:root[data-theme="dark"] .received .audioFileName,
+:root[data-theme="dark"] .received .audioManualInfo strong {
+    color: #FFFFFF !important;
+}
+
+:root[data-theme="dark"] .received .fileAttachmentSize,
+:root[data-theme="dark"] .received .audioTime,
+:root[data-theme="dark"] .received .audioManualInfo span {
+    color: rgba(255, 255, 255, 0.6) !important;
+}
+
+:root[data-theme="dark"] .received .fileAttachmentIcon {
+    background: var(--chat-accent, #2D90E4) !important;
+    color: #ffffff !important;
+}
+
+:root[data-theme="dark"] .received .fileAttachmentDownload {
+    background: rgba(255, 255, 255, 0.1) !important;
+    color: var(--chat-accent, #2D90E4) !important;
+}
+
+:root[data-theme="dark"] .received .audioPlayButton,
+:root[data-theme="dark"] .received .audioDownloadButton {
+    background: var(--chat-accent, #2D90E4) !important;
+    color: #ffffff !important;
+}
+
+:root[data-theme="dark"] .received .audioWaveform span {
+    background: rgba(255, 255, 255, 0.24) !important;
+}
+
+:root[data-theme="dark"] .received .audioWaveform .audioWaveformPlayed {
+    background: var(--chat-accent, #2D90E4) !important;
+}
+
+:root[data-theme="dark"] .received .mediaDocumentFooter .timestamp,
+:root[data-theme="dark"] .received .audioFooterOverlay .timestamp,
+:root[data-theme="dark"] .received .audioManualFooter .timestamp {
+    color: rgba(255, 255, 255, 0.6) !important;
+    margin: 0 !important;
 }
