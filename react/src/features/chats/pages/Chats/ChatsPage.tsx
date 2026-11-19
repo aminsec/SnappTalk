@@ -318,29 +318,34 @@ function ChatsPage() {
   }, []);
 
   const handleSelectChat = useCallback((chat) => {
+    console.log(123);
     const conversationId = getConversationId(chat);
     if (!conversationId) return;
     const convIdStr = conversationId.toString();
     setSelectedChat(chat);
     setMessagesConversationId(convIdStr);
     const cached = conversationMessagesCacheRef.current.get(convIdStr);
+    const lastMsgText = chat?.last_message?.content || chat?.last_message?.text || getMessagePreviewText(chat?.last_message);
     if (cached && cached.length > 0) {
       setMessages(cached);
+      setIsLoadingMessages(false);
       isInitialLoadRef.current = true;
-    } else if (chat?.last_message?.content) {
+    } else if (lastMsgText) {
       setMessages([{
         _id: `fallback-${convIdStr}`,
         id: `fallback-${convIdStr}`,
         conversation_id: convIdStr,
         sender: chat.last_message.sender || '',
         type: chat.last_message.type || 'text',
-        content: chat.last_message.content || '',
-        created_at: chat.last_message.when || new Date().toISOString(),
+        content: lastMsgText,
+        created_at: chat.last_message.when || chat.last_message.created_at || new Date().toISOString(),
         edited: false,
       }]);
+      setIsLoadingMessages(false);
       isInitialLoadRef.current = true;
     } else {
       setMessages([]);
+      setIsLoadingMessages(true);
       isInitialLoadRef.current = true;
     }
     setIsMobileChatOpen(true);
@@ -1276,6 +1281,7 @@ function ChatsPage() {
   const [messages, setMessages] = useState([]);
   const messagesRef = useRef([]);
   const [isLoadingMessages, setIsLoadingMessages] = useState(false);
+  const [isLoadingOlderMessages, setIsLoadingOlderMessages] = useState(false);
   const [hasMoreMessages, setHasMoreMessages] = useState(true);
   const [messagesOffset, setMessagesOffset] = useState(0);
   const [messagesConversationId, setMessagesConversationId] = useState(null);
@@ -2973,6 +2979,7 @@ function ChatsPage() {
       }
       return;
     }
+    console.log(123);
 
     const resolvedRouteId = conversationAliasRef.current.get(routeId) || routeId;
     const selectedId = getConversationId(selectedChatRef.current)?.toString();
@@ -2989,20 +2996,27 @@ function ChatsPage() {
         setSelectedChat(matchingChat);
         setMessagesConversationId(resolvedRouteId);
         const cached = conversationMessagesCacheRef.current.get(resolvedRouteId);
+        const lastMsgText = matchingChat?.last_message?.content || matchingChat?.last_message?.text || getMessagePreviewText(matchingChat?.last_message);
         if (cached && cached.length > 0) {
           setMessages(cached);
+          setIsLoadingMessages(false);
           isInitialLoadRef.current = true;
-        } else if (matchingChat?.last_message?.content) {
+        } else if (lastMsgText) {
           setMessages([{
             _id: `fallback-${resolvedRouteId}`,
             id: `fallback-${resolvedRouteId}`,
             conversation_id: resolvedRouteId,
             sender: matchingChat.last_message.sender || '',
             type: matchingChat.last_message.type || 'text',
-            content: matchingChat.last_message.content || '',
-            created_at: matchingChat.last_message.when || new Date().toISOString(),
+            content: lastMsgText,
+            created_at: matchingChat.last_message.when || matchingChat.last_message.created_at || new Date().toISOString(),
             edited: false,
           }]);
+          setIsLoadingMessages(false);
+          isInitialLoadRef.current = true;
+        } else {
+          setMessages([]);
+          setIsLoadingMessages(true);
           isInitialLoadRef.current = true;
         }
       }
@@ -3476,7 +3490,12 @@ function ChatsPage() {
       return;
     }
 
-    setIsLoadingMessages(true);
+    if (!append && offset === 0) {
+      console.log(123);
+      setIsLoadingMessages(true);
+    } else if (append) {
+      setIsLoadingOlderMessages(true);
+    }
     isLoadingMoreRef.current = true;
 
     // Store scroll position before loading older messages
@@ -3547,15 +3566,16 @@ function ChatsPage() {
           if (sortedFetchedMessages.length === 0) {
             const currentChat = selectedChatRef.current;
             const lastMessage = currentChat?.last_message;
-            if (lastMessage?.content) {
+            const lastMsgText = lastMessage?.content || lastMessage?.text || getMessagePreviewText(lastMessage);
+            if (lastMsgText) {
               const fallbackMessage = {
                 _id: `fallback-${conversationId}`,
                 id: `fallback-${conversationId}`,
                 conversation_id: conversationId,
                 sender: lastMessage.sender || '',
                 type: lastMessage.type || 'text',
-                content: lastMessage.content || '',
-                created_at: lastMessage.when || new Date().toISOString(),
+                content: lastMsgText,
+                created_at: lastMessage.when || lastMessage.created_at || new Date().toISOString(),
                 edited: false,
               };
               setMessages([fallbackMessage]);
@@ -3594,6 +3614,7 @@ function ChatsPage() {
       previousScrollTopRef.current = 0;
     } finally {
       setIsLoadingMessages(false);
+      setIsLoadingOlderMessages(false);
       isLoadingMoreRef.current = false;
     }
   }, []);
@@ -3643,12 +3664,13 @@ function ChatsPage() {
     const observer = new IntersectionObserver(
       ([entry]) => {
         if (entry.isIntersecting && hasMoreMessagesRef.current && !isLoadingMoreRef.current) {
-          loadOlderMessages();
+          if (root.scrollTop <= 120) {
+            loadOlderMessages();
+          }
         }
       },
       {
         root,
-        rootMargin: '180px 0px 0px',
         threshold: 0,
       }
     );
@@ -3815,7 +3837,7 @@ function ChatsPage() {
       previousScrollHeightRef.current = 0; // Reset
       previousScrollTopRef.current = 0;
     }
-  }, [messages.length]);
+  }, [messages, selectedChatIdStr]);
 
   useEffect(() => {
     const container = messagesContainerRef.current;
@@ -4795,14 +4817,7 @@ function ChatsPage() {
 
 
 
-  // Scroll to bottom only on initial load or when switching chats
-  useLayoutEffect(() => {
-    if (!isInitialLoadRef.current) return;
-    const container = messagesContainerRef.current;
-    if (container && messages.length > 0) {
-      container.scrollTop = container.scrollHeight;
-    }
-  }, [messages.length, selectedChat]);
+
 
   useEffect(() => {
     return () => {
@@ -4994,6 +5009,7 @@ function ChatsPage() {
                       longPressTriggeredRef.current = false;
                       return;
                     }
+                    console.log(123);
                     handleSelectChat(chat);
                   }}
                   onContextMenu={(event) => {
@@ -5213,12 +5229,12 @@ function ChatsPage() {
                 </div>
               )}
               <div ref={loadMoreSentinelRef} className={styles.loadMoreSentinel} aria-hidden="true" />
-              {!isLoadingMessages && visibleMessages.length === 0 && (
+              {!isLoadingMessages && visibleMessages.length === 0 && !selectedChat?.last_message && (
                 <div className={styles.emptyMessages}>
                   <p>No messages yet. Start the conversation!</p>
                 </div>
               )}
-              {isLoadingMessages && visibleMessages.length > 0 && (
+              {isLoadingOlderMessages && (
                 <div className={styles.loadingMore} role="status">
                   <span className={styles.lazyLoadSpinner} />
                   <span>Loading older messages</span>

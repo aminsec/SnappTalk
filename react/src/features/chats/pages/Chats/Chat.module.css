@@ -784,10 +784,22 @@
     to { opacity: 1; transform: translate(-50%, 0); }
 }
 
-.loadingMessages,
+.loadingMessages {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 30px 20px;
+    width: 100%;
+}
+
 .emptyMessages {
     flex: 1;
-    min-height: 60vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 40px 20px;
+    color: var(--text-muted);
+    font-size: 14px;
     width: 100%;
 }
 
@@ -4018,7 +4030,7 @@
     
     .replyBar { margin: 0 8px 8px 8px; max-width: calc(100% - 16px); }
     
-    .loadingMessages, .emptyMessages { min-height: 40vh; }
+    .emptyMessages { min-height: 40vh; }
 }
 
 /* ============================================
