@@ -294,7 +294,7 @@ export default function ProfileSection(): React.ReactElement {
           <div className={styles.heroDetails}>
             <div className={styles.heroTitleRow}>
               <h3 className={styles.heroUsername}>
-                {user?.username ? `@${user.username}` : 'SnappTalk User'}
+                {user?.username ? `@${user.username}` : 'Odyssey User'}
               </h3>
               <span className={styles.badgeActive}>
                 <span className={styles.pulseDot} />
@@ -339,7 +339,7 @@ export default function ProfileSection(): React.ReactElement {
             <p>
               {editMode
                 ? 'Update your username, email, and bio description.'
-                : 'This information is visible to other members on SnappTalk.'}
+                : 'This information is visible to other members on Odyssey.'}
             </p>
           </div>
         </div>

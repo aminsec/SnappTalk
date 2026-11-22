@@ -62,7 +62,7 @@ const MobileMenu: React.FC<MobileMenuProps> = ({ open, onClose }) => {
           duration: 5500,
         });
       } else {
-        toast('To install SnappTalk: open your browser menu (⋮) and tap "Install app" or "Add to Home screen".', {
+        toast('To install Odyssey: open your browser menu (⋮) and tap "Install app" or "Add to Home screen".', {
           icon: '📱',
           duration: 5500,
         });

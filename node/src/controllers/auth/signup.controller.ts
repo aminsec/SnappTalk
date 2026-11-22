@@ -54,7 +54,7 @@ export async function handleSignup(req: Request, resp: Response) {
     //Queueing email
     const verifyEmailJob: sendEmailMessage = {
         to: email,
-        subject: "Welcome To SnappTalk",
+        subject: "Welcome To Odyssey",
         template: "verify-email",
         parameters: {"VERIFY_URL": verifyUrl},
     };

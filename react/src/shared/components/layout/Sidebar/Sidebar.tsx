@@ -2,7 +2,8 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { faCog, faComment } from '@fortawesome/free-solid-svg-icons';
 
-import Logo from '@/shared/assets/images/MiniLogo.png';
+import LogoWhite from '@/shared/assets/images/logo-white.png';
+import LogoBlack from '@/shared/assets/images/logo-black.png';
 import { ProfileAvatar } from '@/shared/components';
 import { useAuth } from '@/shared/state/useAuth';
 import { AUTH_STATUS } from '@/shared/state/userStateContext';
@@ -74,7 +75,18 @@ const Sidebar: React.FC<SidebarProps> = ({ className }) => {
     >
       {/* Top Logo */}
       <div className={styles.logoWrapper}>
-        <img src={Logo} alt="Logo" className={styles.logo} onClick={() => navigate('/chats')} />
+        <img
+          src={LogoWhite}
+          alt="Odyssey"
+          className={`${styles.logo} ${styles.logoDark}`}
+          onClick={() => navigate('/chats')}
+        />
+        <img
+          src={LogoBlack}
+          alt="Odyssey"
+          className={`${styles.logo} ${styles.logoLight}`}
+          onClick={() => navigate('/chats')}
+        />
       </div>
 
       {/* Main Nav Items */}

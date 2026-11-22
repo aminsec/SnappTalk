@@ -21,10 +21,10 @@ if ('serviceWorker' in navigator) {
     navigator.serviceWorker
       .register('/sw.js')
       .then((reg) => {
-        console.log('[SnappTalk PWA] Service worker registered:', reg.scope);
+        console.log('[Odyssey PWA] Service worker registered:', reg.scope);
       })
       .catch((error) => {
-        console.error('[SnappTalk PWA] Service worker registration failed:', error);
+        console.error('[Odyssey PWA] Service worker registration failed:', error);
       });
   });
 }

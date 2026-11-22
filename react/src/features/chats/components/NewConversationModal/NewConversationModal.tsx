@@ -157,7 +157,7 @@ const NewConversationModal: React.FC<NewConversationModalProps> = ({
                     ? 'Searching users...'
                     : searchQuery.trim()
                     ? 'No users found matching your search.'
-                    : 'Type a username to find people on SnappTalk.'}
+                    : 'Type a username to find people on Odyssey.'}
                 </p>
               </div>
             ) : (

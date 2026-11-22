@@ -1,4 +1,4 @@
-import { connectToSnappTalkDB } from "./config/database";
+import { connectToOdysseyDB } from "./config/database";
 import { initSocket } from "./config/init.websocket";
 import { HeadBucketCommand } from "@aws-sdk/client-s3";
 import { s3Client, BUCKETS } from "./config/s3.minio";
@@ -12,14 +12,14 @@ const server = http.createServer(app);
 async function start() {
   try {
     //Conneting to servers
-    await connectToSnappTalkDB();
+    await connectToOdysseyDB();
     await connectRabbitMQ();
     await s3Client.send(new HeadBucketCommand({ Bucket: BUCKETS.PROFILE_PICS }));
     await s3Client.send(new HeadBucketCommand({ Bucket: BUCKETS.MEDIA }));
     console.log("Connected to MinIO S3");
 
     initSocket(server);
-    server.listen(PORT, () => console.log(`SnappTalk app listening on port ${PORT}`));
+    server.listen(PORT, () => console.log(`Odyssey app listening on port ${PORT}`));
   } catch (error) {
     console.error("Failed to start:", error);
     process.exit(1);

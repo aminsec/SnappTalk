@@ -1,5 +1,5 @@
 /* ============================================
-   SNAPPTALK AUTHENTICATION PORTAL
+   ODYSSEY AUTHENTICATION PORTAL
    ============================================ */
 .authContainer {
   min-height: 100vh;
@@ -119,27 +119,34 @@
 }
 
 .logoWrapper {
-  width: 62px;
-  height: 62px;
-  border-radius: 18px;
-  background: linear-gradient(135deg, color-mix(in srgb, var(--btn-color, #2D90E4) 18%, transparent), color-mix(in srgb, var(--btn-color, #2D90E4) 6%, transparent));
-  border: 1px solid color-mix(in srgb, var(--btn-color, #2D90E4) 35%, transparent);
-  box-shadow: 0 8px 24px color-mix(in srgb, var(--btn-color, #2D90E4) 22%, transparent);
   display: flex;
   align-items: center;
   justify-content: center;
   margin-bottom: 14px;
-  transition: transform 0.2s ease;
-}
-
-.logoWrapper:hover {
-  transform: scale(1.05);
 }
 
 .brandLogo {
-  width: 36px;
-  height: 36px;
+  width: 54px;
+  height: 54px;
   object-fit: contain;
+  user-select: none;
+  pointer-events: none;
+}
+
+.brandLogoDark {
+  display: block;
+}
+
+.brandLogoLight {
+  display: none;
+}
+
+:root[data-theme="light"] .brandLogoDark {
+  display: none;
+}
+
+:root[data-theme="light"] .brandLogoLight {
+  display: block;
 }
 
 .brandTitle {
@@ -150,19 +157,7 @@
   margin: 0 0 6px 0;
   display: flex;
   align-items: center;
-  gap: 8px;
-}
-
-.brandBadge {
-  font-size: 11px;
-  font-weight: 600;
-  padding: 2px 7px;
-  border-radius: 999px;
-  background: color-mix(in srgb, var(--btn-color, #2D90E4) 15%, transparent);
-  color: var(--btn-color, #2D90E4);
-  border: 1px solid color-mix(in srgb, var(--btn-color, #2D90E4) 30%, transparent);
-  letter-spacing: 0.03em;
-  text-transform: uppercase;
+  justify-content: center;
 }
 
 .brandSubtitle {
@@ -530,15 +525,12 @@
   }
 
   .logoWrapper {
-    width: 52px;
-    height: 52px;
-    border-radius: 15px;
     margin-bottom: 10px;
   }
 
   .brandLogo {
-    width: 30px;
-    height: 30px;
+    width: 44px;
+    height: 44px;
   }
 
   .submitButton {

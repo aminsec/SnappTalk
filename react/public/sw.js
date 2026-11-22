@@ -1,8 +1,9 @@
-const CACHE_NAME = 'snapptalk-cache-v1';
+const CACHE_NAME = 'odyssey-cache-v1';
 const PRECACHE_URLS = [
   '/',
   '/index.html',
   '/manifest.json',
+  '/favicon.ico',
   '/favicon-32x32.png',
   '/icon-192.png',
   '/icon-512.png',

@@ -4909,7 +4909,7 @@ function ChatsPage() {
           >
             <FontAwesomeIcon icon={faBars} />
           </button>
-          <span className={styles.mobileChatHeaderTitle}>SnappTalk</span>
+          <span className={styles.mobileChatHeaderTitle}>Odyssey</span>
         </div>
         <div className={`${styles.searchContainer} ${isChatListScrolled ? styles.searchHidden : ''}`}>
           <Input

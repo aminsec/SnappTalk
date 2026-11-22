@@ -1,4 +1,4 @@
-Welcome to SnappTalk - A place for chat with ease
+Welcome to Odyssey - A place for chat with ease
 
 Just public for resume
 

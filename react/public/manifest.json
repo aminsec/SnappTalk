@@ -1,7 +1,7 @@
 {
-  "name": "SnappTalk",
-  "short_name": "SnappTalk",
-  "description": "Welcome to SnappTalk - A place for chat with ease",
+  "name": "Odyssey",
+  "short_name": "Odyssey",
+  "description": "Welcome to Odyssey - A place for chat with ease",
   "id": "/",
   "start_url": "/chats",
   "scope": "/",

@@ -10,7 +10,7 @@ export async function sendEmail(to: string, subject: string, templateName: strin
         );
     
         const { data, error } = await resend.emails.send({
-            from: "SnappTalk <onboarding@uptalk.ir>",
+            from: "Odyssey <onboarding@uptalk.ir>",
             to,
             subject,
             html,

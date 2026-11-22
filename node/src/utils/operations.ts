@@ -94,7 +94,8 @@ export async function filterMessagesDeletedForUser(messages: Message[], userId: 
 
 export async function renderEmailTemplate(templateName: string, variables: Record<string, string>): Promise<string> {
     const templatePath = path.join(
-        "/root/SnappTalk/node/src/templates/emails/",
+        __dirname,
+        "../templates/emails/",
         `${templateName}.html`
     );
 

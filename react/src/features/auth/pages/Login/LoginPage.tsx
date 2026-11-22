@@ -12,7 +12,8 @@ import {
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { useNavigate, useLocation } from 'react-router-dom';
 
-import MiniLogo from '@/shared/assets/images/MiniLogo.png';
+import LogoWhite from '@/shared/assets/images/logo-white.png';
+import LogoBlack from '@/shared/assets/images/logo-black.png';
 import { Input } from '@/shared/components';
 import { useAuth } from '@/shared/state/useAuth';
 
@@ -360,11 +361,11 @@ const LoginPage: React.FC<LoginPageProps> = ({ initialStep = LOGIN_STEPS.LOGIN }
         {/* Brand Header */}
         <div className={styles.brandHeader}>
           <div className={styles.logoWrapper}>
-            <img src={MiniLogo} alt="SnappTalk" className={styles.brandLogo} />
+            <img src={LogoWhite} alt="Odyssey" className={`${styles.brandLogo} ${styles.brandLogoDark}`} />
+            <img src={LogoBlack} alt="Odyssey" className={`${styles.brandLogo} ${styles.brandLogoLight}`} />
           </div>
           <h1 className={styles.brandTitle}>
-            SnappTalk
-            <span className={styles.brandBadge}>v2.0</span>
+            Odyssey
           </h1>
           <p className={styles.brandSubtitle}>
             {activeStep === LOGIN_STEPS.LOGIN && 'Welcome back! Sign in to continue talking.'}
@@ -703,7 +704,7 @@ const LoginPage: React.FC<LoginPageProps> = ({ initialStep = LOGIN_STEPS.LOGIN }
                 fullWidth
               />
               <span className={styles.fieldHint}>
-                This is how other users on SnappTalk will discover and mention you.
+                This is how other users on Odyssey will discover and mention you.
               </span>
             </div>
 

@@ -369,7 +369,7 @@ const AccountSection: React.FC = () => {
           <div className={styles.userInfo}>
             <div className={styles.userTitleRow}>
               <h3 className={styles.username}>
-                {user?.username ? `@${user.username}` : 'SnappTalk User'}
+                {user?.username ? `@${user.username}` : 'Odyssey User'}
               </h3>
             </div>
             <p className={styles.userEmail}>{user?.email || 'No email registered'}</p>
@@ -723,7 +723,7 @@ const AccountSection: React.FC = () => {
               <div className={styles.modalWarningIcon}>
                 <FontAwesomeIcon icon={faTriangleExclamation} />
               </div>
-              <h4 className={styles.confirmTitle}>Delete SnappTalk Account?</h4>
+              <h4 className={styles.confirmTitle}>Delete Odyssey Account?</h4>
             </div>
 
             <p className={styles.confirmText}>

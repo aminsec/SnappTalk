@@ -27,6 +27,22 @@
   transform: scale(1.04);
 }
 
+.logoDark {
+  display: block;
+}
+
+.logoLight {
+  display: none;
+}
+
+:root[data-theme="light"] .logoDark {
+  display: none;
+}
+
+:root[data-theme="light"] .logoLight {
+  display: block;
+}
+
 .navItems {
   display: flex;
   flex-direction: column;

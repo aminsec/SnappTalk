@@ -24,7 +24,7 @@ export async function handleEmailVerification(req: Request, resp: Response) {
         return;
     }
 
-    const responseHeaders = {"Set-Cookie": `token=${jwtToken}; path=/; sameSite=lax; domain=.snapptalk.io`, "Location": "/chat"};
+    const responseHeaders = {"Set-Cookie": `token=${jwtToken}; path=/; sameSite=lax; domain=.odyssey.io`, "Location": "/chat"};
     sendResponse({state: "success"}, responseHeaders, 301, resp);
 };
 
@@ -49,7 +49,7 @@ export async function handleResendEmailVerification(req: Request, resp: Response
     //Queueing email
     const verifyEmailJob: sendEmailMessage = {
         to: email,
-        subject: "Welcome To SnappTalk",
+        subject: "Welcome To Odyssey",
         template: "verify-email",
         parameters: {"VERIFY_URL": verifyUrl},
     };
