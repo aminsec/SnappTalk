@@ -524,7 +524,7 @@ export default function ProfileSection(): React.ReactElement {
               <div className={styles.detailBody}>
                 <span className={styles.detailLabel}>About / Bio</span>
                 <p className={`${styles.detailValue} ${!user?.bio ? styles.detailPlaceholder : ''}`}>
-                  {user?.bio || 'No biography added yet. Click "Edit profile" to introduce yourself!'}
+                  {user?.bio || 'No bio'}
                 </p>
               </div>
             </div>

@@ -197,7 +197,7 @@ const ProfilePage: React.FC = () => {
 
               <div className={styles.bioCard}>
                 <h2>Bio</h2>
-                <p>{profile.bio || 'No bio yet.'}</p>
+                <p>{profile.bio || 'No bio'}</p>
               </div>
 
               <div className={styles.metaGrid}>

@@ -86,6 +86,29 @@ html, body {
   }
 }
 
+@media (max-width: 768px), (hover: none) and (pointer: coarse) {
+  *,
+  *::before,
+  *::after {
+    -webkit-touch-callout: none;
+  }
+
+  body,
+  #root {
+    -webkit-user-select: none;
+    user-select: none;
+  }
+
+  input,
+  textarea,
+  select,
+  [contenteditable="true"] {
+    -webkit-touch-callout: default;
+    -webkit-user-select: text;
+    user-select: text;
+  }
+}
+
 /* ———————————————————————————————————————————————————————————————
   Scrollbar style (Hidden globally, scrolling preserved)
 —————————————————————————————————————————————————————————————— */

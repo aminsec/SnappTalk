@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef, useLayoutEffect } from 'react';
 import { useCallback, useMemo } from 'react';
+import { createPortal } from 'react-dom';
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import {
@@ -16,6 +17,7 @@ import {
   faDownload,
   faCheck,
   faCheckDouble,
+  faCopy,
 } from '@fortawesome/free-solid-svg-icons';
 import { Sidebar, MobileMenu, Input, ProfileAvatar } from '@/shared/components';
 import { useAuth } from '@/shared/state/useAuth';
@@ -99,6 +101,16 @@ const reconcileMessages = (prev: any[], next: any[]) => {
       JSON.stringify(old.reply_to ?? null) === JSON.stringify(m.reply_to ?? null);
     return same ? old : m;
   });
+};
+
+const getClampedMenuPos = (x: number, y: number, width = 180, height = 200) => {
+  if (typeof window === 'undefined') return { left: x, top: y };
+  const maxX = window.innerWidth - width - 12;
+  const maxY = window.innerHeight - height - 12;
+  return {
+    left: Math.max(12, Math.min(x, maxX)),
+    top: Math.max(12, Math.min(y, maxY)),
+  };
 };
 
 function ChatsPage() {
@@ -219,18 +231,63 @@ function ChatsPage() {
   const statusOfflineTimersRef = useRef({});
   const longPressTimeoutRef = useRef(null);
   const longPressTriggeredRef = useRef(false);
+  const longPressTouchStartRef = useRef<{ x: number; y: number } | null>(null);
+  const justOpenedContextMenuRef = useRef(false);
   const messageContextMenuRef = useRef(null);
   const conversationAliasRef = useRef(new Map());
   const previousSelectedChatIdRef = useRef(null);
   const conversationMessagesCacheRef = useRef<Map<string, any[]>>(new Map());
 
+  const handleOpenConversationContextMenu = useCallback((x: number, y: number, chat: any) => {
+    justOpenedContextMenuRef.current = true;
+    setConversationContextMenu({
+      x,
+      y,
+      conversation: chat,
+    });
+    setTimeout(() => {
+      justOpenedContextMenuRef.current = false;
+    }, 300);
+  }, []);
+
   const handleBubbleContextMenu = useCallback((e: React.MouseEvent, msg: any, isMine: boolean) => {
+    e.preventDefault();
+    justOpenedContextMenuRef.current = true;
     setMessageContextMenu({
       x: e.clientX,
       y: e.clientY,
       message: msg,
       isMyMessage: isMine,
     });
+    setTimeout(() => {
+      justOpenedContextMenuRef.current = false;
+    }, 300);
+  }, []);
+
+  const handleCopyMessageText = useCallback((msg: any) => {
+    const text = msg?.content || msg?.text || '';
+    if (!text) return;
+    if (navigator.clipboard?.writeText) {
+      navigator.clipboard.writeText(text)
+        .then(() => toast.success('Copied to clipboard'))
+        .catch(() => toast.error('Failed to copy'));
+    } else {
+      const textarea = document.createElement('textarea');
+      textarea.value = text;
+      textarea.style.position = 'fixed';
+      textarea.style.opacity = '0';
+      document.body.appendChild(textarea);
+      textarea.focus();
+      textarea.select();
+      try {
+        document.execCommand('copy');
+        toast.success('Copied to clipboard');
+      } catch {
+        toast.error('Failed to copy');
+      }
+      document.body.removeChild(textarea);
+    }
+    setMessageContextMenu(null);
   }, []);
 
   const handleMemberClick = useCallback((memberId: string) => {
@@ -240,7 +297,21 @@ function ChatsPage() {
   const [unreadCounts, setUnreadCounts] = useState({});
   const unreadCountsRef = useRef({});
   const hasFetchedContactsRef = useRef(false);
+  const [isChatListScrolled, setIsChatListScrolled] = useState(false);
+  const chatListScrollRafRef = useRef<number | null>(null);
 
+  const handleChatListScroll = useCallback((e: React.UIEvent<HTMLElement>) => {
+    const scrollTop = e.currentTarget.scrollTop;
+    if (chatListScrollRafRef.current !== null) return;
+    chatListScrollRafRef.current = requestAnimationFrame(() => {
+      chatListScrollRafRef.current = null;
+      if (scrollTop > 12 && !searchQuery.trim()) {
+        setIsChatListScrolled((prev) => (prev ? prev : true));
+      } else if (scrollTop <= 4) {
+        setIsChatListScrolled((prev) => (!prev ? prev : false));
+      }
+    });
+  }, [searchQuery]);
   // Mobile responsive states
   const [isMobileChatOpen, setIsMobileChatOpen] = useState(() => {
     // If arriving via a deep link, open the chat pane immediately
@@ -3033,7 +3104,10 @@ function ChatsPage() {
 
   // Close menus when clicking outside
   useEffect(() => {
-    const handleClickOutside = (event) => {
+    const handleClickOutside = (event: any) => {
+      if (justOpenedContextMenuRef.current) {
+        return;
+      }
       if (event.button === 2) {
         return;
       }
@@ -3050,10 +3124,12 @@ function ChatsPage() {
 
     if (isChatMenuOpen || messageContextMenu || conversationContextMenu) {
       document.addEventListener('mousedown', handleClickOutside);
+      document.addEventListener('touchstart', handleClickOutside);
     }
 
     return () => {
       document.removeEventListener('mousedown', handleClickOutside);
+      document.removeEventListener('touchstart', handleClickOutside);
     };
   }, [isChatMenuOpen, messageContextMenu, conversationContextMenu]);
 
@@ -4834,6 +4910,10 @@ function ChatsPage() {
         cancelAnimationFrame(scrollFrameRef.current);
         scrollFrameRef.current = null;
       }
+      if (chatListScrollRafRef.current !== null) {
+        cancelAnimationFrame(chatListScrollRafRef.current);
+        chatListScrollRafRef.current = null;
+      }
     };
   }, []);
 
@@ -4916,7 +4996,7 @@ function ChatsPage() {
           </button>
           <span className={styles.mobileChatHeaderTitle}>Odyssey</span>
         </div>
-        <div className={styles.searchContainer}>
+        <div className={`${styles.searchContainer} ${isChatListScrolled ? styles.searchHidden : ''}`}>
           <Input
             type="text"
             name="text"
@@ -4929,7 +5009,7 @@ function ChatsPage() {
             onChange={(e) => setSearchQuery(e.target.value)}
           />
         </div>
-        <div className={styles.chatTabs}>
+        <div className={`${styles.chatTabs} ${isChatListScrolled ? styles.chatTabsSticky : ''}`}>
           <button
             type="button"
             className={`${styles.chatTab} ${activeTab === 'all' ? styles.chatTabActive : ''}`}
@@ -4953,7 +5033,7 @@ function ChatsPage() {
           </button>
         </div>
   
-        <div className={styles.chatList}>
+        <div className={styles.chatList} onScroll={handleChatListScroll}>
           {contacts.length === 0 ? (
             <div className={styles.emptyState}>
               <p>Start a conversation...</p>
@@ -5018,11 +5098,7 @@ function ChatsPage() {
                   }}
                   onContextMenu={(event) => {
                     event.preventDefault();
-                    setConversationContextMenu({
-                      x: event.clientX,
-                      y: event.clientY,
-                      conversation: chat,
-                    });
+                    handleOpenConversationContextMenu(event.clientX, event.clientY, chat);
                   }}
                   onTouchStart={(event) => {
                     if (longPressTimeoutRef.current) {
@@ -5030,23 +5106,34 @@ function ChatsPage() {
                     }
                     const touch = event.touches?.[0];
                     if (!touch) return;
+                    const startX = touch.clientX;
+                    const startY = touch.clientY;
+                    longPressTouchStartRef.current = { x: startX, y: startY };
                     longPressTimeoutRef.current = setTimeout(() => {
                       longPressTriggeredRef.current = true;
-                      setConversationContextMenu({
-                        x: touch.clientX,
-                        y: touch.clientY,
-                        conversation: chat,
-                      });
-                    }, 500);
+                      handleOpenConversationContextMenu(startX, startY, chat);
+                    }, 450);
+                  }}
+                  onTouchMove={(event) => {
+                    const touch = event.touches?.[0];
+                    if (!touch || !longPressTimeoutRef.current || !longPressTouchStartRef.current) return;
+                    const deltaX = Math.abs(touch.clientX - longPressTouchStartRef.current.x);
+                    const deltaY = Math.abs(touch.clientY - longPressTouchStartRef.current.y);
+                    if (deltaX > 10 || deltaY > 10) {
+                      clearTimeout(longPressTimeoutRef.current);
+                      longPressTimeoutRef.current = null;
+                    }
                   }}
                   onTouchEnd={() => {
                     if (longPressTimeoutRef.current) {
                       clearTimeout(longPressTimeoutRef.current);
+                      longPressTimeoutRef.current = null;
                     }
                   }}
                   onTouchCancel={() => {
                     if (longPressTimeoutRef.current) {
                       clearTimeout(longPressTimeoutRef.current);
+                      longPressTimeoutRef.current = null;
                     }
                   }}
                 >
@@ -5383,13 +5470,23 @@ function ChatsPage() {
               onStopRecording={stopRecording}
             />
 
-            {messageContextMenu && (
+            {messageContextMenu && createPortal(
               <div
                 className={styles.messageContextMenu}
                 data-message-context-menu
-                style={{ left: messageContextMenu.x, top: messageContextMenu.y }}
+                style={getClampedMenuPos(messageContextMenu.x, messageContextMenu.y, 180, 220)}
                 ref={messageContextMenuRef}
               >
+                {Boolean(messageContextMenu.message?.content || messageContextMenu.message?.text) && (
+                  <button
+                    type="button"
+                    className={styles.optionsMenuItem}
+                    onClick={() => handleCopyMessageText(messageContextMenu.message)}
+                  >
+                    <FontAwesomeIcon icon={faCopy} />
+                    <span>Copy</span>
+                  </button>
+                )}
                 <button
                   type="button"
                   className={styles.optionsMenuItem}
@@ -5452,7 +5549,8 @@ function ChatsPage() {
                     <span>Resend</span>
                   </button>
                 )}
-              </div>
+              </div>,
+              document.body
             )}
           </>
         ) : (
@@ -5466,21 +5564,26 @@ function ChatsPage() {
             </div>
           </div>
         )}
-        {conversationContextMenu && (
+        {conversationContextMenu && createPortal(
           <div
             className={styles.conversationContextMenu}
             data-conversation-context-menu
-            style={{ left: conversationContextMenu.x, top: conversationContextMenu.y }}
+            style={getClampedMenuPos(conversationContextMenu.x, conversationContextMenu.y, 200, 70)}
           >
             <button
               type="button"
               className={styles.optionsMenuItem}
-              onClick={() => handleOpenDeleteConversation(conversationContextMenu.conversation)}
+              onClick={() => {
+                const conv = conversationContextMenu.conversation;
+                setConversationContextMenu(null);
+                handleOpenDeleteConversation(conv);
+              }}
             >
               <FontAwesomeIcon icon={faTrash} />
               <span>Delete conversation</span>
             </button>
-          </div>
+          </div>,
+          document.body
         )}
         <DeleteConversationModal
           isOpen={deleteConfirm.open}

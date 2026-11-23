@@ -72,8 +72,7 @@
 .heroContent {
   display: flex;
   align-items: center;
-  flex-wrap: wrap;
-  gap: 16px 20px;
+  gap: 20px;
   position: relative;
   z-index: 1;
 }
@@ -120,12 +119,11 @@
 }
 
 .heroDetails {
-  flex: 1 1 180px;
-  min-width: 0;
+  flex: 1;
+  min-width: 180px;
   display: flex;
   flex-direction: column;
   gap: 6px;
-  overflow: hidden;
 }
 
 .heroTitleRow {
@@ -140,8 +138,6 @@
   font-weight: 700;
   color: var(--text-main);
   margin: 0;
-  overflow-wrap: anywhere;
-  word-break: break-word;
 }
 
 .badgeActive {
@@ -189,8 +185,6 @@
   font-size: 13.5px;
   color: var(--text-muted);
   margin: 0;
-  overflow-wrap: anywhere;
-  word-break: break-word;
 }
 
 .memberMeta {
@@ -211,7 +205,6 @@
 .heroActionWrapper {
   margin-left: auto;
   flex-shrink: 0;
-  max-width: 100%;
 }
 
 .editProfileBtn {
@@ -654,7 +647,7 @@
 /* ============================================================
    Mobile Responsiveness
    ============================================================ */
-@media (max-width: 768px) {
+@media (max-width: 640px) {
   .profileContainer {
     gap: 18px;
   }

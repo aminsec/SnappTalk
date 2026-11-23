@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { faArrowLeft, faRightFromBracket } from '@fortawesome/free-solid-svg-icons';
+import { faArrowLeft, faBars, faRightFromBracket } from '@fortawesome/free-solid-svg-icons';
 
 import { Sidebar, UserCard, OptionItem } from '@/shared/components';
 import { useAuth } from '@/shared/state/useAuth';
@@ -22,6 +22,7 @@ const SettingsPage: React.FC = () => {
   const navigate = useNavigate();
   const { pathname } = useLocation();
   const { refreshUser } = useAuth();
+  const [menuOpen, setMenuOpen] = useState<boolean>(false);
   const [isLoggingOut, setIsLoggingOut] = useState<boolean>(false);
   const [showLogoutConfirm, setShowLogoutConfirm] = useState<boolean>(false);
 
@@ -79,6 +80,7 @@ const SettingsPage: React.FC = () => {
 
   const handleNavigate = (path: string) => {
     navigate(path);
+    setMenuOpen(false);
   };
 
   const handleLogout = async () => {
@@ -101,7 +103,7 @@ const SettingsPage: React.FC = () => {
 
   return (
     <div className={styles.settingsContainer}>
-      {/* Mobile top bar: back to chats */}
+      {/* Mobile top bar: back to chats + open settings menu */}
       <div className={styles.mobileTopBar}>
         <button
           type="button"
@@ -112,15 +114,40 @@ const SettingsPage: React.FC = () => {
           <FontAwesomeIcon icon={faArrowLeft} />
         </button>
         <span className={styles.mobileTopBarTitle}>Settings</span>
+        <button
+          type="button"
+          className={styles.mobileMenuButton}
+          onClick={() => setMenuOpen(true)}
+          aria-label="Open settings menu"
+        >
+          <FontAwesomeIcon icon={faBars} />
+        </button>
       </div>
 
       <div className={styles.settingsBody}>
         <Sidebar className={styles.sidebar} />
 
+        {/* Mobile drawer overlay */}
+        {menuOpen && (
+          <div className={styles.drawerOverlay} onClick={() => setMenuOpen(false)} />
+        )}
+
         <aside
-          className={styles.settingsSidebar}
+          className={`${styles.settingsSidebar} ${menuOpen ? styles.settingsSidebarOpen : ''}`}
           style={settingsThemeStyle}
         >
+          <div className={styles.drawerHeader}>
+            <span>Settings</span>
+            <button
+              type="button"
+              className={styles.drawerCloseButton}
+              onClick={() => setMenuOpen(false)}
+              aria-label="Close settings menu"
+            >
+              <FontAwesomeIcon icon={faArrowLeft} />
+            </button>
+          </div>
+
           <div className={styles.sidebarHeader}>
             <span className={styles.sidebarTitle}>Settings</span>
           </div>

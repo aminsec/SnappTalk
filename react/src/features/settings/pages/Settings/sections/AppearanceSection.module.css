@@ -395,25 +395,13 @@
    MESSAGE SIZE SECTION
    ============================================ */
 .messageSizeSection {
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
+  display: grid;
+  grid-template-columns: minmax(220px, 0.8fr) minmax(260px, 1fr);
+  gap: 18px 28px;
   padding: 16px;
   background: var(--card-bg, rgba(255, 255, 255, 0.025));
   border: 1px solid var(--border-subtle, rgba(255, 255, 255, 0.08));
   border-radius: 18px;
-  width: 100%;
-  max-width: 100%;
-  box-sizing: border-box;
-}
-
-@media (min-width: 900px) {
-  .messageSizeSection {
-    display: grid;
-    grid-template-columns: minmax(0, 1fr) minmax(0, 1.25fr);
-    align-items: center;
-    gap: 18px 24px;
-  }
 }
 
 .messageSizeHeader {
@@ -421,7 +409,7 @@
   display: flex;
   align-items: center;
   gap: 12px;
-  width: 100%;
+  grid-column: 1;
 }
 
 .messageSizeIcon {
@@ -452,9 +440,8 @@
 
 .messageSizeControl {
   min-width: 0;
-  width: 100%;
-  box-sizing: border-box;
-  align-self: stretch;
+  grid-column: 2;
+  align-self: center;
   padding: 12px 14px 10px;
   background: var(--card-inner-bg, rgba(0, 0, 0, 0.18));
   border: 1px solid var(--border-subtle, rgba(255, 255, 255, 0.07));
@@ -571,9 +558,6 @@
   gap: 7px;
   padding: 14px;
   overflow: hidden;
-  width: 100%;
-  max-width: 100%;
-  box-sizing: border-box;
   background: var(--preview-stage-bg, radial-gradient(circle at 20% 0%, rgba(85, 167, 239, 0.16), transparent 50%), #141a22);
   border: 1px solid var(--border-subtle, rgba(255, 255, 255, 0.075));
   border-radius: 14px;
