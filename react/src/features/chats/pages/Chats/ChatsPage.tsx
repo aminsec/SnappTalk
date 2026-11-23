@@ -84,10 +84,28 @@ import {
 } from '../../components/DeleteConfirmModals';
 import styles from './Chat.module.css';
 
+const reconcileMessages = (prev: any[], next: any[]) => {
+  if (!prev.length) return next;
+  const prevById = new Map(prev.map((m) => [getMessageId(m)?.toString(), m]));
+  return next.map((m) => {
+    const old = prevById.get(getMessageId(m)?.toString());
+    if (!old) return m;
+    const same =
+      old.content === m.content &&
+      old.edited === m.edited &&
+      old.seen === m.seen &&
+      old.type === m.type &&
+      old.attachment_key === m.attachment_key &&
+      JSON.stringify(old.reply_to ?? null) === JSON.stringify(m.reply_to ?? null);
+    return same ? old : m;
+  });
+};
+
 function ChatsPage() {
   const location = useLocation();
   const navigate = useNavigate();
   const { conversationId: routeConversationId } = useParams();
+  const pendingRouteIdRef = useRef<string | null>(null);
   const { user } = useAuth();
   const { socket, status: socketStatus } = useSocket();
   const [contacts, setContacts] = useState([]);
@@ -318,43 +336,36 @@ function ChatsPage() {
   }, []);
 
   const handleSelectChat = useCallback((chat) => {
-    console.log(123);
     const conversationId = getConversationId(chat);
     if (!conversationId) return;
     const convIdStr = conversationId.toString();
+
+    const currentSelectedId = getConversationId(selectedChatRef.current)?.toString();
+    if (currentSelectedId && currentSelectedId === convIdStr) {
+      setIsMobileChatOpen(true);
+      return;
+    }
+
     setSelectedChat(chat);
     setMessagesConversationId(convIdStr);
     const cached = conversationMessagesCacheRef.current.get(convIdStr);
-    const lastMsgText = chat?.last_message?.content || chat?.last_message?.text || getMessagePreviewText(chat?.last_message);
     if (cached && cached.length > 0) {
       setMessages(cached);
       setIsLoadingMessages(false);
-      isInitialLoadRef.current = true;
-    } else if (lastMsgText) {
-      setMessages([{
-        _id: `fallback-${convIdStr}`,
-        id: `fallback-${convIdStr}`,
-        conversation_id: convIdStr,
-        sender: chat.last_message.sender || '',
-        type: chat.last_message.type || 'text',
-        content: lastMsgText,
-        created_at: chat.last_message.when || chat.last_message.created_at || new Date().toISOString(),
-        edited: false,
-      }]);
-      setIsLoadingMessages(false);
-      isInitialLoadRef.current = true;
     } else {
       setMessages([]);
-      setIsLoadingMessages(true);
-      isInitialLoadRef.current = true;
+      setIsLoadingMessages(!convIdStr.startsWith('temp-'));
     }
+    isInitialLoadRef.current = true;
     setIsMobileChatOpen(true);
+    pendingRouteIdRef.current = convIdStr;
     navigate(`/chats/${encodeURIComponent(convIdStr)}`);
   }, [navigate]);
 
   const handleCloseChat = useCallback(() => {
     setSelectedChat(null);
     setIsMobileChatOpen(false);
+    pendingRouteIdRef.current = '';
     navigate('/chats');
   }, [navigate]);
 
@@ -417,6 +428,7 @@ function ChatsPage() {
       routeConversationId?.toString() === tempIdStr
       || getConversationId(selectedChatRef.current)?.toString() === tempIdStr
     ) {
+      pendingRouteIdRef.current = realIdStr;
       navigate(`/chats/${encodeURIComponent(realIdStr)}`, { replace: true });
     }
   }, [navigate, routeConversationId, setConversationAlias]);
@@ -1384,6 +1396,7 @@ function ChatsPage() {
   }, [cancelMediaDownload, clearMediaDownloadState, downloadMediaBlob, handleDownloadMessage, rememberMediaDimensions]);
   const messagesContainerRef = useRef(null);
   const isLoadingMoreRef = useRef(false);
+  const fetchRequestIdRef = useRef(0);
   const messagesOffsetRef = useRef(0);
   const hasMoreMessagesRef = useRef(true);
   const isInitialLoadRef = useRef(true);
@@ -2972,6 +2985,13 @@ function ChatsPage() {
 
   useEffect(() => {
     const routeId = routeConversationId?.toString();
+    if (pendingRouteIdRef.current !== null) {
+      if ((routeId ?? '') !== pendingRouteIdRef.current) {
+        return;
+      }
+      pendingRouteIdRef.current = null;
+    }
+
     if (!routeId) {
       if (selectedChatRef.current) {
         setSelectedChat(null);
@@ -2979,7 +2999,6 @@ function ChatsPage() {
       }
       return;
     }
-    console.log(123);
 
     const resolvedRouteId = conversationAliasRef.current.get(routeId) || routeId;
     const selectedId = getConversationId(selectedChatRef.current)?.toString();
@@ -2996,29 +3015,14 @@ function ChatsPage() {
         setSelectedChat(matchingChat);
         setMessagesConversationId(resolvedRouteId);
         const cached = conversationMessagesCacheRef.current.get(resolvedRouteId);
-        const lastMsgText = matchingChat?.last_message?.content || matchingChat?.last_message?.text || getMessagePreviewText(matchingChat?.last_message);
         if (cached && cached.length > 0) {
           setMessages(cached);
           setIsLoadingMessages(false);
-          isInitialLoadRef.current = true;
-        } else if (lastMsgText) {
-          setMessages([{
-            _id: `fallback-${resolvedRouteId}`,
-            id: `fallback-${resolvedRouteId}`,
-            conversation_id: resolvedRouteId,
-            sender: matchingChat.last_message.sender || '',
-            type: matchingChat.last_message.type || 'text',
-            content: lastMsgText,
-            created_at: matchingChat.last_message.when || matchingChat.last_message.created_at || new Date().toISOString(),
-            edited: false,
-          }]);
-          setIsLoadingMessages(false);
-          isInitialLoadRef.current = true;
         } else {
           setMessages([]);
-          setIsLoadingMessages(true);
-          isInitialLoadRef.current = true;
+          setIsLoadingMessages(!resolvedRouteId.startsWith('temp-'));
         }
+        isInitialLoadRef.current = true;
       }
       setIsMobileChatOpen(true);
       if (resolvedRouteId !== routeId) {
@@ -3485,13 +3489,15 @@ function ChatsPage() {
   // Initial load: offset=0, limit=10 → fetches last 10 messages (newest)
   // Scroll up: offset=10,20,30... → fetches next 10 older messages each time
   const fetchMessages = useCallback(async (conversationId, offset = 0, append = false) => {
-    if (!conversationId || isLoadingMoreRef.current) return;
+    if (!conversationId || (append && isLoadingMoreRef.current)) return;
     if (conversationId.toString().startsWith('temp-')) {
       return;
     }
 
+    const requestId = append ? fetchRequestIdRef.current : ++fetchRequestIdRef.current;
+    const isStale = () => requestId !== fetchRequestIdRef.current;
+
     if (!append && offset === 0) {
-      console.log(123);
       setIsLoadingMessages(true);
     } else if (append) {
       setIsLoadingOlderMessages(true);
@@ -3515,8 +3521,12 @@ function ChatsPage() {
         credentials: 'include',
       });
 
+      if (isStale()) return;
+
       if (response.ok) {
         const data = await response.json();
+        if (isStale()) return;
+
         const fetchedMessages = data.messages || [];
         
         // Backend returns messages sorted newest first (created_at: -1)
@@ -3533,7 +3543,7 @@ function ChatsPage() {
         const sortedFetchedMessages = sortMessagesByDate(fetchedMessages);
         
         const activeConversationId = getConversationId(selectedChatRef.current);
-        if (activeConversationId !== conversationId) {
+        if (activeConversationId?.toString() !== conversationId.toString()) {
           return;
         }
         const currentUserId = userRef.current?.id?.toString();
@@ -3583,7 +3593,7 @@ function ChatsPage() {
               setMessages([]);
             }
           } else {
-            setMessages(normalizedFetchedMessages);
+            setMessages((prev) => reconcileMessages(prev, normalizedFetchedMessages));
           }
           flushPendingMessages(conversationId);
           isInitialLoadRef.current = true;
@@ -3613,9 +3623,11 @@ function ChatsPage() {
       previousScrollHeightRef.current = 0;
       previousScrollTopRef.current = 0;
     } finally {
-      setIsLoadingMessages(false);
-      setIsLoadingOlderMessages(false);
-      isLoadingMoreRef.current = false;
+      if (!isStale()) {
+        setIsLoadingMessages(false);
+        setIsLoadingOlderMessages(false);
+        isLoadingMoreRef.current = false;
+      }
     }
   }, []);
 
@@ -3632,6 +3644,7 @@ function ChatsPage() {
 
     const conversationIdStr = activeConversationIdRef.current?.toString();
     if (!conversationIdStr || conversationIdStr.startsWith('temp-')) return;
+    if (previousSelectedChatIdRef.current !== conversationIdStr) return;
 
     setUnreadCount(conversationIdStr, 0);
     setContacts((prev) =>
@@ -3688,7 +3701,6 @@ function ChatsPage() {
       setMessagesOffset(0);
       setHasMoreMessages(true);
       setMessagesConversationId(null);
-      setSenderInfoCache({}); // Clear cache when chat changes
       isInitialLoadRef.current = true;
       previousSelectedChatIdRef.current = null;
       return;
@@ -3707,14 +3719,17 @@ function ChatsPage() {
       const cached = conversationMessagesCacheRef.current.get(resolvedNext.toString());
       if (cached && cached.length > 0) {
         setMessages(cached);
-        isInitialLoadRef.current = true;
+        setIsLoadingMessages(false);
+      } else {
+        setMessages([]);
+        setIsLoadingMessages(!conversationId.toString().startsWith('temp-'));
       }
+      isInitialLoadRef.current = true;
       isJumpingToLatestRef.current = false;
       setShowJumpToLatest(false);
       setMessagesOffset(0);
       setHasMoreMessages(true);
       setMessagesConversationId(conversationId);
-      setSenderInfoCache({}); // Clear cache
       if (!conversationId.toString().startsWith('temp-')) {
         fetchMessages(conversationId, 0, false);
       }
@@ -3837,7 +3852,7 @@ function ChatsPage() {
       previousScrollHeightRef.current = 0; // Reset
       previousScrollTopRef.current = 0;
     }
-  }, [messages, selectedChatIdStr]);
+  }, [messages, messagesConversationId]);
 
   useEffect(() => {
     const container = messagesContainerRef.current;
@@ -3942,10 +3957,12 @@ function ChatsPage() {
       });
 
       if (existingChat) {
+        const existingIdStr = getConversationId(existingChat).toString();
         setSelectedChat(existingChat);
         setIsMobileChatOpen(true);
         setIsNewConversationModalOpen(false);
-        navigate(`/chats/${encodeURIComponent(getConversationId(existingChat).toString())}`);
+        pendingRouteIdRef.current = existingIdStr;
+        navigate(`/chats/${encodeURIComponent(existingIdStr)}`);
         return;
       }
 
@@ -3972,6 +3989,7 @@ function ChatsPage() {
       setSelectedChat(optimisticChat);
       setIsMobileChatOpen(true);
       setIsNewConversationModalOpen(false);
+      pendingRouteIdRef.current = tempId;
       navigate(`/chats/${encodeURIComponent(tempId)}`);
     },
     [contacts, navigate, user]
@@ -3998,9 +4016,11 @@ function ChatsPage() {
 
     const existingChat = findExisting(contacts);
     if (existingChat) {
+      const existingIdStr = getConversationId(existingChat).toString();
       setSelectedChat(existingChat);
       setIsMobileChatOpen(true);
-      navigate(`/chats/${encodeURIComponent(getConversationId(existingChat).toString())}`, {
+      pendingRouteIdRef.current = existingIdStr;
+      navigate(`/chats/${encodeURIComponent(existingIdStr)}`, {
         replace: true,
       });
       return;
@@ -4009,9 +4029,11 @@ function ChatsPage() {
     refreshContacts().then((serverChats) => {
       const serverChat = findExisting(serverChats || []);
       if (serverChat) {
+        const serverChatIdStr = getConversationId(serverChat).toString();
         setSelectedChat(serverChat);
         setIsMobileChatOpen(true);
-        navigate(`/chats/${encodeURIComponent(getConversationId(serverChat).toString())}`, {
+        pendingRouteIdRef.current = serverChatIdStr;
+        navigate(`/chats/${encodeURIComponent(serverChatIdStr)}`, {
           replace: true,
         });
         return;
@@ -4044,6 +4066,7 @@ function ChatsPage() {
       });
       setSelectedChat(optimisticChat);
       setIsMobileChatOpen(true);
+      pendingRouteIdRef.current = tempId;
       navigate(`/chats/${encodeURIComponent(tempId)}`, { replace: true });
 
       const cacheBuster = `cb=${Date.now()}`;
@@ -5009,7 +5032,6 @@ function ChatsPage() {
                       longPressTriggeredRef.current = false;
                       return;
                     }
-                    console.log(123);
                     handleSelectChat(chat);
                   }}
                   onContextMenu={(event) => {
