@@ -240,21 +240,7 @@ function ChatsPage() {
   const [unreadCounts, setUnreadCounts] = useState({});
   const unreadCountsRef = useRef({});
   const hasFetchedContactsRef = useRef(false);
-  const [isChatListScrolled, setIsChatListScrolled] = useState(false);
-  const chatListScrollRafRef = useRef<number | null>(null);
 
-  const handleChatListScroll = useCallback((e: React.UIEvent<HTMLElement>) => {
-    const scrollTop = e.currentTarget.scrollTop;
-    if (chatListScrollRafRef.current !== null) return;
-    chatListScrollRafRef.current = requestAnimationFrame(() => {
-      chatListScrollRafRef.current = null;
-      if (scrollTop > 12 && !searchQuery.trim()) {
-        setIsChatListScrolled((prev) => (prev ? prev : true));
-      } else if (scrollTop <= 4) {
-        setIsChatListScrolled((prev) => (!prev ? prev : false));
-      }
-    });
-  }, [searchQuery]);
   // Mobile responsive states
   const [isMobileChatOpen, setIsMobileChatOpen] = useState(() => {
     // If arriving via a deep link, open the chat pane immediately
@@ -4848,10 +4834,6 @@ function ChatsPage() {
         cancelAnimationFrame(scrollFrameRef.current);
         scrollFrameRef.current = null;
       }
-      if (chatListScrollRafRef.current !== null) {
-        cancelAnimationFrame(chatListScrollRafRef.current);
-        chatListScrollRafRef.current = null;
-      }
     };
   }, []);
 
@@ -4934,7 +4916,7 @@ function ChatsPage() {
           </button>
           <span className={styles.mobileChatHeaderTitle}>Odyssey</span>
         </div>
-        <div className={`${styles.searchContainer} ${isChatListScrolled ? styles.searchHidden : ''}`}>
+        <div className={styles.searchContainer}>
           <Input
             type="text"
             name="text"
@@ -4947,7 +4929,7 @@ function ChatsPage() {
             onChange={(e) => setSearchQuery(e.target.value)}
           />
         </div>
-        <div className={`${styles.chatTabs} ${isChatListScrolled ? styles.chatTabsSticky : ''}`}>
+        <div className={styles.chatTabs}>
           <button
             type="button"
             className={`${styles.chatTab} ${activeTab === 'all' ? styles.chatTabActive : ''}`}
@@ -4971,7 +4953,7 @@ function ChatsPage() {
           </button>
         </div>
   
-        <div className={styles.chatList} onScroll={handleChatListScroll}>
+        <div className={styles.chatList}>
           {contacts.length === 0 ? (
             <div className={styles.emptyState}>
               <p>Start a conversation...</p>

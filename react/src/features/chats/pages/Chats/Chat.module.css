@@ -40,13 +40,14 @@
     display: flex;
     flex-direction: column;
     flex-wrap: nowrap;
-    align-content: center;
+    align-content: stretch;
     justify-content: flex-start;
-    align-items: center;
+    align-items: stretch;
     gap: 5px;
-    min-width: 220px;
+    min-width: 240px;
     max-width: 400px;
     height: 100vh;
+    height: 100dvh;
     overflow: hidden;
     position: relative;
     transform: translateZ(0);
@@ -141,16 +142,8 @@
 
 .searchContainer {
     width: 100%;
-    overflow: hidden;
-    max-height: 48px;
-    opacity: 1;
     margin-bottom: 6px;
-    transform: translateY(0);
-    transition: max-height 0.32s cubic-bezier(0.4, 0, 0.2, 1),
-                opacity 0.25s ease,
-                transform 0.3s cubic-bezier(0.4, 0, 0.2, 1),
-                margin 0.3s ease,
-                padding 0.3s ease;
+    flex-shrink: 0;
 }
 
 .chatList {
@@ -196,11 +189,14 @@
    CHAT ITEM
    ============================================ */
 .chatItem {
+    width: 100%;
+    max-width: 100%;
+    box-sizing: border-box;
     display: flex;
     align-items: center;
     gap: 12px;
-    padding: 12px;
-    border-radius: 8px;
+    padding: 12px 10px;
+    border-radius: 10px;
     cursor: pointer;
     background-color: var(--chat-item-bg, var(--input-bg));
     border: 1px solid var(--border-subtle, transparent);
@@ -224,21 +220,31 @@
     flex: 1;
     min-width: 0;
     display: flex;
-    align-content: space-between;
+    align-items: center;
     justify-content: space-between;
+    gap: 8px;
+    overflow: hidden;
 }
 
 .chatInfoHeader {
+    flex: 1;
+    min-width: 0;
     display: flex;
-    align-content: space-between;
-    justify-content: space-between;
+    justify-content: center;
     flex-direction: column;
-    gap: 5px;
+    gap: 4px;
+    overflow: hidden;
 }
 
 .chatInfoHeader h3 {
     color: var(--text-main);
-    font-size: 15px;
+    font-size: 14.5px;
+    font-weight: 600;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    margin: 0;
+    max-width: 100%;
 }
 
 .chatInfoHeader p {
@@ -247,14 +253,17 @@
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
+    margin: 0;
+    max-width: 100%;
 }
 
 .chatInfoFooter {
+    flex-shrink: 0;
     display: flex;
     flex-direction: column;
     justify-content: space-between;
     align-items: flex-end;
-    gap: 10px;
+    gap: 6px;
     cursor: pointer;
 }
 
@@ -435,6 +444,7 @@
     display: inline-flex;
     align-items: center;
     justify-content: center;
+    flex-shrink: 0;
     --status-dot-size: 10px;
 }
 
@@ -3681,7 +3691,7 @@
    ============================================ */
 @media (max-width: 1024px) {
     .sidebar { flex: 0 0 70px; }
-    .chatListSidebar { width: 280px; min-width: 280px; }
+    .chatListSidebar { width: 300px; min-width: 280px; max-width: 340px; }
 }
 
 /* ============================================
@@ -3997,30 +4007,9 @@
         transition: none !important;
     }
 
-    .chatTabsSticky {
-        position: sticky;
-        top: 0;
-        z-index: 20;
-        background: var(--bg-panel);
-        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
-        border-radius: 12px;
-    }
-
     .chatTab { padding: 8px 12px; font-size: 13px; }
     .searchContainer {
-        padding: 8px 0;
-        transition: max-height 0.2s ease, opacity 0.15s ease !important;
-    }
-
-    .searchHidden {
-        max-height: 0 !important;
-        opacity: 0 !important;
-        margin-top: 0 !important;
-        margin-bottom: 0 !important;
-        padding-top: 0 !important;
-        padding-bottom: 0 !important;
-        transform: translateY(-8px) !important;
-        pointer-events: none !important;
+        padding: 4px 0 6px;
     }
     
     .noChatSelected { padding: 20px; }
