@@ -67,6 +67,6 @@ export async function handleForgotPasswordToken(req: Request, resp: Response) {
         return;
     }
 
-    const responseHeaders = {"Set-Cookie": `token=${jwtToken}; path=/; sameSite=lax; domain=.odyssey.io`, "Location": "/chat"};
+    const responseHeaders = {"Set-Cookie": `token=${jwtToken}; path=/; sameSite=lax; domain=.odysse.ir`, "Location": "/chat"};
     sendResponse({state: "success"}, responseHeaders, 301, resp);
 }

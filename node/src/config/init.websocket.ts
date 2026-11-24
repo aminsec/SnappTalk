@@ -10,7 +10,7 @@ export function initSocket(server: http.Server){
 // Socket Setup
   const io = new Server(server, {
     cors: {
-      origin: ['http://odyssey.io:3000', 'http://localhost:3000'], // React app
+      origin: ['http://odysse.ir:3000', 'http://odysse.ir', 'http://localhost:3000'], // React app
       methods: ['GET', 'POST'],
       credentials: true
     }

@@ -24,7 +24,7 @@ export async function handleLogin(req: Request, resp: Response): Promise<void> {
         }
 
         const responseData = {state: "success", message: "Login was successful"};
-        const responseHeaders = {"Set-Cookie": `token=${token}; path=/; sameSite=lax; domain=.odyssey.io`};
+        const responseHeaders = {"Set-Cookie": `token=${token}; path=/; sameSite=lax; domain=.odysse.ir`};
         sendResponse(responseData, responseHeaders, 200, resp);
 
     }else{
