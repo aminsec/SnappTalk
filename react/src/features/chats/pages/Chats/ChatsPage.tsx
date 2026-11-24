@@ -1459,14 +1459,14 @@ function ChatsPage() {
       });
     }
   }, [cancelMediaDownload, clearMediaDownloadState, downloadMediaBlob, handleDownloadMessage, rememberMediaDimensions]);
-  const messagesContainerRef = useRef(null);
+  const messagesContainerRef = useRef<HTMLDivElement | null>(null);
+  const prependAnchorRef = useRef<{ id: string; offset: number; ts: number } | null>(null);
+  const stabilizeAnchorRef = useRef<{ id: string; offset: number; until: number } | null>(null);
   const isLoadingMoreRef = useRef(false);
   const fetchRequestIdRef = useRef(0);
   const messagesOffsetRef = useRef(0);
   const hasMoreMessagesRef = useRef(true);
   const isInitialLoadRef = useRef(true);
-  const previousScrollTopRef = useRef(0);
-  const pendingPrependRef = useRef(false);
   const loadMoreSentinelRef = useRef(null);
   const scrollFrameRef = useRef(null);
 
@@ -3492,9 +3492,6 @@ function ChatsPage() {
     };
   }, [gifQuery, isMediaPickerOpen, mediaTab]);
 
-  // Store previous scroll height for position preservation
-  const previousScrollHeightRef = useRef(0);
-
   function flushPendingMessages(conversationId) {
     const conversationIdStr = conversationId?.toString();
     if (!conversationIdStr) return;
@@ -3555,6 +3552,31 @@ function ChatsPage() {
     });
   }
 
+  const captureScrollAnchor = useCallback(() => {
+    const container = messagesContainerRef.current as HTMLElement | null;
+    if (!container) return null;
+    const containerTop = container.getBoundingClientRect().top;
+    let best: { id: string; offset: number } | null = null;
+    for (const [id, node] of Array.from(messageRefs.current.entries())) {
+      if (!node || !(node as HTMLElement).isConnected) continue;
+      const rect = (node as HTMLElement).getBoundingClientRect();
+      if (rect.bottom <= containerTop + 1) continue;
+      const offset = rect.top - containerTop;
+      if (!best || offset < best.offset) best = { id, offset };
+    }
+    return best ? { ...best, ts: Date.now() } : null;
+  }, []);
+
+  const restoreScrollAnchor = useCallback((anchor: { id: string; offset: number }) => {
+    const container = messagesContainerRef.current as HTMLElement | null;
+    const node = messageRefs.current.get(anchor.id) as HTMLElement | undefined;
+    if (!container || !node) return false;
+    const delta =
+      node.getBoundingClientRect().top - container.getBoundingClientRect().top - anchor.offset;
+    if (Math.abs(delta) >= 1) container.scrollTop += delta;
+    return true;
+  }, []);
+
   // Fetch messages function - implements lazy loading
   // Initial load: offset=0, limit=10 → fetches last 10 messages (newest)
   // Scroll up: offset=10,20,30... → fetches next 10 older messages each time
@@ -3573,14 +3595,6 @@ function ChatsPage() {
       setIsLoadingOlderMessages(true);
     }
     isLoadingMoreRef.current = true;
-
-    // Store scroll position before loading older messages
-    const container = messagesContainerRef.current;
-    if (container && append) {
-      previousScrollHeightRef.current = container.scrollHeight;
-      previousScrollTopRef.current = container.scrollTop;
-      pendingPrependRef.current = true;
-    }
 
     try {
       const limit = MESSAGES_LIMIT;
@@ -3622,24 +3636,25 @@ function ChatsPage() {
         );
 
         if (append) {
-          // Prepend older messages to the beginning
-          // Use functional update to access current messages state
-          setMessages((prevMessages) => {
-            const existingIds = new Set(
-              prevMessages.map((msg) => (msg._id || msg.id)?.toString()).filter(Boolean)
-            );
-            const newMessages = normalizedFetchedMessages.filter((msg) => {
-              const msgId = (msg._id || msg.id)?.toString();
-              return msgId && !existingIds.has(msgId);
-            });
-            return [...newMessages, ...prevMessages];
+          const existingIds = new Set(
+            messagesRef.current.map((msg) => getMessageId(msg)?.toString()).filter(Boolean)
+          );
+          const olderMessages = normalizedFetchedMessages.filter((msg) => {
+            const id = getMessageId(msg)?.toString();
+            return id && !existingIds.has(id);
           });
-          flushPendingMessages(conversationId);
-          if (normalizedFetchedMessages.length === 0) {
-            pendingPrependRef.current = false;
-            previousScrollHeightRef.current = 0;
-            previousScrollTopRef.current = 0;
+
+          if (olderMessages.length > 0) {
+            prependAnchorRef.current = captureScrollAnchor();
+            setMessages((prevMessages) => {
+              const ids = new Set(
+                prevMessages.map((msg) => getMessageId(msg)?.toString()).filter(Boolean)
+              );
+              const fresh = olderMessages.filter((msg) => !ids.has(getMessageId(msg)?.toString()));
+              return fresh.length ? [...fresh, ...prevMessages] : prevMessages;
+            });
           }
+          flushPendingMessages(conversationId);
         } else {
           // Initial load: replace messages with the last 10 messages (newest)
           // Already sorted oldest->newest
@@ -3689,9 +3704,6 @@ function ChatsPage() {
     } catch (error) {
       console.error('Error fetching messages:', error);
       setHasMoreMessages(false);
-      pendingPrependRef.current = false;
-      previousScrollHeightRef.current = 0;
-      previousScrollTopRef.current = 0;
     } finally {
       if (!isStale()) {
         setIsLoadingMessages(false);
@@ -3699,7 +3711,7 @@ function ChatsPage() {
         isLoadingMoreRef.current = false;
       }
     }
-  }, []);
+  }, [captureScrollAnchor]);
 
   // Reopen refresh: when the conversation pane becomes visible again while a
   // conversation is already selected (mobile back-button return), messages may
@@ -3902,27 +3914,29 @@ function ChatsPage() {
 
   // Handle scroll position after messages update
   useLayoutEffect(() => {
-    const container = messagesContainerRef.current;
+    const container = messagesContainerRef.current as HTMLElement | null;
     if (!container) return;
 
     if (isInitialLoadRef.current && messages.length > 0) {
-      // Initial load - scroll to bottom to show newest messages
       container.scrollTop = container.scrollHeight;
       isInitialLoadRef.current = false;
+      prependAnchorRef.current = null;
       return;
     }
 
-    if (pendingPrependRef.current && previousScrollHeightRef.current > 0) {
-      // Loading older messages - preserve scroll position precisely
-      const newScrollHeight = container.scrollHeight;
-      const scrollDifference = newScrollHeight - previousScrollHeightRef.current;
-      const prevTop = previousScrollTopRef.current || 0;
-      container.scrollTop = prevTop + scrollDifference;
-      pendingPrependRef.current = false;
-      previousScrollHeightRef.current = 0; // Reset
-      previousScrollTopRef.current = 0;
+    const anchor = prependAnchorRef.current;
+    if (anchor) {
+      prependAnchorRef.current = null;
+      if (Date.now() - anchor.ts < 3000) {
+        restoreScrollAnchor(anchor);
+        stabilizeAnchorRef.current = {
+          id: anchor.id,
+          offset: anchor.offset,
+          until: Date.now() + 1200,
+        };
+      }
     }
-  }, [messages, messagesConversationId]);
+  }, [messages, messagesConversationId, restoreScrollAnchor]);
 
   useEffect(() => {
     const container = messagesContainerRef.current;
