@@ -299,18 +299,26 @@ function ChatsPage() {
   const hasFetchedContactsRef = useRef(false);
   const [isChatListScrolled, setIsChatListScrolled] = useState(false);
   const chatListScrollRafRef = useRef<number | null>(null);
+  const latestChatListScrollTopRef = useRef(0);
 
   const handleChatListScroll = useCallback((e: React.UIEvent<HTMLElement>) => {
-    const scrollTop = e.currentTarget.scrollTop;
+    latestChatListScrollTopRef.current = e.currentTarget.scrollTop;
     if (chatListScrollRafRef.current !== null) return;
     chatListScrollRafRef.current = requestAnimationFrame(() => {
       chatListScrollRafRef.current = null;
-      if (scrollTop > 12 && !searchQuery.trim()) {
-        setIsChatListScrolled((prev) => (prev ? prev : true));
-      } else if (scrollTop <= 4) {
-        setIsChatListScrolled((prev) => (!prev ? prev : false));
+      const currentTop = latestChatListScrollTopRef.current;
+      if (currentTop > 10 && !searchQuery.trim()) {
+        setIsChatListScrolled(true);
+      } else if (currentTop <= 5) {
+        setIsChatListScrolled(false);
       }
     });
+  }, [searchQuery]);
+
+  useEffect(() => {
+    if (searchQuery.trim()) {
+      setIsChatListScrolled(false);
+    }
   }, [searchQuery]);
   // Mobile responsive states
   const [isMobileChatOpen, setIsMobileChatOpen] = useState(() => {
