@@ -3581,23 +3581,79 @@
     display: inline-flex;
     align-items: center;
     gap: 10px;
-    color: var(--text-muted);
-    font-size: 0.9rem;
+    color: #FFFFFF;
+    font-size: 0.92rem;
+    font-weight: 500;
+    cursor: pointer;
+    user-select: none;
+    transition: color 0.18s ease;
+}
+
+.deleteCheckbox span {
+    color: inherit;
+    font-size: inherit;
+    font-weight: inherit;
 }
 
 .deleteCheckbox input {
     width: 20px;
     height: 20px;
     appearance: none;
+    -webkit-appearance: none;
     border-radius: 50%;
-    border: 2px solid rgba(255, 255, 255, 0.2);
+    border: 2px solid rgba(255, 255, 255, 0.65);
     background: transparent;
     cursor: pointer;
+    margin: 0;
+    flex-shrink: 0;
+    transition: all 0.18s ease;
+    display: inline-block;
+    vertical-align: middle;
+}
+
+.deleteCheckbox:hover input {
+    border-color: #FFFFFF;
+    background-color: rgba(255, 255, 255, 0.08);
 }
 
 .deleteCheckbox input:checked {
-    border-color: rgba(255, 18, 18, 0.8);
-    box-shadow: inset 0 0 0 5px rgba(255, 18, 18, 0.85);
+    border-color: #FFFFFF;
+    background-color: #FFFFFF;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 24 24' fill='%23000000' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M5.305 11.235a1 1 0 0 1 1.414.024l3.206 3.319L17.3 7.289a1 1 0 0 1 1.4 1.422l-8.091 8a1 1 0 0 1-.7.289H9.9a1 1 0 0 1-.708-.3L5.281 12.649a1 1 0 0 1 .024-1.414Z'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: center;
+    background-size: 13px;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+}
+
+.deleteCheckbox input:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+/* Light / White theme: black style */
+:root[data-theme="light"] .deleteCheckbox {
+    color: #000000;
+}
+
+:root[data-theme="light"] .deleteCheckbox input {
+    border: 2px solid rgba(0, 0, 0, 0.65);
+    background: transparent;
+}
+
+:root[data-theme="light"] .deleteCheckbox:hover input {
+    border-color: #000000;
+    background-color: rgba(0, 0, 0, 0.06);
+}
+
+:root[data-theme="light"] .deleteCheckbox input:checked {
+    border-color: #000000;
+    background-color: #000000;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 24 24' fill='%23ffffff' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M5.305 11.235a1 1 0 0 1 1.414.024l3.206 3.319L17.3 7.289a1 1 0 0 1 1.4 1.422l-8.091 8a1 1 0 0 1-.7.289H9.9a1 1 0 0 1-.708-.3L5.281 12.649a1 1 0 0 1 .024-1.414Z'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: center;
+    background-size: 13px;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.15);
 }
 
 /* ============================================
