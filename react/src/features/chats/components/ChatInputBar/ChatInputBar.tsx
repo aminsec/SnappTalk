@@ -371,15 +371,25 @@ export const ChatInputBar: React.FC<ChatInputBarProps> = ({
                     <p className={styles.mediaEmpty}>No GIFs found.</p>
                   )}
                   <div className={styles.mediaGrid}>
-                    {activeMediaItems.map((item) => (
-                      <button
-                        key={item.id}
-                        type="button"
-                        className={styles.mediaItem}
-                        onClick={() => onSendMedia(item)}
-                      >
-                        <img src={item.preview || item.url} alt={item.name} />
-                      </button>
+                    {[0, 1, 2].map((colIndex) => (
+                      <div key={colIndex} className={styles.mediaColumn}>
+                        {activeMediaItems
+                          .filter((_, index) => index % 3 === colIndex)
+                          .map((item) => (
+                            <button
+                              key={item.id}
+                              type="button"
+                              className={styles.mediaItem}
+                              onClick={() => onSendMedia(item)}
+                            >
+                              <img
+                                src={item.preview || item.url}
+                                alt={item.name}
+                                loading="lazy"
+                              />
+                            </button>
+                          ))}
+                      </div>
                     ))}
                   </div>
                 </>

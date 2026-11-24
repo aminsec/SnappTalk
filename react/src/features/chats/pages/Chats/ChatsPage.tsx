@@ -3464,7 +3464,11 @@ function ChatsPage() {
             url: item.images?.original?.url
               || item.images?.fixed_height?.url
               || item.images?.fixed_height_small?.url,
-            preview: item.images?.fixed_height_small_still?.url || item.images?.original_still?.url,
+            preview: item.images?.fixed_width_small?.url
+              || item.images?.fixed_height_small?.url
+              || item.images?.preview_gif?.url
+              || item.images?.fixed_height_small_still?.url
+              || item.images?.original_still?.url,
           }));
           setGiphyGifs(normalized.filter((gif) => gif.url));
         })
